@@ -22,7 +22,7 @@ error_reporting(0);
 
         /* --- HERO SECTION --- */
         .hero-section {
-            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.8)), url('https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=2070&auto=format&fit=crop');
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.8)), url('https://www.pcworld.com/wp-content/uploads/2025/04/pcw08_Asus-Gaming-PC.jpg?resize=1536%2C864&quality=50&strip=all');
             background-size: cover;
             background-position: center;
             height: 90vh; 
