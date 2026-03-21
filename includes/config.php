@@ -9,7 +9,7 @@ define('DB_USER', 'root');
 define('DB_PASS', '');
 
 // Store the name of the database used by this system
-define('DB_NAME', 'carrental');
+define('DB_NAME', 'pcstore');
 
 // Create a database connection using PDO
 // PDO is used because it is more secure and supports prepared statements
