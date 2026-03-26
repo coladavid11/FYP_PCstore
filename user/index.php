@@ -191,8 +191,8 @@ error_reporting(0);
 
     <section class="hero-section">
         <div class="container">
-            <h1 class="hero-title">Find Your Best Drive</h1>
-            <p class="hero-subtitle">Premium Cars. Unlimited Miles. Unforgettable Moments.</p>
+            <h1 class="hero-title">Find Your Best Computer</h1>
+            <p class="hero-subtitle">Premium PCs. Unlimited Performance. Unforgettable Experiences.</p>
             <br>
             <a href="car-listing.php" class="btn-hero">Browse Collection</a>
         </div>

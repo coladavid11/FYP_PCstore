@@ -17,7 +17,7 @@ function navActive($page, $currentPage) {
     <!-- Website brand / logo -->
     <a class="navbar-brand fw-bold" href="index.php"
        style="font-size: 1.5rem; color: #f1c40f;">
-      <i class="fa fa-car"></i> Buat Kerja Betul2 Car Rental
+      <i class="fa fa-car"></i> My PC Store
     </a>
 
     <!-- Mobile menu toggle button -->
@@ -40,7 +40,7 @@ function navActive($page, $currentPage) {
         <!-- Car listing page link -->
         <li class="nav-item">
           <a class="nav-link <?php echo navActive('car-listing.php', $currentPage); ?>"
-             href="car-listing.php">Find a Car</a>
+             href="car-listing.php">Find Computers</a>
         </li>
 
         <!-- About page link -->
