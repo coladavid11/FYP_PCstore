@@ -1,10 +1,10 @@
 <?php
 session_start();
-include('includes/config.php');
+include(__DIR__.'/../includes/config.php');
 error_reporting(0);
 
 // --- 1. Smart Redirect Logic ---
-$redirect = 'index.php'; // Default fallback
+$redirect = ' index.php'; // Default fallback
 
 // A. Check POST data (Highest priority - from form submission)
 if (isset($_POST['redirect']) && !empty($_POST['redirect'])) {
@@ -109,7 +109,7 @@ if (isset($_POST['login'])) {
 </head>
 
 <body>
-<?php include('includes/header.php'); ?>
+<?php include(__DIR__.'/../includes/header.php'); ?>
 
 <div class="page-wrap">
   <div class="container">
@@ -163,7 +163,7 @@ if (isset($_POST['login'])) {
   </div>
 </div>
 
-<?php include('includes/footer.php'); ?>
+<?php include(__DIR__.'/../includes/footer.php'); ?>
 
 <?php if($loginSuccess) { ?>
 <script>

@@ -187,7 +187,7 @@ error_reporting(0);
 </head>
 <body>
 
-    <?php include('includes/header.php');?>
+    <?php include(__DIR__.'/../includes/header.php');?>
 
     <section class="hero-section">
         <div class="container">
@@ -249,7 +249,7 @@ error_reporting(0);
         </div>
     </section>
 
-    <?php include('includes/footer.php');?>
+    <?php include(__DIR__.'/../includes/footer.php');?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
