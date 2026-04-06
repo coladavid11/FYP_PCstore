@@ -20,13 +20,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $mail->Host = 'smtp.gmail.com';
         $mail->SMTPAuth = true;
 
-        $mail->Username = 'coladavid11@gmail.com'; // 🔁 换成你的
-        $mail->Password = 'pveq yudq bjac kyig';   // 🔁 换成你的App Password
+        $mail->Username = 'coladavid0203@gmail.com'; // The working email address, Jiun Le personal email adrees.
+        $mail->Password = 'supx ydta rxkt inuh';   // App password generated for the above email address, not the actual email password.
 
         $mail->SMTPSecure = 'tls';
         $mail->Port = 587;
 
-        $mail->setFrom('coladavid11@gmail.com', 'FYP System');
+        $mail->setFrom('coladavid0203@gmail.com', 'FYP System');
         $mail->addAddress($userEmail);
 
         $mail->isHTML(true);

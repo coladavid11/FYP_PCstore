@@ -153,6 +153,9 @@ if (isset($_POST['login'])) {
               <div class="text-center mt-3" style="color:#aaa;">
                 Don't have an account?
                 <a class="link-gold" href="register.php">Register a new account</a>
+                <br>
+                Forget your password?
+                <a class="link-gold" href="test_email.php">Forget password</a> 
               </div>
             </form>
 
