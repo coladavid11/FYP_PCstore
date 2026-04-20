@@ -496,9 +496,9 @@ body {
 
 <!-- NAVBAR -->
 <nav class="navbar">
-    <a href="#" class="nav-logo">🖥 <span>My PC</span> Store</a>
+    <a href="index.php" class="nav-logo">🖥 <span>My PC</span> Store</a>
     <ul class="nav-links">
-        <li><a href="#">Home</a></li>
+        <li><a href="index">Home</a></li>
         <li><a href="#">Find Computers</a></li>
         <li><a href="about.php">About Us</a></li>
         <li><a href="contact.php">Contact Us</a></li>
