@@ -22,7 +22,7 @@ include('includes/config.php');
 <?php include('includes/header.php'); ?>
 
 <!-- HERO -->
-<section class="hero d-flex align-items-center text-center">
+<section class="index-hero d-flex align-items-center text-center">
     <div class="container">
         <h1 class="hero-title">Build Your Dream PC</h1>
         <p class="hero-subtitle">Premium Hardware • High Performance</p>
@@ -70,13 +70,13 @@ include('includes/config.php');
 <!-- PRODUCTS (SIMPLE SHOWCASE) -->
 <section class="py-5 bg-light">
     <div class="container text-center">
-        <h2 class="section-title mb-3">Featured Builds</h2>
+        <h2 class="section-title text-dark mb-4">Featured Builds</h2>
         <p class="text-soft mb-5">Popular setups chosen by customers</p>
 
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="info-card p-3">
-                    <img src="https://images.unsplash.com/photo-1587202372775-9890c7e8b4d6" class="img-fluid mb-3">
+                    <img src="https://www.pcworld.com/wp-content/uploads/2025/10/pcw07_GamingSetup_RGBeci.jpg?quality=50&strip=all" class="img-fluid mb-3">
                     <h5>Gaming Beast</h5>
                     <p class="text-soft">RTX Series • High FPS Gaming</p>
                     <a href="#" class="btn-cta mt-2">View</a>
