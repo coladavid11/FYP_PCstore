@@ -1,0 +1,233 @@
+    body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #0f0f0f;
+        color: #fff;
+    }
+
+    /* Hero section with background image + dark overlay for readability */
+    .page-hero {
+        background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.8)),
+            url('https://images.unsplash.com/photo-1553440569-bcc63803a83d?q=80&w=2070&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        height: 90vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: white;
+        position: relative;
+    }
+
+    /* Main hero title uses premium font and animation to look modern */
+    .hero-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 4.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        text-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        margin-bottom: 15px;
+        animation: fadeInUp 1.2s cubic-bezier(0.2, 1, 0.2, 1);
+    }
+
+    /* Subtitle uses gold color to match brand accent style */
+    .hero-subtitle {
+        font-size: 1.2rem;
+        margin-bottom: 0;
+        color: #d4af37;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        font-weight: 500;
+        animation: fadeInUp 1.2s cubic-bezier(0.2, 1, 0.2, 1);
+    }
+
+    /* Gold accent line is used as a visual divider (same idea as index page) */
+    .accent-line {
+        width: 60px;
+        height: 2px;
+        background: #d4af37;
+        margin: 20px auto 0;
+        border: none;
+    }
+
+    /* Section titles use the same premium font to keep branding consistent */
+    .section-title {
+        font-family: 'Playfair Display', serif;
+        color: #fff;
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+
+    /* Softer text color is used for readability on dark background */
+    .text-soft {
+        color: #888;
+        font-size: 0.95rem;
+        letter-spacing: 0.2px;
+    }
+
+   
+    .darksection {
+        background-color: #0f0f0f ;
+    }
+
+    /* Card style follows index car-card: dark background, border, shadow, hover effect */
+    .info-card,
+    .stat-card,
+    .team-card {
+        background: #181818;
+        border: 1px solid #2a2a2a;
+        border-radius: 0;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        transition: all 0.4s ease;
+        height: 100%;
+    }
+
+    /* Hover effect makes the UI feel interactive and premium */
+    .info-card:hover,
+    .stat-card:hover,
+    .team-card:hover {
+        transform: translateY(-10px);
+        border-color: #444;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    /* Icon badge uses gold color to match brand accent */
+    .icon-badge {
+        width: 48px;
+        height: 48px;
+        border-radius: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: 1px solid #2a2a2a;
+        color: #d4af37;
+        font-size: 1.1rem;
+    }
+
+    /* Stats number uses gold to attract attention */
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #d4af37;
+        letter-spacing: 1px;
+    }
+
+    /* Stats label uses uppercase to look like a data card */
+    .stat-label {
+        color: #aaa;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    /* Team image hover effect improves visual quality */
+    .team-img {
+        height: 500px;
+        object-fit: cover;
+        width: 100%;
+        transition: 0.6s;
+        filter: brightness(0.9);
+    }
+    .team-card:hover .team-img {
+        transform: scale(1.05);
+        filter: brightness(1.05);
+    }
+
+    /* CTA buttons follow index button style (gold gradient + sharp edges) */
+    .btn-cta {
+        background: linear-gradient(45deg, #d4af37, #c5a028);
+        color: #000;
+        padding: 15px 40px;
+        font-weight: bold;
+        border-radius: 2px;
+        text-decoration: none;
+        transition: 0.3s;
+        border: none;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: inline-block;
+    }
+    .btn-cta:hover {
+        background: #fff;
+        color: #000;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+    }
+
+    /* Outline button style matches the index outline-gold look */
+    .btn-cta-outline {
+        border: 1px solid #555;
+        color: #fff;
+        padding: 12px 30px;
+        border-radius: 2px;
+        text-decoration: none;
+        transition: 0.3s;
+        display: inline-block;
+        margin-left: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.85rem;
+    }
+    .btn-cta-outline:hover {
+        background: #d4af37;
+        border-color: #d4af37;
+        color: #000;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+    }
+
+    /* Force selected icons to use gold color for branding consistency */
+    .fa-check-circle,
+    .fa-shield-halved,
+    .fa-sack-dollar,
+    .fa-calendar-check,
+    .fa-screwdriver-wrench,
+    .fa-headset {
+        color: #d4af37 !important;
+    }
+
+    /* Code text stands out on dark background */
+    code {
+        color: #d4af37;
+    }
+
+    /* Simple animation for hero text */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+
+    /* HERO (index.php) */
+.hero {
+    height: 90vh;
+    background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)),
+        url('https://images.unsplash.com/photo-1541807084-5c52b6b3adef');
+    background-size: cover;
+    background-position: center;
+}
+
+/* Hero text */
+.hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 4rem;
+    font-weight: 700;
+}
+
+.hero-subtitle {
+    color: #d4af37;
+    letter-spacing: 2px;
+}
+
+/* Product image */
+.info-card img {
+    height: 200px;
+    object-fit: cover;
+}
+
+/* Section spacing fix */
+section {
+    position: relative;
+}
