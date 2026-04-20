@@ -507,7 +507,7 @@ body {
         <?php if ($count > 0): ?>
         <span class="cart-count"><?= $count ?></span>
         <?php endif; ?>
-        <a href="#" class="btn-cta">Login / Register</a>
+        <a href="login.php" class="btn-cta">Login</a>
     </div>
 </nav>
 

@@ -435,7 +435,7 @@ input::placeholder { color: var(--muted); font-size: .85rem; }
     <li><a href="about.php">About Us</a></li>
     <li><a href="contact.php">Contact Us</a></li>
   </ul>
-  <button class="nav-badge">Login / Register</button>
+  <button class="nav-badge"><a href="login.php" class="btn-cta">Login</a></button>
 </nav>
 
 <!-- BREADCRUMB -->
