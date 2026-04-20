@@ -29,14 +29,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Cart items (demo)
-$cart = [
-    ['name' => 'ASUS ROG Strix G16 Gaming Laptop', 'qty' => 1, 'price' => 5499.00],
-    ['name' => 'Corsair K95 RGB Mechanical Keyboard', 'qty' => 1, 'price'  => 699.00],
-    ['name' => 'Logitech G Pro X Superlight Mouse',  'qty' => 1, 'price'  => 399.00],
-];
+session_start();
+
+if (empty($_SESSION['cart'])) {
+    $_SESSION['cart'] = [
+        ['name' => 'ASUS ROG Strix G16 Gaming Laptop', 'qty' => 1, 'price' => 5498.00],
+        ['name' => 'Corsair K95 RGB Mechanical Keyboard', 'qty' => 1, 'price' => 699.00],
+        ['name' => 'Logitech G Pro X Superlight Mouse',  'qty' => 1, 'price' => 399.00],
+    ];
+}
+
+$cart     = $_SESSION['cart'];
 $subtotal = array_sum(array_map(fn($i) => $i['qty'] * $i['price'], $cart));
 $tax      = $subtotal * 0.06;
 $total    = $subtotal + $tax;
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
