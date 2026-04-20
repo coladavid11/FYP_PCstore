@@ -462,7 +462,7 @@ input::placeholder { color: var(--muted); font-size: .85rem; }
         <div class="success-ref">Reference: PC<?= strtoupper(substr(md5(time()), 0, 10)) ?></div>
         <div class="success-amount">RM <?= number_format($total, 2) ?></div>
         <div class="success-demo-note"><?= htmlspecialchars($demo_message) ?></div>
-        <a href="?" style="display:inline-block;padding:.7rem 2rem;background:var(--gold);color:#000;font-family:var(--display);font-size:1.1rem;letter-spacing:.1em;text-decoration:none;border-radius:3px;margin-top:.5rem;">BACK TO STORE</a>
+        <a href="index.php" style="display:inline-block;padding:.7rem 2rem;background:var(--gold);color:#000;font-family:var(--display);font-size:1.1rem;letter-spacing:.1em;text-decoration:none;border-radius:3px;margin-top:.5rem;">BACK TO STORE</a>
       </div>
     </div>
 
