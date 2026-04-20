@@ -29,7 +29,7 @@ error_reporting(0);
 <?php include('includes/header.php'); ?>
 <!-- Reuse the same header across all pages for consistent navigation -->
 
-<section class="page-hero">
+<section class="about-hero">
   <div class="container">
     <h1 class="hero-title">About Us</h1>
     <p class="hero-subtitle">

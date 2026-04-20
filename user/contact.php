@@ -31,6 +31,7 @@ error_reporting(0);
 
     /* ===== HERO ===== */
     .page-hero {
+      margin-top: -15px;
       background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.8)),
         url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop');
       background-size: cover;

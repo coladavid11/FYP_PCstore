@@ -5,7 +5,8 @@
     }
 
     /* Hero section with background image + dark overlay for readability */
-    .page-hero {
+    .about-hero {
+        margin-top: -15px;
         background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.8)),
             url('https://images.unsplash.com/photo-1553440569-bcc63803a83d?q=80&w=2070&auto=format&fit=crop');
         background-size: cover;
@@ -202,24 +203,13 @@
 
 
     /* HERO (index.php) */
-.hero {
+.index-hero {
+    margin-top: -15px;
     height: 90vh;
     background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)),
-        url('https://images.unsplash.com/photo-1541807084-5c52b6b3adef');
+        url('https://storage-asset.msi.com/event/2022/cnd/i-want-it-all/images/reason-img-02.jpg');
     background-size: cover;
     background-position: center;
-}
-
-/* Hero text */
-.hero-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 4rem;
-    font-weight: 700;
-}
-
-.hero-subtitle {
-    color: #d4af37;
-    letter-spacing: 2px;
 }
 
 /* Product image */
