@@ -4,6 +4,12 @@
         color: #fff;
     }
 
+    /* HERO (index.php) */
+    .index-hero {
+        margin-top: -15px;
+        height: 90vh;
+    }
+
     /* Main hero title uses premium font and animation to look modern */
     .hero-title {
         font-family: 'Playfair Display', serif;

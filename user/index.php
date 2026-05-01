@@ -15,14 +15,15 @@ include('includes/config.php');
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <!-- External CSS file -->
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="newstyle.css">
 </head>
 
 <body>
 <?php include('includes/header.php'); ?>
 
 <!-- HERO -->
-<section class="index-hero d-flex align-items-center text-center">
+<section class="index-hero d-flex align-items-center text-center"
+style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url('https://storage-asset.msi.com/event/2022/cnd/i-want-it-all/images/reason-img-02.jpg')">
     <div class="container">
         <h1 class="hero-title">Build Your Dream PC</h1>
         <p class="hero-subtitle">Premium Hardware • High Performance</p>
