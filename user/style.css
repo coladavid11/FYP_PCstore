@@ -4,22 +4,6 @@
         color: #fff;
     }
 
-    /* Hero section with background image + dark overlay for readability */
-    .about-hero {
-        margin-top: -15px;
-        background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.8)),
-            url('https://images.unsplash.com/photo-1553440569-bcc63803a83d?q=80&w=2070&auto=format&fit=crop');
-        background-size: cover;
-        background-position: center;
-        height: 90vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        color: white;
-        position: relative;
-    }
-
     /* Main hero title uses premium font and animation to look modern */
     .hero-title {
         font-family: 'Playfair Display', serif;
@@ -67,7 +51,6 @@
         letter-spacing: 0.2px;
     }
 
-   
     .darksection {
         background-color: #0f0f0f ;
     }
@@ -200,17 +183,6 @@
         from { opacity: 0; transform: translateY(30px); }
         to { opacity: 1; transform: translateY(0); }
     }
-
-
-    /* HERO (index.php) */
-.index-hero {
-    margin-top: -15px;
-    height: 90vh;
-    background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)),
-        url('https://storage-asset.msi.com/event/2022/cnd/i-want-it-all/images/reason-img-02.jpg');
-    background-size: cover;
-    background-position: center;
-}
 
 /* Product image */
 .info-card img {
