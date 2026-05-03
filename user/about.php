@@ -21,23 +21,26 @@ error_reporting(0);
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  
   <!-- External CSS file -->
-  <link rel="stylesheet" href="style.css">
-</head>
+  <link rel="stylesheet" href="newstyle.css">
+</head> 
 
 <body>
 <?php include('includes/header.php'); ?>
 <!-- Reuse the same header across all pages for consistent navigation -->
 
-<section class="about-hero">
-  <div class="container">
-    <h1 class="hero-title">About Us</h1>
-    <p class="hero-subtitle">
-      Buat Kerja Betul2 Car Rental —
-      <span style="color:#f1c40f; font-weight:800;">More Than a Rental. It’s an Experience.</span>
-    </p>
-    <hr class="accent-line">
-  </div>
+<section class="hero d-flex align-items-center text-center"
+  style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), 
+  url('https://storage-asset.msi.com/event/2022/cnd/i-want-it-all/images/reason-img-02.jpg')">
+    <div class="container">
+      <h1 class="hero-title">About Us</h1>
+      <p class="hero-subtitle">
+        Buat Kerja Betul2 Car Rental —
+        <span style="color:#f1c40f; font-weight:800;">More Than a Rental. It’s an Experience.</span>
+      </p>
+      <hr class="section-divider">
+    </div>
 </section>
 
 <section class="py-5 bg-light">
@@ -61,24 +64,24 @@ error_reporting(0);
           <div class="d-flex align-items-center gap-2">
             <span class="icon-badge"><i class="fa fa-tags"></i></span>
             <div>
-              <div class="fw-bold" style="color:#FFFFFF;">Cheap Price</div>
-              <div class="text-soft" style="font-size:0.9rem;">Budget-friendly rates</div>
+              <div class="fw-bold" style="color:black;">Cheap Price</div>
+              <div class="text-soft" style="font-size:0.9rem; padding-bottom: 15px;">Budget-friendly rates</div>
             </div>
           </div>
 
           <div class="d-flex align-items-center gap-2">
             <span class="icon-badge"><i class="fa fa-car-side"></i></span>
             <div>
-              <div class="fw-bold" style="color:#FFFFFF;">Newer Cars</div>
-              <div class="text-soft" style="font-size:0.9rem;">Clean & comfortable</div>
+              <div class="fw-bold" style="color:black;">Newer Cars</div>
+              <div class="text-soft" style="font-size:0.9rem; padding-bottom: 15px;">Clean & comfortable</div>
             </div>
           </div>
 
           <div class="d-flex align-items-center gap-2">
             <span class="icon-badge"><i class="fa fa-bolt"></i></span>
             <div>
-              <div class="fw-bold" style="color:#FFFFFF;">Fast Process</div>
-              <div class="text-soft" style="font-size:0.9rem;">Quick booking & paperwork</div>
+              <div class="fw-bold" style="color:black;">Fast Process</div>
+              <div class="text-soft" style="font-size:0.9rem; padding-bottom: 15px;">Quick booking & paperwork</div>
             </div>
           </div>
 
@@ -88,7 +91,7 @@ error_reporting(0);
       <!-- Right column: service list in a card -->
       <div class="col-lg-5">
         <div class="info-card p-4">
-          <h5 class="fw-bold mb-3" style="color:#FFFFFF;">What We Offer</h5>
+          <h5 class="fw-bold mb-3" style="color:white;">What We Offer</h5>
 
           <ul class="list-unstyled mb-0">
 
@@ -129,9 +132,9 @@ error_reporting(0);
 
     <!-- Section header centered to guide user reading flow -->
     <div class="text-center mb-5">
-      <h2 class="section-title">Why Choose Us</h2>
+      <h2 class="section-title" style="color:white;">Why Choose Us</h2>
       <p class="text-soft">Trusted service with an easy booking experience.</p>
-      <hr class="accent-line">
+      <hr class="section-divider">
     </div>
 
     <!-- Feature cards use responsive grid -->
@@ -230,7 +233,7 @@ error_reporting(0);
   <div class="container">
 
     <div class="text-center mb-5">
-      <h2 class="section-title">Our Team</h2>
+      <h2 class="section-title" style="color:white;">Our Team</h2>
       <p class="text-soft">We work together to deliver a better rental experience.</p>
       <hr class="accent-line">
     </div>

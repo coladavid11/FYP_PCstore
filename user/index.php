@@ -22,7 +22,7 @@ include('includes/config.php');
 <?php include('includes/header.php'); ?>
 
 <!-- HERO -->
-<section class="index-hero d-flex align-items-center text-center"
+<section class="hero d-flex align-items-center text-center"
 style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url('https://storage-asset.msi.com/event/2022/cnd/i-want-it-all/images/reason-img-02.jpg')">
     <div class="container">
         <h1 class="hero-title">Build Your Dream PC</h1>
@@ -37,7 +37,7 @@ style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url('https
 <!-- FEATURES -->
 <section class="py-5">
     <div class="container text-center">
-        <h2 class="section-title mb-3">Why Choose Us</h2>
+        <h2 class="section-title mb-3 " style="color:white;">Why Choose Us</h2>
         <p class="text-soft mb-5">Simple. Fast. Reliable PC solutions.</p>
 
         <div class="row g-4">
