@@ -1,162 +1,286 @@
 <?php
 session_start();
+include('includes/config.php');
 
-$action = $_POST['action'] ?? '';
+// check login
+$isLoggedIn = isset($_SESSION['login']);
+$user_id = $_SESSION['user_id'] ?? null;
 
-if ($action === 'remove') {
-    $id = intval($_POST['product_id']);
-    $_SESSION['cart'] = array_values(array_filter($_SESSION['cart'] ?? [], fn($i) => $i['id'] !== $id));
+// =======================
+// UPDATE QUANTITY (PDO)
+// =======================
+if ($isLoggedIn && isset($_POST['update_qty'])) {
+
+    $cart_id = $_POST['cart_id'];
+    $qty = $_POST['qty'];
+
+    if ($qty > 0) {
+        $stmt = $dbh->prepare("
+            UPDATE tblcart 
+            SET quantity = ? 
+            WHERE cart_id = ? AND user_id = ?
+        ");
+        $stmt->execute([$qty, $cart_id, $user_id]);
+    }
+
+    header("Location: cart.php");
+    exit();
 }
 
-if ($action === 'update') {
-    $id  = intval($_POST['product_id']);
-    $qty = intval($_POST['qty']);
+// =======================
+// REMOVE ITEM (PDO)
+// =======================
+if ($isLoggedIn && isset($_GET['remove'])) {
 
-    if ($qty <= 0) {
-        $_SESSION['cart'] = array_values(array_filter($_SESSION['cart'] ?? [], fn($i) => $i['id'] !== $id));
-    } else {
-        foreach ($_SESSION['cart'] as &$item) {
-            if ($item['id'] === $id) {
-                $item['qty'] = $qty;
-                break;
-            }
-        }
-        unset($item);
+    $cart_id = $_GET['remove'];
+
+    $stmt = $dbh->prepare("
+        UPDATE tblcart 
+        SET status = 'removed' 
+        WHERE cart_id = ? AND user_id = ?
+    ");
+    $stmt->execute([$cart_id, $user_id]);
+
+    header("Location: cart.php");
+    exit();
+}
+
+// =======================
+// FETCH CART ITEMS
+// =======================
+$cartItems = [];
+$total = 0;
+
+if ($isLoggedIn) {
+
+    $stmt = $dbh->prepare("
+        SELECT * FROM tblcart 
+        WHERE user_id = ? AND status = 'active'
+        ORDER BY created_at DESC
+    ");
+    $stmt->execute([$user_id]);
+    $cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($cartItems as $item) {
+        $total += $item['product_price'] * $item['quantity'];
     }
 }
-
-if ($action === 'clear') {
-    $_SESSION['cart'] = [];
-}
-
-$cart     = $_SESSION['cart'] ?? [];
-$subtotal = array_sum(array_map(fn($i) => $i['qty'] * $i['price'], $cart));
-$tax      = $subtotal * 0.06;
-$total    = $subtotal + $tax;
-$count    = array_sum(array_column($cart, 'qty'));
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>My PC Store — Shopping Cart</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-<link rel="stylesheet" href="newstyle.css"/>
+<meta charset="UTF-8">
+<title>Cart - PC Store</title>
 
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<!-- Your CSS -->
+<link rel="stylesheet" href="newstyle.css">
 </head>
+
 <body>
+
 <?php include('includes/header.php'); ?>
 
-<!-- HERO STRIP -->
-<div class="page-hero">
-    <h1 class="hero-title">Shopping Cart</h1>
-    <p class="hero-subtitle">Review Your Selection</p>
-    <hr class="accent-line"/>
-</div>
+<div class="container py-5">
 
-<!-- MAIN -->
-<div class="main">
+<div class="row g-4">
 
-    <!-- YOUR CART -->
-    <div>
-        <h2 class="section-title">Your Cart</h2>
-        <div class="panel">
-            <?php if (empty($cart)): ?>
-            <div class="cart-empty">
-                <i class="fa-solid fa-cart-shopping"></i>
-                <p>Your cart is empty.<br><span class="text-soft">No items in cart.</span></p>
-            </div>
-            <?php else: ?>
-                <?php foreach ($cart as $item): ?>
-                <div class="cart-item">
-                    <div>
-                        <div class="ci-name"><?= htmlspecialchars($item['name']) ?></div>
-                        <div class="ci-unit">RM <?= number_format($item['price'], 2) ?> / unit</div>
-                    </div>
+<!-- ===================== -->
+<!-- LEFT: CART ITEMS -->
+<!-- ===================== -->
+<div class="col-lg-8">
 
-                    <div class="qty-control">
-                        <form method="POST" style="display:contents">
-                            <input type="hidden" name="action" value="update"/>
-                            <input type="hidden" name="product_id" value="<?= $item['id'] ?>"/>
-                            <input type="hidden" name="qty" value="<?= $item['qty'] - 1 ?>"/>
-                            <button type="submit" class="qty-btn">−</button>
-                        </form>
+<?php if(!$isLoggedIn): ?>
 
-                        <span class="qty-val"><?= $item['qty'] ?></span>
+    <!-- NOT LOGGED IN -->
+    <div class="dark-card p-5 text-center">
 
-                        <form method="POST" style="display:contents">
-                            <input type="hidden" name="action" value="update"/>
-                            <input type="hidden" name="product_id" value="<?= $item['id'] ?>"/>
-                            <input type="hidden" name="qty" value="<?= $item['qty'] + 1 ?>"/>
-                            <button type="submit" class="qty-btn">+</button>
-                        </form>
-                    </div>
+        <i class="fa fa-user-lock fa-3x mb-3" style="color:#d4af37;"></i>
 
-                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.5rem">
-                        <div class="ci-total">RM <?= number_format($item['qty'] * $item['price'], 2) ?></div>
-                        <form method="POST">
-                            <input type="hidden" name="action" value="remove"/>
-                            <input type="hidden" name="product_id" value="<?= $item['id'] ?>"/>
-                            <button type="submit" class="remove-btn" title="Remove">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
+        <h3>Login Required</h3>
+
+        <p class="text-soft">
+            Please login to view your shopping cart.
+        </p>
+
+        <a href="login.php" class="btn-cta mt-3">
+            Login Now
+        </a>
+
     </div>
 
-    <!-- ORDER SUMMARY -->
-    <div class="summary-wrapper">
-        <h2 class="section-title">Order Summary</h2>
-        <div class="panel">
-            <div class="summary-row">
-                <span>Items (<?= $count ?>)</span>
-                <span>RM <?= number_format($subtotal, 2) ?></span>
-            </div>
-            <div class="summary-row">
-                <span>SST (6%)</span>
-                <span>RM <?= number_format($tax, 2) ?></span>
-            </div>
-            <div class="summary-row">
-                <span>Shipping</span>
-                <span style="color:#27ae60;font-weight:600;font-size:.8rem">FREE</span>
-            </div>
-            <div class="summary-row total">
-                <span>Total</span>
-                <span class="val">RM <?= number_format($total, 2) ?></span>
-            </div>
+<?php else: ?>
 
-            <a href="payment.php" class="checkout-btn <?= empty($cart) ? 'disabled' : '' ?>">
-                <i class="fa-solid fa-lock"></i>&nbsp; Proceed to Payment
+    <?php if(empty($cartItems)): ?>
+
+        <!-- EMPTY CART -->
+        <div class="dark-card p-5 text-center">
+
+            <i class="fa fa-shopping-cart fa-3x mb-3" style="color:#d4af37;"></i>
+
+            <h3>Your Cart is Empty</h3>
+
+            <p class="text-soft">
+                Start adding premium PC products now.
+            </p>
+
+            <a href="index.php" class="btn-cta">
+                Continue Shopping
             </a>
 
-            <?php if (!empty($cart)): ?>
-            <form method="POST">
-                <input type="hidden" name="action" value="clear"/>
-                <button type="submit" class="clear-btn">
-                    <i class="fa-solid fa-trash"></i>&nbsp; Clear Cart
-                </button>
-            </form>
-            <?php endif; ?>
-
-            <div class="stat-card">
-                <div style="display:flex;gap:.6rem;align-items:center;justify-content:center;margin-bottom:.5rem">
-                    <i class="fa-solid fa-shield-halved" style="color:#d4af37"></i>
-                    <span style="font-size:.82rem;font-weight:600">Buyer Protection</span>
-                </div>
-                <p class="text-soft" style="text-align:center;font-size:.75rem">
-                    Full refund if item not received or not as described.
-                </p>
-            </div>
         </div>
-    </div>
+
+    <?php else: ?>
+
+        <!-- CART ITEMS LOOP -->
+        <?php foreach($cartItems as $item): ?>
+
+        <div class="info-card mb-3 p-3">
+
+            <div class="row align-items-center">
+
+                <!-- IMAGE -->
+                <div class="col-md-3">
+                    <img src="<?php echo $item['product_image']; ?>"
+                         class="img-fluid"
+                         style="height:120px; object-fit:cover;">
+                </div>
+
+                <!-- NAME + PRICE -->
+                <div class="col-md-4">
+                    <h5><?php echo $item['product_name']; ?></h5>
+                    <p class="text-soft mb-0">
+                        RM <?php echo number_format($item['product_price'],2); ?>
+                    </p>
+                </div>
+
+                <!-- QTY UPDATE -->
+                <div class="col-md-3">
+
+                    <form method="POST" class="d-flex align-items-center">
+
+                        <input type="hidden" name="cart_id" value="<?php echo $item['cart_id']; ?>">
+
+                        <input type="number"
+                               name="qty"
+                               value="<?php echo $item['quantity']; ?>"
+                               min="1"
+                               class="form-control form-control-sm">
+
+                        <button type="submit"
+                                name="update_qty"
+                                class="btn btn-outline-warning btn-sm ms-2">
+                            <i class="fa fa-sync"></i>
+                        </button>
+
+                    </form>
+
+                </div>
+
+                <!-- REMOVE -->
+                <div class="col-md-2 text-end">
+
+                    <a href="cart.php?remove=<?php echo $item['cart_id']; ?>"
+                       class="btn btn-danger btn-sm">
+                        <i class="fa fa-trash"></i>
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <?php endforeach; ?>
+
+    <?php endif; ?>
+
+<?php endif; ?>
 
 </div>
+
+<!-- ===================== -->
+<!-- RIGHT: SUMMARY -->
+<!-- ===================== -->
+<div class="col-lg-4">
+<?php 
+$shipping = 15.00;
+$service_fee = 0.00;
+$grand_total = $total + $shipping + $service_fee;
+?>
+<div class="stat-card p-4 sticky-top" style="top:100px;">
+
+    <h4>Order Summary</h4>
+
+    <hr style="border-color:#2a2a2a;">
+
+<div class="d-flex justify-content-between mb-2">
+    <span class="text-soft">Subtotal</span>
+    <span>RM <?php echo number_format($total,2); ?></span>
+</div>
+
+<div class="d-flex justify-content-between mb-2">
+    <span class="text-soft">Service Fee</span>
+    <span>RM <?php echo number_format($service_fee,2); ?></span>
+</div>
+
+<div class="d-flex justify-content-between mb-3">
+    <span class="text-soft">Shipping</span>
+    <span>RM <?php echo number_format($shipping,2); ?></span>
+</div>
+
+<hr style="border-color:#2a2a2a;">
+
+<div class="d-flex justify-content-between mb-3">
+    <strong>Total</strong>
+    <strong style="color:#d4af37;">
+        RM <?php echo number_format($grand_total,2); ?>
+    </strong>
+</div>
+
+    <?php if(!$isLoggedIn): ?>
+
+    <a href="login.php" class="btn-gold">
+        Login to Checkout
+    </a>
+
+<?php elseif(empty($cartItems)): ?>
+
+    <button class="btn-gold" onclick="alert('Your cart is empty! Please add items before checkout.')">
+        Proceed Checkout
+    </button>
+
+<?php elseif($total < 0): ?>
+
+    <button class="btn-gold" onclick="alert('Error: Invalid cart total detected! Please refresh or contact support.')">
+        Proceed Checkout
+    </button>
+
+<?php else: ?>
+
+    <a href="payment.php" class="btn-gold">
+        Proceed Checkout
+    </a>
+
+<?php endif; ?>
+
+    
+
+</div>
+
+</div>
+
+</div>
+</div>
+<?php include('includes/footer.php'); ?>
 </body>
 </html>

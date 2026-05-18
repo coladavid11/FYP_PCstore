@@ -150,7 +150,9 @@ body {
     <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
     <button type="submit" name="login" class="btn-login">Sign In</button>
 </form>
-
+<div>
+    <p class="text-center mt-3">Don't have an account? <a href="register.php" style="color:#d4af37;">Register here</a></p>
+    </div>
 </div>
 </div>
 

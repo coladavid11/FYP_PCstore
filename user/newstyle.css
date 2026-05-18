@@ -2,7 +2,18 @@
         font-family: 'Poppins', sans-serif;
         background-color: #0f0f0f;
         color: #fff;
+        padding-top: 80px;
     }
+
+    /*header css*/
+    .navbar .nav-link.active,
+    .navbar .nav-link:hover {
+    color: #d4af37 !important;
+}
+
+.dropdown-menu {
+    border: 1px solid #d4af37;
+}
 
     /* HERO for all pages*/
     .hero {

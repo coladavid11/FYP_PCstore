@@ -117,7 +117,7 @@ $username = $_SESSION['fname'] ?? 'User';
               </li>
 
               <li>
-                <a class="dropdown-item" href="my-orders.php">
+                <a class="dropdown-item" href="myorder.php">
                   <i class="fa fa-box me-2"></i> Orders
                 </a>
               </li>
@@ -139,19 +139,3 @@ $username = $_SESSION['fname'] ?? 'User';
     </div>
   </div>
 </nav>
-
-<style>
-body {
-    padding-top: 80px;
-    background: #0f0f0f;
-}
-
-.navbar .nav-link.active,
-.navbar .nav-link:hover {
-    color: #d4af37 !important;
-}
-
-.dropdown-menu {
-    border: 1px solid #d4af37;
-}
-</style>
