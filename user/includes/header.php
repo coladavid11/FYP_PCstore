@@ -12,6 +12,13 @@ function navActive($page, $currentPage) {
 // SAFE session variables
 $isLoggedIn = !empty($_SESSION['login']);
 $username = $_SESSION['fname'] ?? 'User';
+
+function shortName($name, $limit = 12) {
+    return (mb_strlen($name) > $limit)
+        ? mb_substr($name, 0, $limit) . '...'
+        : $name;
+}
+
 ?>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -105,13 +112,13 @@ $username = $_SESSION['fname'] ?? 'User';
                data-bs-toggle="dropdown">
 
               <i class="fa fa-user-circle"></i>
-              <?php echo htmlentities($username); ?>
+              <?php echo htmlentities(shortName($username)); ?>
             </a>
 
             <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
 
               <li>
-                <a class="dropdown-item" href="profile.php">
+                <a class="dropdown-item" href="myprofile.php">
                   <i class="fa fa-user me-2"></i> Profile
                 </a>
               </li>

@@ -2,7 +2,7 @@
 session_start();
 include('includes/config.php');
 
-
+//check login
 $isLoggedIn = isset($_SESSION['login']);
 $user_id = $_SESSION['user_id'] ?? null;
 
@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Payment</title>
+<title>Cart - PC Store</title>
 
 <!-- Bootstrap -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -123,8 +123,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 <!-- Icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<!-- INCLUDE YOUR CSS -->
+<!-- Your CSS -->
 <link rel="stylesheet" href="newstyle.css">
+</head>
 
 <body>
 
@@ -233,6 +234,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
         </div>
     <?php endforeach; ?>
 
+    <?php 
+    $shipping = 15.00;
+    $service_fee = 0.00;
+    $grand_total = $total + $shipping + $service_fee;
+    ?>
     
     <hr style="border-color:#2a2a2a;">
 
@@ -252,12 +258,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 </div>
 
 <hr style="border-color:#2a2a2a;">
-
-<?php 
-$shipping = 15.00;
-$service_fee = 0.00;
-$grand_total = $total + $shipping + $service_fee;
-?>
 
 <div class="d-flex justify-content-between mb-3">
     <strong>Total</strong>

@@ -132,7 +132,7 @@ if (isset($_POST['register'])) {
             <form method="post" autocomplete="off">
               <div class="row g-3">
                 <div class="col-md-6">
-                  <label class="form-label">Full Name</label>
+                  <label class="form-label">User Name</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="fa fa-user"></i></span>
                     <input type="text" class="form-control" name="fullname" placeholder="John Doe" required>

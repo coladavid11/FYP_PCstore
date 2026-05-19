@@ -4,7 +4,7 @@ include('includes/config.php');
 error_reporting(0);
 
 // If already logged in
-if (isset($_SESSION['login']) && strlen($_SESSION['login']) > 0) {
+if (isset($_SESSION['user_id'])) {
     header('Location: index.php');
     exit;
 }
@@ -20,7 +20,7 @@ if (isset($_POST['login'])) {
         $errMsg = "Please enter both email and password.";
     } else {
 
-        $sql = "SELECT gmail, password, fullname FROM tbluser WHERE gmail = :email LIMIT 1";
+        $sql = "SELECT user_id, gmail, password, fullname FROM tbluser WHERE gmail = :email LIMIT 1";
         $query = $dbh->prepare($sql);
         $query->bindParam(':email', $email, PDO::PARAM_STR);
         $query->execute();
@@ -31,6 +31,7 @@ if (isset($_POST['login'])) {
             if (password_verify($password, $results->password)) {
                 $_SESSION['login'] = $results->gmail;
                 $_SESSION['fname'] = $results->fullname;
+                $_SESSION['user_id'] = $results->user_id;
 
                 $loginSuccess = true; // 🔥 只设 flag
             } else {
