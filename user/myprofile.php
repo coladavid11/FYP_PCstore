@@ -89,6 +89,13 @@ if (isset($_POST['update_profile'])) {
         !empty($confirm_password)
     ) {
 
+        //OTP verification required for password change
+        if (!empty($new_password) && empty($_SESSION['otp_verified'])) {
+
+            $errorMsg = "Please verify OTP first.";
+
+        }
+
         // Verify current password
         if (!password_verify($current_password, $user['password'])) {
 
@@ -405,58 +412,148 @@ if (isset($_POST['update_profile'])) {
                         Change Password
                     </h4>
 
-                    <div class="row">
+                    <!-- INFO TEXT -->
+                    <div class="mb-4">
 
-                        <!-- CURRENT PASSWORD -->
-                        <div class="col-md-4 mb-3">
+                        <div class="alert alert-dark border border-warning text-light"
+                            style="background:#151515;">
 
-                            <label class="form-label">
-                                Current Password
-                            </label>
+                            <i class="fa fa-shield-halved text-warning me-2"></i>
 
-                            <input type="password"
-                                   name="current_password"
-                                   class="form-control">
+                            For security purposes, OTP verification is required
+                            before changing your password.
 
                         </div>
 
+                    </div>
+
+                    <!-- CURRENT PASSWORD -->
+                    <div class="mb-4">
+
+                        <label class="form-label">
+                            Current Password
+                        </label>
+
+                        <input type="password"
+                            name="current_password"
+                            class="form-control"
+                            placeholder="Enter current password">
+
+                    </div>
+
+                    <!-- OTP CARD -->
+                    <div class="dark-card p-4 mb-4"
+                        style="background:#121212;
+                                border:1px solid #2a2a2a;">
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+
+                            <div>
+
+                                <h5 class="mb-1 text-warning">
+                                    OTP Verification
+                                </h5>
+
+                                <small class="text-soft">
+                                    Verify your registered email before password change
+                                </small>
+
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-warning"
+                                    id="sendOtpBtn">
+
+                                Get OTP
+
+                            </button>
+
+                        </div>
+
+                        <!-- OTP INPUT -->
+                        <div class="row g-3 align-items-end">
+
+                            <div class="col-md-8">
+
+                                <label class="form-label">
+                                    Enter OTP
+                                </label>
+
+                                <input type="text"
+                                    id="otp_input"
+                                    class="form-control"
+                                    maxlength="4"
+                                    placeholder="4-digit OTP">
+
+                            </div>
+
+                            <div class="col-md-4">
+
+                                <button type="button"
+                                        class="btn btn-success w-100"
+                                        id="verifyOtpBtn">
+
+                                    Verify OTP
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- NEW PASSWORD -->
+                    <div class="row">
+
                         <!-- NEW PASSWORD -->
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
 
                             <label class="form-label">
                                 New Password
                             </label>
 
                             <input type="password"
-                            name="new_password"
-                            class="form-control"
-                            pattern="^(?!.*\s).{8,}$"
-                            title="Password must be at least 8 characters and cannot contain spaces">
+                                name="new_password"
+                                id="new_password"
+                                class="form-control"
+                                placeholder="Minimum 8 characters"
+                                pattern="^(?!.*\s).{8,}$"
+                                title="Password must be at least 8 characters and cannot contain spaces"
+                                disabled>
 
                         </div>
 
                         <!-- CONFIRM PASSWORD -->
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
 
                             <label class="form-label">
                                 Confirm Password
                             </label>
 
                             <input type="password"
-                                   name="confirm_password"
-                                   class="form-control">
+                                name="confirm_password"
+                                id="confirm_password"
+                                class="form-control"
+                                placeholder="Re-enter new password"
+                                disabled>
 
                         </div>
 
                     </div>
 
-                    <button type="submit"
-                            name="update_profile"
-                            class="btn-cta mt-3">
+                    <!-- SAVE BUTTON -->
+                    <div class="mt-4">
 
-                        Save Changes
+                        <button type="submit"
+                                name="update_profile"
+                                class="btn-cta">
 
-                    </button>
+                            Save Changes
+
+                        </button>
+
+                    </div>
 
                 </form>
 
@@ -468,9 +565,10 @@ if (isset($_POST['update_profile'])) {
 
 </div>
 
-<!-- PHONE AUTO FORMAT -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 
+// PHONE AUTO FORMAT 
 document.getElementById('phone_num').addEventListener('input', function(e) {
 
     let value = e.target.value.replace(/\D/g, '');
@@ -480,6 +578,155 @@ document.getElementById('phone_num').addEventListener('input', function(e) {
     }
 
     e.target.value = value;
+
+});
+
+// SEND OTP
+document.getElementById('sendOtpBtn')
+.addEventListener('click', function() {
+
+    const btn = this;
+
+    btn.disabled = true;
+    btn.innerText = 'Sending...';
+
+    fetch('send_otp.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'email=<?php echo urlencode($gmail); ?>'
+    })
+
+    .then(res => res.json())
+    .then(data => {
+
+        if (data.status === "success") {
+
+            Swal.fire({
+                icon: 'success',
+                title: 'OTP Sent',
+                text: data.message,
+                background: '#1a1a1a',
+                color: '#fff',
+                confirmButtonColor: '#d4af37'
+            });
+
+            // cooldown
+            let seconds = 30;
+
+            btn.disabled = true;
+
+            const interval = setInterval(() => {
+
+                btn.innerText = `Resend OTP (${seconds}s)`;
+                seconds--;
+
+                if (seconds < 0) {
+
+                    clearInterval(interval);
+
+                    btn.disabled = false;
+                    btn.innerText = 'Get OTP';
+                }
+
+            }, 1000);
+
+        } else {
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Failed',
+                text: data.message,
+                background: '#1a1a1a',
+                color: '#fff',
+                confirmButtonColor: '#d4af37'
+            });
+
+            btn.disabled = false;
+            btn.innerText = 'Get OTP';
+        }
+
+    })
+
+    .catch(() => {
+
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Network error',
+            background: '#1a1a1a',
+            color: '#fff',
+            confirmButtonColor: '#d4af37'
+        });
+
+        btn.disabled = false;
+        btn.innerText = 'Get OTP';
+    });
+
+});
+
+
+// VERIFY OTP
+document.getElementById('verifyOtpBtn')
+.addEventListener('click', function() {
+
+    const otp = document.getElementById('otp_input').value.trim();
+
+    // validation
+    if (!/^\d{4}$/.test(otp)) {
+
+        Swal.fire({
+            icon: 'warning',
+            title: 'Invalid OTP',
+            text: 'OTP must be 4 digits',
+            background: '#1a1a1a',
+            color: '#fff',
+            confirmButtonColor: '#d4af37'
+        });
+
+        return;
+    }
+
+    fetch('verify_otp.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'otp=' + otp
+    })
+
+    .then(res => res.json())
+    .then(data => {
+
+        if (data.status === 'success') {
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Verified',
+                text: data.message,
+                background: '#1a1a1a',
+                color: '#fff',
+                confirmButtonColor: '#d4af37'
+            });
+
+            // unlock fields
+            document.getElementById('new_password').disabled = false;
+            document.getElementById('confirm_password').disabled = false;
+
+        } else {
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Failed',
+                text: data.message,
+                background: '#1a1a1a',
+                color: '#fff',
+                confirmButtonColor: '#d4af37'
+            });
+        }
+
+    });
 
 });
 

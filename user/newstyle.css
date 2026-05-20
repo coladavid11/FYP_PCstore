@@ -239,7 +239,7 @@ section {
       border-radius: 0;
       box-shadow: 0 10px 30px rgba(0,0,0,0.3);
       transition: all 0.4s ease;
-      height: 100%;
+      
     }
     .dark-card:hover {
       transform: translateY(-10px);
