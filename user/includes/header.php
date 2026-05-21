@@ -1,11 +1,16 @@
 <?php
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 $currentPage = basename($_SERVER['PHP_SELF']);
 
+// FUNCTION TO SET ACTIVE CLASS
 function navActive($page, $currentPage) {
+    if (is_array($page)) {
+        return in_array($currentPage, $page) ? 'active' : '';
+    }
     return ($page === $currentPage) ? 'active' : '';
 }
 
@@ -13,6 +18,7 @@ function navActive($page, $currentPage) {
 $isLoggedIn = !empty($_SESSION['login']);
 $username = $_SESSION['fname'] ?? 'User';
 
+// SHORTEN USERNAME FOR DISPLAY
 function shortName($name, $limit = 12) {
     return (mb_strlen($name) > $limit)
         ? mb_substr($name, 0, $limit) . '...'
@@ -50,6 +56,10 @@ function shortName($name, $limit = 12) {
         </li>
 
         <li class="nav-item">
+          <a class="nav-link <?php echo navActive('products.php', $currentPage); ?>" href="products.php">Products</a>
+        </li>
+
+        <li class="nav-item">
           <a class="nav-link <?php echo navActive('pc-builds.php', $currentPage); ?>" href="pc-builds.php">PC Builds</a>
         </li>
 
@@ -63,7 +73,7 @@ function shortName($name, $limit = 12) {
 
         <!-- ABOUT DROPDOWN -->
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+          <a class="nav-link dropdown-toggle <?php echo navActive(['about.php', 'contact.php'], $currentPage); ?>" href="#" data-bs-toggle="dropdown">
             About
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
