@@ -27,7 +27,7 @@ function shortName($name, $limit = 12) {
 
 ?>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- NAVBAR -->
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top"
      style="box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 2px solid #d4af37;">
@@ -83,7 +83,7 @@ function shortName($name, $limit = 12) {
         </li>
 
         <!-- SEARCH -->
-        <form class="d-flex ms-lg-4" action="search.php" method="get" style="max-width: 350px;">
+        <form class="d-flex ms-lg-4" action="search.php" method="get">
           <div class="input-group">
             <input class="form-control bg-dark text-white border-secondary"
                    type="search"
@@ -130,6 +130,12 @@ function shortName($name, $limit = 12) {
               <li>
                 <a class="dropdown-item" href="myprofile.php">
                   <i class="fa fa-user me-2"></i> Profile
+                </a>
+              </li>
+
+              <li>
+                <a class="dropdown-item" href="wishlist.php">
+                  <i class="fa fa-heart me-2"></i> Wishlist
                 </a>
               </li>
 

@@ -1,5 +1,5 @@
     body {
-        font-family: 'Poppins', sans-serif;
+        font-family: sans-serif;
         background-color: #0f0f0f;
         color: #fff;
         padding-top: 80px;
@@ -19,6 +19,11 @@
     .hero {
         margin-top: -15px;
         height: 90vh;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background-size:contain;
+        background-position:center;
     }
 
     /* Main hero title uses premium font and animation to look modern */

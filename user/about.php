@@ -1,300 +1,298 @@
-<?php
-session_start();
-// Start session so the header can check login status (show Login/Register or user dropdown)
-include('includes/config.php');
-// Load database connection settings (PDO), even if this page does not query database
-error_reporting(0);
-// Hide PHP warnings/notices for cleaner output (not recommended for production debugging)
-?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>About Us - Buat Kerja Betul2 Car Rental</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<title>About Us - My PC STORE</title>
 
-  <!-- Bootstrap is used for layout (grid), spacing, and responsive design -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Font Awesome is used for icons (car, check mark, support, etc.) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="newstyle.css">
 
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  
-  <!-- External CSS file -->
-  <link rel="stylesheet" href="newstyle.css">
-</head> 
+<style>
+.hero-title {
+    font-weight:700;
+    color:#fff;
+}
+
+.hero-subtitle {
+    color:#ddd;
+    max-width:700px;
+    margin:auto;
+}
+
+.section-title {
+    color:white;
+    font-weight:700;
+}
+
+.text-soft {
+    color:#aaa;
+}
+
+.dark-card {
+    background:#121212;
+    border:1px solid #2a2a2a;
+    border-radius:12px;
+    padding:20px;
+}
+
+.icon-badge {
+    width:40px;
+    height:40px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#1a1a1a;
+    border:1px solid #333;
+    border-radius:10px;
+    color:#d4af37;
+}
+
+.stat-card {
+    background:#121212;
+    border:1px solid #2a2a2a;
+    padding:25px;
+    border-radius:12px;
+}
+
+.stat-number {
+    font-size:2rem;
+    font-weight:700;
+    color:#d4af37;
+}
+
+.cta-btn {
+    background:#d4af37;
+    color:#000;
+    padding:10px 20px;
+    border:none;
+    border-radius:8px;
+    margin:5px;
+    text-decoration:none;
+}
+
+.cta-outline {
+    border:1px solid #d4af37;
+    color:#d4af37;
+    padding:10px 20px;
+    border-radius:8px;
+    margin:5px;
+    text-decoration:none;
+}
+</style>
+</head>
 
 <body>
-<?php include('includes/header.php'); ?>
-<!-- Reuse the same header across all pages for consistent navigation -->
+  <?php include('includes/header.php'); ?>
 
+<!-- HERO -->
 <section class="hero d-flex align-items-center text-center"
-  style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), 
-  url('https://storage-asset.msi.com/event/2022/cnd/i-want-it-all/images/reason-img-02.jpg')">
+style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url('../image/products/about-hero.jpg')">
+
     <div class="container">
-      <h1 class="hero-title">About Us</h1>
-      <p class="hero-subtitle">
-        Buat Kerja Betul2 Car Rental —
-        <span style="color:#f1c40f; font-weight:800;">More Than a Rental. It’s an Experience.</span>
-      </p>
-      <hr class="section-divider">
-    </div>
-</section>
+        <h1 class="hero-title">MY PC STORE</h1>
 
-<section class="py-5 bg-light">
-  <div class="container">
-
-    <!-- Use Bootstrap grid to make layout responsive on mobile and desktop -->
-    <div class="row g-4 align-items-center">
-
-      <!-- Left column: company introduction and key selling points -->
-      <div class="col-lg-7">
-        <h2 class="section-title mb-3">Who We Are</h2>
-        <p class="text-soft mb-3">
-          Buat Kerja Betul2 Car Rental is a simple and friendly car rental service based in Melaka.
-          We focus on providing affordable prices, newer cars, and fast paperwork, so customers can rent without stress.
-          Our goal is to make the rental process easy, safe, and smooth for everyone.
+        <p class="hero-subtitle">
+            Build. Upgrade. Dominate.  
+            <span style="color:#d4af37;font-weight:600;">
+                Your Ultimate PC Performance Hub.
+            </span>
         </p>
 
-        <!-- Small feature blocks to highlight top selling points -->
-        <div class="d-flex gap-3 flex-wrap mt-4">
+        <hr style="border-color:#333;">
 
-          <div class="d-flex align-items-center gap-2">
-            <span class="icon-badge"><i class="fa fa-tags"></i></span>
-            <div>
-              <div class="fw-bold" style="color:black;">Cheap Price</div>
-              <div class="text-soft" style="font-size:0.9rem; padding-bottom: 15px;">Budget-friendly rates</div>
-            </div>
-          </div>
-
-          <div class="d-flex align-items-center gap-2">
-            <span class="icon-badge"><i class="fa fa-car-side"></i></span>
-            <div>
-              <div class="fw-bold" style="color:black;">Newer Cars</div>
-              <div class="text-soft" style="font-size:0.9rem; padding-bottom: 15px;">Clean & comfortable</div>
-            </div>
-          </div>
-
-          <div class="d-flex align-items-center gap-2">
-            <span class="icon-badge"><i class="fa fa-bolt"></i></span>
-            <div>
-              <div class="fw-bold" style="color:black;">Fast Process</div>
-              <div class="text-soft" style="font-size:0.9rem; padding-bottom: 15px;">Quick booking & paperwork</div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Right column: service list in a card -->
-      <div class="col-lg-5">
-        <div class="info-card p-4">
-          <h5 class="fw-bold mb-3" style="color:white;">What We Offer</h5>
-
-          <ul class="list-unstyled mb-0">
-
-            <li class="mb-3 d-flex gap-2">
-              <i class="fa fa-check-circle" style="margin-top:3px;"></i>
-              <div>
-                <div class="fw-bold">Daily Rental</div>
-                <div class="text-soft" style="font-size:0.9rem;">Flexible daily plans for short trips</div>
-              </div>
-            </li>
-
-            <li class="mb-3 d-flex gap-2">
-              <i class="fa fa-check-circle" style="margin-top:3px;"></i>
-              <div>
-                <div class="fw-bold">Weekly / Monthly Rental</div>
-                <div class="text-soft" style="font-size:0.9rem;">Better value for longer use</div>
-              </div>
-            </li>
-
-            <li class="d-flex gap-2">
-              <i class="fa fa-check-circle" style="margin-top:3px;"></i>
-              <div>
-                <div class="fw-bold">Corporate Rental</div>
-                <div class="text-soft" style="font-size:0.9rem;">Simple support for business needs</div>
-              </div>
-            </li>
-
-          </ul>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<section class="py-5">
-  <div class="container">
-
-    <!-- Section header centered to guide user reading flow -->
-    <div class="text-center mb-5">
-      <h2 class="section-title" style="color:white;">Why Choose Us</h2>
-      <p class="text-soft">Trusted service with an easy booking experience.</p>
-      <hr class="section-divider">
-    </div>
-
-    <!-- Feature cards use responsive grid -->
-    <div class="row g-4">
-
-      <div class="col-md-4">
-        <div class="info-card p-4">
-          <div class="icon-badge mb-3"><i class="fa fa-shield-halved"></i></div>
-          <h5 class="fw-bold">Trusted</h5>
-          <p class="text-soft mb-0">We aim to build trust with clear rental terms and responsible service.</p>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="info-card p-4">
-          <div class="icon-badge mb-3"><i class="fa fa-sack-dollar"></i></div>
-          <h5 class="fw-bold">Affordable</h5>
-          <p class="text-soft mb-0">Fair pricing and good value, suitable for students and working adults.</p>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="info-card p-4">
-          <div class="icon-badge mb-3"><i class="fa fa-calendar-check"></i></div>
-          <h5 class="fw-bold">Easy Booking</h5>
-          <p class="text-soft mb-0">Simple steps to book your car. No complicated process.</p>
-        </div>
-      </div>
-
-      <div class="col-md-6">
-        <div class="info-card p-4">
-          <div class="icon-badge mb-3"><i class="fa fa-screwdriver-wrench"></i></div>
-          <h5 class="fw-bold">Well-maintained Cars</h5>
-          <p class="text-soft mb-0">We keep our cars clean and in good condition for a safer ride.</p>
-        </div>
-      </div>
-
-      <div class="col-md-6">
-        <div class="info-card p-4">
-          <div class="icon-badge mb-3"><i class="fa fa-headset"></i></div>
-          <h5 class="fw-bold">Friendly Support</h5>
-          <p class="text-soft mb-0">If you need help, we reply and assist as fast as we can.</p>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<section class="py-5 bg-light">
-  <div class="container">
-
-    <div class="text-center mb-5">
-      <h2 class="section-title">Quick Facts</h2>
-      <p class="text-soft">A small start — but we are improving step by step.</p>
-      <hr class="accent-line">
-    </div>
-
-    <!-- Stats are hardcoded here because this is a student project demo -->
-    <div class="row g-4">
-      <div class="col-md-3">
-        <div class="stat-card text-center">
-          <div class="stat-number">10+</div>
-          <div class="stat-label">Customers Served</div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="stat-card text-center">
-          <div class="stat-number">8</div>
-          <div class="stat-label">Cars Available</div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="stat-card text-center">
-          <div class="stat-number">0.1</div>
-          <div class="stat-label">Years of Service</div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="stat-card text-center">
-          <div class="stat-number">Melaka</div>
-          <div class="stat-label">Location</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Clarify that stats are for learning/demo purpose -->
-    <p class="text-center text-soft mt-4 mb-0" style="font-size:0.95rem;">
-      *These numbers are for project / learning purpose.
-    </p>
-
-  </div>
-</section>
-
-<section class="py-5">
-  <div class="container">
-
-    <div class="text-center mb-5">
-      <h2 class="section-title" style="color:white;">Our Team</h2>
-      <p class="text-soft">We work together to deliver a better rental experience.</p>
-      <hr class="accent-line">
-    </div>
-
-    <div class="row justify-content-center">
-      <div class="col-lg-9">
-        <div class="team-card">
-
-          <!-- Use onerror fallback so the page still looks okay if image is missing -->
-          <img
-            src="image/interviewpicture.png"
-            class="team-img"
-            onerror="this.src='https://placehold.co/1200x600?text=Team+Photo+Not+Found';"
-            alt="Team Photo"
-          >
-
-          <div class="p-4">
-            <h5 class="fw-bold mb-2" style="color:#FFFFFF;">Meet the People Behind the Service</h5>
-            <p class="text-soft mb-0">
-              We are a small team from Melaka. We focus on making the system easy to use,
-              and we try our best to serve customers in a friendly and responsible way.
-            </p>
-          </div>
-        </div>
-
-        <p class="text-center text-soft mt-3 mb-0" style="font-size:0.9rem;">
-          (Team image: <code>image/interviewpicture.png</code>)
+        <p class="text-soft">
+            Premium gaming PCs, components, and custom builds for creators and gamers.
         </p>
 
-      </div>
     </div>
-
-  </div>
 </section>
 
+<!-- WHO WE ARE -->
 <section class="py-5 bg-dark text-white">
-  <div class="container text-center">
 
-    <!-- CTA helps guide user to the next action -->
-    <h2 class="fw-bold mb-2" style="text-transform:uppercase; letter-spacing:1px;">
-      Ready to book your ride?
-    </h2>
+<div class="container">
 
-    <p class="mb-4" style="color:#ddd;">
-      Browse our cars and choose the best one for your trip.
-    </p>
+<div class="row align-items-center g-4">
 
-    <a href="car-listing.php" class="btn-cta">
-      Browse Cars <i class="fa fa-arrow-right"></i>
-    </a>
+    <div class="col-lg-7">
 
-    <a href="contact.php" class="btn-cta-outline">
-      Contact Us <i class="fa fa-envelope"></i>
-    </a>
+        <h2 class="section-title">Who We Are</h2>
 
-  </div>
+        <p class="text-soft">
+            My PC STORE is a student-developed e-commerce platform focused on delivering
+            high-performance PC components, gaming accessories, and custom builds.
+            We aim to simplify the PC buying experience with a clean, fast, and modern system.
+        </p>
+
+        <div class="mt-4">
+
+            <div class="d-flex gap-3 mb-3">
+                <div class="icon-badge"><i class="fa fa-microchip"></i></div>
+                <div>
+                    <strong>Performance Focus</strong><br>
+                    <small class="text-soft">Optimized hardware selection</small>
+                </div>
+            </div>
+
+            <div class="d-flex gap-3 mb-3">
+                <div class="icon-badge"><i class="fa fa-gamepad"></i></div>
+                <div>
+                    <strong>Gaming Ready</strong><br>
+                    <small class="text-soft">Built for AAA performance</small>
+                </div>
+            </div>
+
+            <div class="d-flex gap-3">
+                <div class="icon-badge"><i class="fa fa-code"></i></div>
+                <div>
+                    <strong>Student Project System</strong><br>
+                    <small class="text-soft">Built for FYP demonstration</small>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-lg-5">
+
+        <div class="dark-card">
+
+            <h5 class="text-warning mb-3">What We Sell</h5>
+
+            <ul class="list-unstyled text-soft">
+
+                <li>✔ Gaming PCs</li>
+                <li>✔ GPUs (RTX / RX Series)</li>
+                <li>✔ Monitors</li>
+                <li>✔ Keyboards & Mice</li>
+                <li>✔ Custom PC Builds</li>
+
+            </ul>
+
+        </div>
+
+    </div>
+
+</div>
+
+</div>
 </section>
+
+<!-- WHY CHOOSE -->
+<section class="py-5">
+
+<div class="container text-center">
+
+<h2 class="section-title text-white">Why Choose Us</h2>
+<p class="text-soft">Designed for gamers, built for performance.</p>
+
+<div class="row g-4 mt-4">
+
+    <div class="col-md-4">
+        <div class="stat-card">
+            <i class="fa fa-bolt text-warning mb-2"></i>
+            <h5>High Performance</h5>
+            <p class="text-soft">Only selected quality components</p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="stat-card">
+            <i class="fa fa-shield text-warning mb-2"></i>
+            <h5>Reliable System</h5>
+            <p class="text-soft">Stable and tested configurations</p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="stat-card">
+            <i class="fa fa-user-gear text-warning mb-2"></i>
+            <h5>Easy Customization</h5>
+            <p class="text-soft">Build your own dream PC</p>
+        </div>
+    </div>
+
+</div>
+
+</div>
+</section>
+
+<!-- STATS -->
+<section class="py-5 bg-dark text-white">
+
+<div class="container text-center">
+
+<h2 class="section-title">Quick Stats</h2>
+
+<div class="row g-4 mt-3">
+
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-number" id="s1">0</div>
+            <div class="text-soft">Products</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-number" id="s2">0</div>
+            <div class="text-soft">Categories</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-number" id="s3">0</div>
+            <div class="text-soft">Users</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-number">MY</div>
+            <div class="text-soft">Location</div>
+        </div>
+    </div>
+
+</div>
+
+</div>
+</section>
+
+<!-- CTA -->
+<section class="py-5 text-center">
+
+<h2 class="text-white">Start Building Your PC Today</h2>
+<p class="text-soft">Explore our latest components and custom builds.</p>
+
+<a href="product.php" class="cta-btn">Shop Now</a>
+<a href="contact.php" class="cta-outline">Contact Support</a>
+
+</section>
+
+<script>
+// simple animated counter
+function count(id, target){
+    let el = document.getElementById(id);
+    let i = 0;
+    let interval = setInterval(()=>{
+        i++;
+        el.innerText = i;
+        if(i >= target) clearInterval(interval);
+    }, 30);
+}
+
+count("s1", 120);
+count("s2", 12);
+count("s3", 300);
+</script>
 
 <?php include('includes/footer.php'); ?>
-<!-- Reuse the same footer across all pages for consistency -->
-
 
 </body>
 </html>

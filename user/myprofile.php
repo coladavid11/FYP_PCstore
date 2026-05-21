@@ -10,7 +10,6 @@ if (!$isLoggedIn || !$user_id) {
     exit;
 }
 
-include('includes/header.php');
 
 /* =========================
    FETCH USER DATA
@@ -224,6 +223,8 @@ if (isset($_POST['update_profile'])) {
 </head>
 
 <body>
+
+<?php include('includes/header.php'); ?>
 
 <div class="container py-5">
 
