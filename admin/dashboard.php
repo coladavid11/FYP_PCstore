@@ -1,185 +1,361 @@
 <?php
 session_start();
-error_reporting(0);
-include('../includes/config.php');
 
-// Security Check
-if(strlen($_SESSION['alogin'])==0)
-{ 
-    header('location:index.php');
+include('includes/config.php');
+
+if(!isset($_SESSION['admin_login'])){
+    header("Location: admin_login.php");
+    exit;
 }
-else{
+
+/* =========================
+   DASHBOARD DATA
+========================= */
+
+// Total Products
+$stmt = $dbh->query("SELECT COUNT(*) FROM products");
+$totalProducts = $stmt->fetchColumn();
+
+// Total Orders
+$stmt = $dbh->query("SELECT COUNT(*) FROM orders");
+$totalOrders = $stmt->fetchColumn();
+
+// Total Users
+$stmt = $dbh->query("SELECT COUNT(*) FROM tbluser");
+$totalUsers = $stmt->fetchColumn();
+
+// Total Revenue
+$stmt = $dbh->query("SELECT SUM(total) FROM orders WHERE status='Completed'");
+$totalRevenue = $stmt->fetchColumn();
+
+// Recent Orders
+$stmt = $dbh->query("SELECT * FROM orders ORDER BY created_at DESC LIMIT 5");
+$orders = $stmt->fetchAll();
+
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Admin Dashboard | Car Rental</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        body {
-            background-color: #f5f7fa;
-            font-family: 'Segoe UI', sans-serif;
-            padding-top: 0; 
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        .main-content {
-            margin-top: 30px;
-        }
+<title>Admin Dashboard</title>
 
-        .welcome-card {
-            background: white;
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-            border-bottom: 5px solid #f1c40f; /* Yellow Accent */
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 100%;
-        }
-        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        
-        .stat-icon {
-            width: 60px; height: 60px;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem;
-        }
-        .bg-users { background-color: #e3f2fd; color: #2196f3; }
-        .bg-vehicles { background-color: #fff3e0; color: #ff9800; }
-        .bg-bookings { background-color: #e8f5e9; color: #4caf50; }
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-        .stat-number { font-size: 2.5rem; font-weight: 700; color: #2c3e50; line-height: 1; }
-        .stat-label { color: #95a5a6; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+<style>
 
-        .quick-action-btn {
-            background: white;
-            border: none;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            width: 100%;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: 0.3s;
-            color: #2c3e50;
-            text-decoration: none;
-            display: block;
-        }
-        .quick-action-btn:hover { background: #2c3e50; color: #f1c40f; transform: translateY(-3px); }
-        .qa-icon { font-size: 2rem; margin-bottom: 10px; display: block; }
-    </style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins', sans-serif;
+}
+
+body{
+    display:flex;
+    background:#f5f5f5;
+}
+
+/* =========================
+   SIDEBAR
+========================= */
+
+.sidebar{
+    width:220px;
+    height:100vh;
+    background:#000;
+    padding:20px;
+    position:fixed;
+}
+
+.sidebar h2{
+    color:#d4af37;
+    margin-bottom:30px;
+    text-align:center;
+    font-size:2rem;
+}
+
+.sidebar a{
+    display:block;
+    color:#adadad;
+    text-decoration:none;
+    padding:12px;
+    margin:10px 0;
+    border-radius:5px;
+    transition:0.3s;
+}
+
+.sidebar a:hover{
+    background:#d4af37;
+    color:#000;
+}
+
+/* =========================
+   MAIN
+========================= */
+
+.main{
+    margin-left:220px;
+    width:100%;
+    padding:20px;
+}
+
+/* =========================
+   TOPBAR
+========================= */
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.topbar h1{
+    font-size:2rem;
+    color:#111;
+}
+
+.topbar-links{
+    display:flex;
+    gap:15px;
+    align-items:center;
+}
+
+.profile,
+.logout{
+    text-decoration:none;
+    font-weight:500;
+    transition:0.3s;
+}
+
+.profile{
+    color:#d4af37;
+}
+
+.logout{
+    color:red;
+}
+
+.profile:hover,
+.logout:hover{
+    opacity:0.7;
+}
+
+/* =========================
+   CARDS
+========================= */
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+    gap:20px;
+}
+
+.card{
+    background:#fff;
+    padding:25px;
+    border-left:5px solid #d4af37;
+    box-shadow:0 5px 15px rgba(0,0,0,0.1);
+    transition:0.3s;
+}
+
+.card:hover{
+    transform:translateY(-5px);
+}
+
+.card h3{
+    font-size:1rem;
+    color:#777;
+}
+
+.card p{
+    font-size:2rem;
+    margin-top:10px;
+    color:#111;
+    font-weight:600;
+}
+
+/* =========================
+   TABLE
+========================= */
+
+.table-box{
+    margin-top:30px;
+    background:#fff;
+    padding:20px;
+    box-shadow:0 5px 15px rgba(0,0,0,0.1);
+}
+
+.table-box h3{
+    margin-bottom:20px;
+    color:#111;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+table th,
+table td{
+    padding:12px;
+    border-bottom:1px solid #ddd;
+    text-align:left;
+}
+
+table th{
+    color:#d4af37;
+}
+
+/* =========================
+   STATUS
+========================= */
+
+.status{
+    padding:5px 10px;
+    border-radius:20px;
+    font-size:0.8rem;
+    font-weight:600;
+}
+
+.status.completed{
+    background:#d4edda;
+    color:#155724;
+}
+
+.status.pending{
+    background:#fff3cd;
+    color:#856404;
+}
+
+.status.cancelled{
+    background:#f8d7da;
+    color:#721c24;
+}
+
+</style>
+
 </head>
+
 <body>
 
-    <?php include('includes/header.php');?>
+<!-- SIDEBAR -->
+<div class="sidebar">
 
-    <div class="container main-content">
-        
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="welcome-card">
-                    <h1 class="fw-bold" style="color: #2c3e50;">Welcome back, Admin!</h1>
-                    <p class="text-muted">Here's what's happening in your car rental system today.</p>
-                </div>
-            </div>
-        </div>
+    <h2>Admin</h2>
 
-        <div class="row g-4 mb-5">
-            
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div>
-                        <?php 
-                        $sql = "SELECT id from tblusers";
-                        $query = $dbh -> prepare($sql);
-                        $query->execute();
-                        $users_cnt = $query->rowCount();
-                        ?>
-                        <div class="stat-number"><?php echo htmlentities($users_cnt);?></div>
-                        <div class="stat-label">Total Users</div>
-                    </div>
-                    <div class="stat-icon bg-users"><i class="fa fa-users"></i></div>
-                </div>
-            </div>
+    <a href="dashboard.php">🏠 Dashboard</a>
+    <a href="product.php">📦 Products</a>
+    <a href="categories.php">📂 Categories</a>
+    <a href="Orders.php">🛒 Orders</a>
+    <a href="users.php">👥 Users</a>
+    <a href="admin.php">⚙ Admin</a>
 
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div>
-                        <?php 
-                        $sql2 = "SELECT id from tblvehicles";
-                        $query2 = $dbh -> prepare($sql2);
-                        $query2->execute();
-                        $vehicles_cnt = $query2->rowCount();
-                        ?>
-                        <div class="stat-number"><?php echo htmlentities($vehicles_cnt);?></div>
-                        <div class="stat-label">Total Vehicles</div>
-                    </div>
-                    <div class="stat-icon bg-vehicles"><i class="fa fa-car"></i></div>
-                </div>
-            </div>
+</div>
 
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div>
-                        <?php 
-                        $sql3 = "SELECT id from tblbooking";
-                        $query3 = $dbh -> prepare($sql3);
-                        $query3->execute();
-                        $bookings_cnt = $query3->rowCount();
-                        ?>
-                        <div class="stat-number"><?php echo htmlentities($bookings_cnt);?></div>
-                        <div class="stat-label">Total Bookings</div>
-                    </div>
-                    <div class="stat-icon bg-bookings"><i class="fa fa-calendar-check"></i></div>
-                </div>
-            </div>
+<!-- MAIN -->
+<div class="main">
 
-        </div>
+    <!-- TOPBAR -->
+    <div class="topbar">
 
-        <h4 class="fw-bold mb-3" style="color: #2c3e50;"><i class="fa fa-bolt text-warning"></i> Quick Actions</h4>
-        <div class="row g-3">
-            <div class="col-md-3 col-6">
-                <a href="post-avehicle.php" class="quick-action-btn">
-                    <span class="qa-icon"><i class="fa fa-plus-circle"></i></span>
-                    Post Vehicle
-                </a>
-            </div>
-            <div class="col-md-3 col-6">
-                <a href="manage-bookings.php" class="quick-action-btn">
-                    <span class="qa-icon"><i class="fa fa-list-alt"></i></span>
-                    Manage Bookings
-                </a>
-            </div>
-            <div class="col-md-3 col-6">
-                <a href="create-brand.php" class="quick-action-btn">
-                    <span class="qa-icon"><i class="fa fa-tag"></i></span>
-                    Add Brand
-                </a>
-            </div>
-            <div class="col-md-3 col-6">
-                <a href="reg-users.php" class="quick-action-btn">
-                    <span class="qa-icon"><i class="fa fa-users-cog"></i></span>
-                    View Users
-                </a>
-            </div>
+        <h1>Welcome, <?php echo $_SESSION['admin_name']; ?></h1>
+
+        <div class="topbar-links">
+            <a href="admin_profile.php" class="profile">Admin Profile</a>
+            <a href="logout.php" class="logout">Logout</a>
         </div>
 
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- CARDS -->
+    <div class="cards">
+
+        <div class="card">
+            <h3>Total Products</h3>
+            <p><?php echo $totalProducts; ?></p>
+        </div>
+
+        <div class="card">
+            <h3>Total Orders</h3>
+            <p><?php echo $totalOrders; ?></p>
+        </div>
+
+        <div class="card">
+            <h3>Total Users</h3>
+            <p><?php echo $totalUsers; ?></p>
+        </div>
+
+        <div class="card">
+            <h3>Total Revenue</h3>
+            <p>
+                RM <?php echo number_format($totalRevenue ?? 0, 2); ?>
+            </p>
+        </div>
+
+    </div>
+
+    <!-- RECENT ORDERS -->
+    <div class="table-box">
+
+        <h3>Recent Orders</h3>
+
+        <table>
+
+            <tr>
+                <th>Order ID</th>
+                <th>User</th>
+                <th>Total</th>
+                <th>Status</th>
+            </tr>
+
+            <?php if(count($orders) > 0){ ?>
+
+                <?php foreach($orders as $order){ ?>
+
+                <tr>
+
+                    <td>
+                        #<?php echo $order->order_id; ?>
+                    </td>
+
+                    <td>
+                        <?php echo $order->user_id; ?>
+                    </td>
+
+                    <td>
+                        RM <?php echo number_format($order->total, 2); ?>
+                    </td>
+
+                    <td>
+                        <span class="status <?php echo strtolower($order->status); ?>">
+                            <?php echo $order->status; ?>
+                        </span>
+                    </td>
+
+                </tr>
+
+                <?php } ?>
+
+            <?php } else { ?>
+
+                <tr>
+                    <td colspan="4" style="text-align:center;">
+                        No recent orders found.
+                    </td>
+                </tr>
+
+            <?php } ?>
+
+        </table>
+
+    </div>
+
+</div>
+
 </body>
 </html>
-<?php } ?>
