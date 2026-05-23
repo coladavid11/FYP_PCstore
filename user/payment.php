@@ -70,13 +70,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
                 $subtotal = $item['product_price'] * $item['quantity'];
 
                 $stmt = $dbh->prepare("
-                    INSERT INTO tblorder_items
-                    (order_id, product_id, product_name, product_price, quantity, subtotal)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO tblorder_item
+                    (order_id,user_id, product_id, product_name, product_price, quantity, subtotal)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ");
 
                 $stmt->execute([
                     $order_id,
+                    $user_id,
                     $item['product_id'],
                     $item['product_name'],
                     $item['product_price'],
@@ -86,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
             }
 
             // 4. UPDATE CART STATUS
-            $stmt = $dbh->prepare("
+            $stmt = $dbh->prepare(  "
                 UPDATE tblcart 
                 SET status = 'ordered'
                 WHERE user_id = ? AND status = 'active'

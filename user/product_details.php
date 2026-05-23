@@ -13,6 +13,28 @@ if (!$product) {
     die("Product not found");
 }
 
+// Check if wishlisted
+$isWishlisted = false;
+
+if(isset($_SESSION['user_id'])){
+
+    $stmt = $dbh->prepare("
+        SELECT status 
+        FROM tblwishlist 
+        WHERE user_id=? 
+        AND product_id=? 
+        AND status='active'
+        LIMIT 1
+    ");
+
+    $stmt->execute([$_SESSION['user_id'], $product_id]);
+
+    if($stmt->fetch()){
+        $isWishlisted = true;
+    }
+}
+
+
 /* ================= IMAGES (UP TO 10) ================= 
 $images = [];
 for ($i = 1; $i <= 10; $i++) {
@@ -107,7 +129,7 @@ body{
 
     <h2><?php echo $product['name']; ?></h2>
 
-    <p class="text-soft"><?php echo $product['category_id']; ?></p>
+    <p class="text-soft">Product ID: <?php echo $product['product_id']; ?></p>
 
     <h3 style="color:#d4af37;">
         RM <span id="price"><?php echo $product['price']; ?></span>
@@ -147,6 +169,19 @@ body{
             onclick="addToCart(<?php echo $product['product_id']; ?>)">
         Add to Cart
     </button>
+
+        <!-- WISHLIST BUTTON -->
+    <button id="wishBtn"
+        class="btn mt-3 w-100 
+        <?php echo $isWishlisted ? 'btn-danger' : 'btn-outline-danger'; ?>"
+        onclick="toggleWishlist(<?php echo $product['product_id']; ?>)">
+
+    <i id="wishIcon"
+       class="<?php echo $isWishlisted ? 'fa-solid' : 'fa-regular'; ?> fa-heart"></i>
+
+    <?php echo $isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'; ?>
+
+</button>
 
 </div>
 </div>
@@ -229,6 +264,61 @@ body{
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+
+    function toggleWishlist(pid){
+
+    fetch('wishlist_toggle.php', {
+        method:'POST',
+        headers:{
+            'Content-Type':'application/x-www-form-urlencoded'
+        },
+        body:'product_id=' + pid
+    })
+
+    .then(res => res.json())
+    .then(data => {
+
+        let icon = document.getElementById('wishIcon');
+        let btn = document.getElementById('wishBtn');
+
+        if(data.status === 'added'){
+
+            icon.classList.remove('fa-regular');
+            icon.classList.add('fa-solid');
+
+            btn.classList.remove('btn-outline-danger');
+            btn.classList.add('btn-danger');
+
+            btn.innerHTML = `<i class="fa-solid fa-heart"></i> Remove from Wishlist`;
+
+        }
+
+        else if(data.status === 'removed'){
+
+            icon.classList.remove('fa-solid');
+            icon.classList.add('fa-regular');
+
+            btn.classList.remove('btn-danger');
+            btn.classList.add('btn-outline-danger');
+
+            btn.innerHTML = `<i class="fa-regular fa-heart"></i> Add to Wishlist`;
+        }
+
+        else if(data.status === 'login_required'){
+
+            Swal.fire({
+                icon:'warning',
+                title:'Login Required',
+                text:data.message
+            }).then(() => {
+                window.location.href = 'login.php';
+            });
+
+        }
+
+    });
+
+}
 
 function changeImage(el){
     document.getElementById('mainImage').src = el.src;
