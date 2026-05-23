@@ -100,7 +100,15 @@ function shortName($name, $limit = 12) {
           <a class="nav-link position-relative" href="cart.php">
             <i class="fa fa-shopping-cart text-warning fs-5"></i>
             <span class="badge bg-danger position-absolute top-0 start-100 translate-middle">
-              0
+              <?php
+              if ($isLoggedIn) {
+                  $stmt = $dbh->prepare("SELECT COUNT(*) FROM tblcart WHERE user_id=? AND status='active'");
+                  $stmt->execute([$_SESSION['user_id']]);
+                  echo $stmt->fetchColumn();
+              } else {
+                  echo 0;
+              }
+              ?>
             </span>
           </a>
         </li>

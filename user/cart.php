@@ -141,66 +141,67 @@ if ($isLoggedIn) {
 
     <?php else: ?>
 
-        <!-- CART ITEMS LOOP -->
         <?php foreach($cartItems as $item): ?>
 
-        <div class="info-card mb-3 p-3">
+<div class="info-card mb-3 p-3">
+    
 
-            <div class="row align-items-center">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
 
-                <!-- IMAGE -->
-                <div class="col-md-3">
-                    <img src="<?php echo $item['product_image']; ?>"
-                         class="img-fluid"
-                         style="height:120px; object-fit:cover;">
-                </div>
+        <!-- LEFT: IMAGE + NAME -->
+        <div class="d-flex align-items-center gap-3" style="min-width:250px;">
 
-                <!-- NAME + PRICE -->
-                <div class="col-md-4">
-                    <h5><?php echo $item['product_name']; ?></h5>
-                    <p class="text-soft mb-0">
-                        RM <?php echo number_format($item['product_price'],2); ?>
-                    </p>
-                </div>
+            <img src="<?php echo $item['product_image']; ?>"
+                 style="width:80px;height:80px;object-fit:cover;border-radius:8px;">
 
-                <!-- QTY UPDATE -->
-                <div class="col-md-3">
-
-                    <form method="POST" class="d-flex align-items-center">
-
-                        <input type="hidden" name="cart_id" value="<?php echo $item['cart_id']; ?>">
-
-                        <input type="number"
-                               name="qty"
-                               value="<?php echo $item['quantity']; ?>"
-                               min="1"
-                               class="form-control form-control-sm">
-
-                        <button type="submit"
-                                name="update_qty"
-                                class="btn btn-outline-warning btn-sm ms-2">
-                            <i class="fa fa-sync"></i>
-                        </button>
-
-                    </form>
-
-                </div>
-
-                <!-- REMOVE -->
-                <div class="col-md-2 text-end">
-
-                    <a href="cart.php?remove=<?php echo $item['cart_id']; ?>"
-                       class="btn btn-danger btn-sm">
-                        <i class="fa fa-trash"></i>
-                    </a>
-
-                </div>
-
+            <div>
+                <h6 class="mb-1"><?php echo $item['product_name']; ?></h6>
+                <small class="text-soft">
+                    RM <?php echo number_format($item['product_price'],2); ?>
+                </small>
             </div>
 
         </div>
 
-        <?php endforeach; ?>
+        <!-- MIDDLE: QTY -->
+        <form method="POST" class="d-flex align-items-center gap-2">
+
+            <input type="hidden" name="cart_id" value="<?php echo $item['cart_id']; ?>">
+
+            <input type="number"
+                   name="qty"
+                   value="<?php echo $item['quantity']; ?>"
+                   min="1"
+                   class="form-control form-control-sm text-center"
+                   style="width:70px;">
+
+            <button type="submit"
+                    name="update_qty"
+                    class="btn btn-outline-warning btn-sm">
+                <i class="fa fa-sync"></i>
+            </button>
+
+        </form>
+
+        <!-- RIGHT: SUBTOTAL + DELETE -->
+        <div class="d-flex align-items-center gap-3">
+
+            <strong style="color:#d4af37;">
+                RM <?php echo number_format($item['subtotal'],2); ?>
+            </strong>
+
+            <a href="cart.php?remove=<?php echo $item['cart_id']; ?>"
+               class="btn btn-danger btn-sm">
+                <i class="fa fa-trash"></i>
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+<?php endforeach; ?>
 
     <?php endif; ?>
 

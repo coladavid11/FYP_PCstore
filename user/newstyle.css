@@ -38,6 +38,12 @@
         animation: fadeInUp 1.2s cubic-bezier(0.2, 1, 0.2, 1);
     }
 
+    /* cart.php */
+    .info-card {
+    background: #121212;
+    
+}
+
     /* Subtitle uses gold color to match brand accent style */
     .hero-subtitle {
         font-size: 1.2rem;
@@ -83,10 +89,10 @@
     .team-card {
         background: #181818;
         border: 1px solid #2a2a2a;
-        border-radius: 0;
         box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         transition: all 0.4s ease;
-        height: 100%;
+        height: auto;
+        border-radius: 10px;
     }
 
     /* Hover effect makes the UI feel interactive and premium */

@@ -13,14 +13,14 @@ if (!$product) {
     die("Product not found");
 }
 
-/* ================= IMAGES (UP TO 10) ================= */
+/* ================= IMAGES (UP TO 10) ================= 
 $images = [];
 for ($i = 1; $i <= 10; $i++) {
     $key = "image$i";
     if (!empty($product[$key])) {
         $images[] = $product[$key];
     }
-}
+}*/
 
 /* ================= RELATED PRODUCTS ================= */
 $stmt2 = $dbh->prepare("
@@ -93,19 +93,9 @@ body{
     <div class="dark-card p-3">
 
         <img id="mainImage"
-             src="<?php echo $images[0]; ?>"
+             src="<?php echo $product['image']; ?>"
              class="img-fluid rounded"
              style="width:100%;height:420px;object-fit:cover;">
-
-        <div class="d-flex gap-2 mt-3 flex-wrap">
-
-            <?php foreach($images as $img): ?>
-                <img src="<?php echo $img; ?>"
-                     class="thumb-img"
-                     onclick="changeImage(this)">
-            <?php endforeach; ?>
-
-        </div>
 
     </div>
 </div>
@@ -264,39 +254,64 @@ function updateSubtotal(){
 
 function addToCart(pid){
 
-let qty = document.getElementById('qty').value;
+    let qty = document.getElementById('qty').value;
 
-fetch('add_to_cart.php',{
-    method:'POST',
-    headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:'product_id='+pid+'&qty='+qty
-})
+    fetch('add_to_cart.php', {
+        method:'POST',
+        headers:{
+            'Content-Type':'application/x-www-form-urlencoded'
+        },
+        body:'product_id=' + pid + '&qty=' + qty
+    })
 
-.then(res=>res.json())
-.then(data=>{
+    .then(res => res.json())
 
-if(data.status=='success'){
+    .then(data => {
 
-Swal.fire({
-    icon:'success',
-    title:'Added to Cart',
-    text:data.message,
-    background:'#1a1a1a',
-    color:'#fff',
-    confirmButtonColor:'#d4af37'
-});
+        // SUCCESS
+        if(data.status == 'success'){
 
-}else{
+            Swal.fire({
+                icon:'success',
+                title:'Added to Cart',
+                text:data.message,
+                background:'#1a1a1a',
+                color:'#fff',
+                confirmButtonColor:'#d4af37'
+            });
 
-Swal.fire({
-    icon:'error',
-    title:'Error',
-    text:data.message
-});
+        }
 
-}
+        // LOGIN REQUIRED
+        else if(data.status == 'login_required'){
 
-});
+            Swal.fire({
+                icon:'warning',
+                title:'Login Required',
+                text:data.message,
+                background:'#1a1a1a',
+                color:'#fff',
+                confirmButtonColor:'#d4af37'
+            }).then(() => {
+
+                window.location.href = 'login.php';
+
+            });
+
+        }
+
+        // OTHER ERROR
+        else{
+
+            Swal.fire({
+                icon:'error',
+                title:'Error',
+                text:data.message
+            });
+
+        }
+
+    });
 
 }
 
