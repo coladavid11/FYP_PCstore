@@ -26,7 +26,6 @@ function shortName($name, $limit = 12) {
 }
 
 ?>
-
 <!-- NAVBAR -->
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top"
@@ -56,7 +55,7 @@ function shortName($name, $limit = 12) {
         </li>
 
         <li class="nav-item">
-          <a class="nav-link <?php echo navActive('products.php', $currentPage); ?>" href="products.php">Products</a>
+          <a class="nav-link <?php echo navActive('products.php', $currentPage); ?>" href="product.php">Products</a>
         </li>
 
         <li class="nav-item">
@@ -81,19 +80,6 @@ function shortName($name, $limit = 12) {
             <li><a class="dropdown-item" href="contact.php">Contact</a></li>
           </ul>
         </li>
-
-        <!-- SEARCH -->
-        <form class="d-flex ms-lg-4" action="search.php" method="get">
-          <div class="input-group">
-            <input class="form-control bg-dark text-white border-secondary"
-                   type="search"
-                   name="query"
-                   placeholder="Search...">
-            <button class="btn btn-outline-warning">
-              <i class="fa fa-search"></i>
-            </button>
-          </div>
-        </form>
 
         <!-- CART -->
         <li class="nav-item ms-lg-3">

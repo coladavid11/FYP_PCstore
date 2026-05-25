@@ -236,7 +236,7 @@ body{
 
 <div class="dark-card p-2">
 
-<img src="<?php echo $r['image1']; ?>"
+<img src="<?php echo $r['image']; ?>"
      style="width:100%;height:120px;object-fit:cover;">
 
 <h6 class="mt-2"><?php echo $r['name']; ?></h6>
