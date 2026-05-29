@@ -80,6 +80,7 @@ body {
     width: 100%;
     padding: 40px;
     box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    margin-top: 100px;
 }
 
 .store-logo {

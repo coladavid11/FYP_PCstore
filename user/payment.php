@@ -2,7 +2,7 @@
 session_start();
 include('includes/config.php');
 
-//check login
+// check login
 $isLoggedIn = isset($_SESSION['login']);
 $user_id = $_SESSION['user_id'] ?? null;
 
@@ -11,13 +11,14 @@ $total = 0;
 $success = false;
 $error = '';
 
-
-
+// =======================
 // FETCH CART
+// =======================
 if ($isLoggedIn) {
+
     $stmt = $dbh->prepare("
         SELECT * FROM tblcart 
-        WHERE user_id=? AND status='active'
+        WHERE user_id = ? AND status = 'active'
     ");
     $stmt->execute([$user_id]);
     $cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -31,7 +32,9 @@ if ($isLoggedIn) {
     $grand_total = $total + $shipping + $service_fee;
 }
 
-// PROCESS PAYMENT (DEMO)
+// =======================
+// PROCESS PAYMENT
+// =======================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 
     if (empty($cartItems)) {
@@ -39,21 +42,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
     } else {
 
         try {
+
             $dbh->beginTransaction();
 
+            $shipping = 15.00;
+            $service_fee = 0.00;
             $grand_total = $total + $shipping + $service_fee;
 
-            // 1. GENERATE ORDER NUMBER
+            // =======================
+            // 1. ORDER NUMBER
+            // =======================
             $order_number = 'PC' . date('Ymd') . strtoupper(substr(uniqid(), -5));
 
-            // 2. INSERT INTO tblorders
-            $stmt = $dbh->prepare("
+            // =======================
+            // 2. INSERT ORDER
+            // =======================
+            $orderStmt = $dbh->prepare("
                 INSERT INTO tblorders 
                 (user_id, order_number, total_amount, shipping_fee, service_fee, grand_total, payment_status, order_status)
                 VALUES (?, ?, ?, ?, ?, ?, 'paid', 'processing')
             ");
 
-            $stmt->execute([
+            $orderStmt->execute([
                 $user_id,
                 $order_number,
                 $total,
@@ -64,18 +74,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 
             $order_id = $dbh->lastInsertId();
 
+            // =======================
             // 3. INSERT ORDER ITEMS
+            // =======================
+            $itemStmt = $dbh->prepare("
+                INSERT INTO tblorder_item
+                (order_id, user_id, product_id, product_name, product_price, quantity, subtotal)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+
             foreach ($cartItems as $item) {
 
                 $subtotal = $item['product_price'] * $item['quantity'];
 
-                $stmt = $dbh->prepare("
-                    INSERT INTO tblorder_item
-                    (order_id,user_id, product_id, product_name, product_price, quantity, subtotal)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ");
-
-                $stmt->execute([
+                $itemStmt->execute([
                     $order_id,
                     $user_id,
                     $item['product_id'],
@@ -86,22 +98,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
                 ]);
             }
 
+            // =======================
             // 4. UPDATE CART STATUS
-            $stmt = $dbh->prepare(  "
+            // =======================
+            $cartStmt = $dbh->prepare("
                 UPDATE tblcart 
                 SET status = 'ordered'
                 WHERE user_id = ? AND status = 'active'
             ");
-            $stmt->execute([$user_id]);
 
+            $cartStmt->execute([$user_id]);
+
+            // =======================
+            // 5. UPDATE STOCK (FIXED)
+            // =======================
+            $stockStmt = $dbh->prepare("
+                UPDATE products
+                SET stock = stock - ?
+                WHERE product_id = ?
+                AND stock >= ?
+            ");
+
+            foreach ($cartItems as $item) {
+
+                $stockStmt->execute([
+                    $item['quantity'],
+                    $item['product_id'],
+                    $item['quantity']
+                ]);
+
+                if ($stockStmt->rowCount() == 0) {
+                    throw new Exception($item['product_name'] . " stock not enough.");
+                }
+            }
+
+            // =======================
+            // COMMIT
+            // =======================
             $dbh->commit();
 
             $success = true;
-
-            // clear local cart view
             $cartItems = [];
 
         } catch (Exception $e) {
+
             $dbh->rollBack();
             $error = "Payment failed: " . $e->getMessage();
         }
@@ -164,6 +204,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 
         <a href="index.php" class="btn-cta mt-3">
             Back to Store
+        </a>
+
+        <a href="myorder.php" class="btn-cta mt-3">
+            My Orders
         </a>
 
     </div>
