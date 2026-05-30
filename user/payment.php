@@ -45,17 +45,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 
             $dbh->beginTransaction();
 
+            // =======================
+            // ✅ STEP 1: VALIDATE STOCK FIRST (before inserting anything)
+            // =======================
+            $stockCheck = $dbh->prepare("
+                SELECT product_id, stock 
+                FROM products 
+                WHERE product_id = ? 
+                FOR UPDATE
+            ");
+
+            foreach ($cartItems as $item) {
+                $stockCheck->execute([$item['product_id']]);
+                $stockRow = $stockCheck->fetch(PDO::FETCH_ASSOC);
+
+                if (!$stockRow || $stockRow['stock'] < $item['quantity']) {
+                    throw new Exception(
+                        "'" . $item['product_name'] . "' is out of stock. " .
+                        "Available: " . ($stockRow['stock'] ?? 0) .
+                        ", Requested: " . $item['quantity']
+                    );
+                }
+            }
+
             $shipping = 15.00;
             $service_fee = 0.00;
             $grand_total = $total + $shipping + $service_fee;
 
             // =======================
-            // 1. ORDER NUMBER
+            // STEP 2: ORDER NUMBER
             // =======================
             $order_number = 'PC' . date('Ymd') . strtoupper(substr(uniqid(), -5));
 
             // =======================
-            // 2. INSERT ORDER
+            // STEP 3: INSERT ORDER
             // =======================
             $orderStmt = $dbh->prepare("
                 INSERT INTO tblorders 
@@ -75,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
             $order_id = $dbh->lastInsertId();
 
             // =======================
-            // 3. INSERT ORDER ITEMS
+            // STEP 4: INSERT ORDER ITEMS
             // =======================
             $itemStmt = $dbh->prepare("
                 INSERT INTO tblorder_item
@@ -99,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
             }
 
             // =======================
-            // 4. UPDATE CART STATUS
+            // STEP 5: UPDATE CART STATUS
             // =======================
             $cartStmt = $dbh->prepare("
                 UPDATE tblcart 
@@ -110,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
             $cartStmt->execute([$user_id]);
 
             // =======================
-            // 5. UPDATE STOCK (FIXED)
+            // STEP 6: DEDUCT STOCK
             // =======================
             $stockStmt = $dbh->prepare("
                 UPDATE products
@@ -310,7 +333,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
         RM <?php echo number_format($grand_total,2); ?>
     </strong>
 </div>
-    
 
 </div>
 
