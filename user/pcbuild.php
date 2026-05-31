@@ -354,7 +354,7 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
         <div class="part-row" id="row-<?php echo $key; ?>">
 
             <!-- Header (click to expand) -->
-            <div class="part-header" onclick="togglePanel('<?php echo $key; ?>')">
+            <div class="part-header" data-key="<?php echo $key; ?>">
                 <div class="part-icon">
                     <i class="fa <?php echo $info['icon']; ?>"></i>
                 </div>
@@ -371,7 +371,10 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
                     <!-- NONE option -->
                     <div class="part-option active"
                          id="opt-<?php echo $key; ?>-none"
-                         onclick="selectPart('<?php echo $key; ?>', 0, 'None', 0)">
+                         data-key="<?php echo $key; ?>"
+                         data-id="0"
+                         data-name="None"
+                         data-price="0">
                         <div class="none-icon"><i class="fa fa-ban"></i></div>
                         <div class="opt-name">None</div>
                         <div class="opt-price none">RM 0.00</div>
@@ -385,7 +388,10 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
                         <?php foreach ($products as $p): ?>
                         <div class="part-option"
                              id="opt-<?php echo $key; ?>-<?php echo $p['product_id']; ?>"
-                             onclick="selectPart('<?php echo $key; ?>', <?php echo $p['product_id']; ?>, <?php echo json_encode($p['name']); ?>, <?php echo $p['price']; ?>)">
+                             data-key="<?php echo $key; ?>"
+                             data-id="<?php echo $p['product_id']; ?>"
+                             data-name="<?php echo htmlspecialchars($p['name'], ENT_QUOTES); ?>"
+                             data-price="<?php echo $p['price']; ?>">
                             <img src="<?php echo htmlspecialchars($p['image']); ?>"
                                  alt="<?php echo htmlspecialchars($p['name']); ?>"
                                  onerror="this.src='assets/images/placeholder.jpg'">
@@ -454,33 +460,29 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-// ── STATE ──
-const build = {};      // key -> { id, name, price }
+const build    = {};
 const partKeys = <?php echo json_encode(array_keys($parts)); ?>;
 
-// ── TOGGLE PANEL ──
-function togglePanel(key) {
-    const row = document.getElementById('row-' + key);
-    row.classList.toggle('open');
+function formatRM(val) {
+    return 'RM ' + parseFloat(val).toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-// ── SELECT PART ──
 function selectPart(key, id, name, price) {
-
     // Deactivate all options in this group
-    document.querySelectorAll('[id^="opt-' + key + '-"]').forEach(el => {
+    document.querySelectorAll('.part-option[data-key="' + key + '"]').forEach(el => {
         el.classList.remove('active');
     });
 
     // Activate chosen
-    const chosen = document.getElementById('opt-' + key + '-' + (id === 0 ? 'none' : id));
+    const optId  = id == 0 ? 'opt-' + key + '-none' : 'opt-' + key + '-' + id;
+    const chosen = document.getElementById(optId);
     if (chosen) chosen.classList.add('active');
 
     // Update state
-    if (id === 0) {
+    if (id == 0) {
         delete build[key];
     } else {
-        build[key] = { id, name, price: parseFloat(price) };
+        build[key] = { id: id, name: name, price: parseFloat(price) };
     }
 
     // Update row header
@@ -488,41 +490,37 @@ function selectPart(key, id, name, price) {
     const selPrice = document.getElementById('sel-price-' + key);
     const row      = document.getElementById('row-' + key);
 
-    if (id === 0) {
-        selName.textContent  = '— None selected';
-        selName.style.color  = '#555';
+    if (id == 0) {
+        selName.textContent    = '— None selected';
+        selName.style.color    = '#555';
         selPrice.style.display = 'none';
         row.classList.remove('selected');
     } else {
-        selName.textContent  = name;
-        selName.style.color  = '#d4af37';
-        selPrice.textContent = 'RM ' + parseFloat(price).toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2});
+        selName.textContent    = name;
+        selName.style.color    = '#d4af37';
+        selPrice.textContent   = formatRM(price);
         selPrice.style.display = '';
         row.classList.add('selected');
-        // Auto-close panel
-        row.classList.remove('open');
+        row.classList.remove('open'); // auto-close
     }
 
-    // Update summary
     updateSummary();
 }
 
-// ── UPDATE SUMMARY ──
 function updateSummary() {
-    let total      = 0;
-    let partsCount = 0;
+    let total = 0, count = 0;
 
     partKeys.forEach(function(key) {
-        const sumName  = document.getElementById('sum-name-' + key);
+        const sumName  = document.getElementById('sum-name-'  + key);
         const sumPrice = document.getElementById('sum-price-' + key);
 
         if (build[key]) {
             sumName.textContent    = build[key].name;
             sumName.style.color    = '#ccc';
-            sumPrice.textContent   = 'RM ' + build[key].price.toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2});
+            sumPrice.textContent   = formatRM(build[key].price);
             sumPrice.style.display = '';
-            total      += build[key].price;
-            partsCount++;
+            total += build[key].price;
+            count++;
         } else {
             sumName.textContent    = '—';
             sumName.style.color    = '#444';
@@ -530,52 +528,49 @@ function updateSummary() {
         }
     });
 
-    document.getElementById('summary-grand-total').textContent =
-        'RM ' + total.toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2});
+    document.getElementById('summary-grand-total').textContent = formatRM(total);
+    document.getElementById('parts-count').textContent = count + ' part' + (count !== 1 ? 's' : '') + ' selected';
 
-    document.getElementById('parts-count').textContent =
-        partsCount + ' part' + (partsCount !== 1 ? 's' : '') + ' selected';
-
-    // Enable/disable button
     const btn = document.getElementById('addBuildBtn');
-    if (btn) btn.disabled = partsCount === 0;
+    if (btn) btn.disabled = count === 0;
 }
 
-// ── SUBMIT BUILD ──
 function submitBuild() {
     const ids = Object.values(build).map(b => b.id);
     if (ids.length === 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'No Parts Selected',
-            text: 'Please select at least one part to add to cart.',
-            background: '#1a1a1a',
-            color: '#fff',
-            confirmButtonColor: '#d4af37'
-        });
+        Swal.fire({ icon:'warning', title:'No Parts Selected', text:'Please select at least one part.', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
+        return;
+    }
+    document.getElementById('selectedIdsInput').value = JSON.stringify(ids);
+    Swal.fire({
+        icon: 'question', title: 'Add Build to Cart?',
+        html: ids.length + ' part(s) will be added to your cart.',
+        background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37',
+        cancelButtonColor:'#333', showCancelButton:true,
+        confirmButtonText:'Yes, Add All', cancelButtonText:'Cancel'
+    }).then(result => { if (result.isConfirmed) document.getElementById('buildForm').submit(); });
+}
+
+// ── Event delegation: part-option clicks ──
+document.addEventListener('click', function(e) {
+    const opt = e.target.closest('.part-option');
+    if (opt) {
+        const key   = opt.dataset.key;
+        const id    = opt.dataset.id;
+        const name  = opt.dataset.name;
+        const price = opt.dataset.price;
+        selectPart(key, id, name, price);
         return;
     }
 
-    document.getElementById('selectedIdsInput').value = JSON.stringify(ids);
-
-    // Confirm
-    Swal.fire({
-        icon: 'question',
-        title: 'Add Build to Cart?',
-        html: ids.length + ' part(s) will be added to your cart.',
-        background: '#1a1a1a',
-        color: '#fff',
-        confirmButtonColor: '#d4af37',
-        cancelButtonColor: '#333',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, Add All',
-        cancelButtonText: 'Cancel'
-    }).then(result => {
-        if (result.isConfirmed) {
-            document.getElementById('buildForm').submit();
-        }
-    });
-}
+    // part-header toggle
+    const header = e.target.closest('.part-header');
+    if (header) {
+        const key = header.dataset.key;
+        const row = document.getElementById('row-' + key);
+        if (row) row.classList.toggle('open');
+    }
+});
 </script>
 
 <?php if ($addResult === 'success'): ?>
