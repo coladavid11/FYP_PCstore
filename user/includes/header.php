@@ -59,7 +59,7 @@ function shortName($name, $limit = 12) {
         </li>
 
         <li class="nav-item">
-          <a class="nav-link <?php echo navActive('pc-builds.php', $currentPage); ?>" href="pc-builds.php">PC Builds</a>
+          <a class="nav-link <?php echo navActive('pcbuild.php', $currentPage); ?>" href="pcbuild.php">PC Builds</a>
         </li>
 
         <li class="nav-item">
@@ -67,7 +67,7 @@ function shortName($name, $limit = 12) {
         </li>
 
         <li class="nav-item">
-          <a class="nav-link <?php echo navActive('game-check.php', $currentPage); ?>" href="game-check.php">Game Check</a>
+          <a class="nav-link <?php echo navActive('game_check.php', $currentPage); ?>" href="game_check.php">Game Check</a>
         </li>
 
         <!-- ABOUT DROPDOWN -->
