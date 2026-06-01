@@ -28,8 +28,8 @@ style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url('https
         <h1 class="hero-title">Build Your Dream PC</h1>
         <p class="hero-subtitle">Premium Hardware • High Performance</p>
         <div class="mt-4">
-            <a href="full-set.php" class="btn-cta">Shop Now</a>
-            <a href="#" class="btn-cta-outline">View Builds</a>
+            <a href="product.php" class="btn-cta">Shop Now</a>
+            <a href="pcbuild.php" class="btn-cta-outline">View Builds</a>
         </div>
     </div>
 </section>
