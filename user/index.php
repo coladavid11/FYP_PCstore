@@ -98,7 +98,7 @@ style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url('https
                     <img src="https://images.unsplash.com/photo-1587831990711-23ca6441447b" class="img-fluid mb-3">
                     <h5>Budget Build</h5>
                     <p class="text-soft">Affordable • Reliable • Everyday Use</p>
-                    <a href="#" class="btn-cta mt-2">View</a>
+                    <a href="pcbuild.php" class="btn-cta mt-2">View</a>
                 </div>
             </div>
         </div>

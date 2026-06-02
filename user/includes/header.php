@@ -63,7 +63,7 @@ function shortName($name, $limit = 12) {
         </li>
 
         <li class="nav-item">
-          <a class="nav-link <?php echo navActive('full-set.php', $currentPage); ?>" href="full-set.php">Full Set</a>
+          <a class="nav-link <?php echo navActive('full_set.php', $currentPage); ?>" href="full_set.php">Full Set</a>
         </li>
 
         <li class="nav-item">
