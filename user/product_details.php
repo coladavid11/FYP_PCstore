@@ -313,7 +313,7 @@ body { background:#0f0f0f; color:#fff; font-family:'Poppins',sans-serif; }
             <!-- STOCK BAR -->
             <div class="stock-wrap">
                 <?php
-                    $pct   = min(100, ($stock / 50) * 100); // cap bar at 50 units = 100%
+                    $pct   = min(100, ($stock / 50) * 100);
                     if ($stock <= 0)    { $cls = 'empty'; $barCls = 'bar-empty'; $label = 'Out of Stock'; }
                     elseif ($stock < 5) { $cls = 'low';   $barCls = 'bar-low';   $label = "Only {$stock} left!"; }
                     else                { $cls = 'ok';     $barCls = 'bar-ok';    $label = "{$stock} in stock"; }
@@ -420,7 +420,7 @@ body { background:#0f0f0f; color:#fff; font-family:'Poppins',sans-serif; }
                 <?php echo nl2br(htmlspecialchars($product['description'])); ?>
             </div>
 
-            <!-- SPEC TAB -->
+            <!-- SPEC TAB — ✅ 只改了这里，加了 7 个新栏位 -->
             <div class="tab-pane fade" id="spec">
                 <?php
                 $specs = [
@@ -428,6 +428,13 @@ body { background:#0f0f0f; color:#fff; font-family:'Poppins',sans-serif; }
                     'RAM'              => $product['ram']              ?? '',
                     'Storage'          => $product['storage']          ?? '',
                     'GPU'              => $product['gpu']              ?? '',
+                    'Motherboard'      => $product['motherboard']      ?? '',
+                    'Power Supply'     => $product['power_supply']     ?? '',
+                    'Cooler'           => $product['cooler']           ?? '',
+                    'Case'             => $product['pc_case']          ?? '',
+                    'Monitor'          => $product['monitor']          ?? '',
+                    'Keyboard'         => $product['keyboard']         ?? '',
+                    'Mouse'            => $product['mouse']            ?? '',
                     'Display'          => $product['display_screen']   ?? '',
                     'Operating System' => $product['operating_system'] ?? '',
                 ];
@@ -553,7 +560,6 @@ function addToCart(pid) {
     const qty = parseInt(document.getElementById('qty').value) || 1;
     const btn = document.getElementById('btnAddCart');
 
-    // Disable button to prevent double-click
     btn.disabled = true;
     btn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i> Adding…';
 
@@ -604,9 +610,7 @@ function addToCart(pid) {
             });
 
         } else {
-            // Stock exceeded or other errors
             let bodyText = data.message;
-            // If backend returned available_stock, update the frontend max too
             if (data.available_stock !== undefined) {
                 bodyText = data.message;
             }

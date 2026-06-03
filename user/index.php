@@ -80,7 +80,7 @@ style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url('https
                     <img src="https://www.pcworld.com/wp-content/uploads/2025/10/pcw07_GamingSetup_RGBeci.jpg?quality=50&strip=all" class="img-fluid mb-3">
                     <h5>Gaming Beast</h5>
                     <p class="text-soft">RTX Series • High FPS Gaming</p>
-                    <a href="#" class="btn-cta mt-2">View</a>
+                    <a href="full_set.php" class="btn-cta mt-2">View</a>
                 </div>
             </div>
 
