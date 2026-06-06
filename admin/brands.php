@@ -7,11 +7,11 @@ if(!isset($_SESSION['admin_login'])){
     exit;
 }
 
-$sql = "SELECT * FROM categories ORDER BY category_id DESC";
+$sql = "SELECT * FROM tblbrand ORDER BY brand_id DESC";
 $query = $dbh->prepare($sql);
 $query->execute();
 
-$categories = $query->fetchAll(PDO::FETCH_OBJ);
+$brands = $query->fetchAll(PDO::FETCH_OBJ);
 
 /* =========================
    DELETE CATEGORY
@@ -22,19 +22,19 @@ if(isset($_GET['delete'])){
     
     // CHECK PRODUCT USING CATEGORY
 
-    $checkSql = "SELECT * FROM products WHERE category_id = :id";
+    $checkSql = "SELECT * FROM products WHERE brand_id = :id";
     $checkQuery = $dbh->prepare($checkSql);
     $checkQuery->bindParam(':id', $id, PDO::PARAM_INT);
     $checkQuery->execute();
 
     if($checkQuery->rowCount() > 0){
-        echo "<script>alert('Cannot delete category. Products are using this category.');</script>";
+        echo "<script>alert('Cannot delete brand. Products are using this brand.');</script>";
     } else {
-        $sql = "DELETE FROM categories WHERE category_id = :id";
+        $sql = "DELETE FROM tblbrand WHERE brand_id = :id";
         $query = $dbh->prepare($sql);
         $query->bindParam(':id', $id, PDO::PARAM_INT);
         $query->execute();
-        header("Location: categories.php");
+        header("Location: brands.php");
         exit;
     }
 }
@@ -45,7 +45,7 @@ if(isset($_GET['delete'])){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Categories Management | My PC Store</title>
+    <title>Brands Management | My PC Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <style>
@@ -143,12 +143,13 @@ if(isset($_GET['delete'])){
             align-items: center;
         }
 
+
         .Back {
             text-decoration: none;
             font-weight: 500;
             transition: 0.3s;
             color: #d4af37;
-            font-size: 0.95rem;0
+            font-size: 0.95rem;
         }
 
         /* =========================
@@ -168,7 +169,7 @@ if(isset($_GET['delete'])){
             font-weight: 600;
         }
 
-        /* Custom Button for Adding Categories */
+        /* Custom Button for Adding Brands */
         .btn-add {
             display: inline-block;
             background: #000;
@@ -250,12 +251,13 @@ if(isset($_GET['delete'])){
 
 <div class="sidebar">
     <h2>Admin</h2>
-    <a href="categories.php" class="active">Categories</a> </div>
+    <a href="brands.php" class="active">Brands</a>
+</div>
 
 <div class="main">
 
     <div class="topbar">
-        <h1>Categories</h1>
+        <h1>Brands</h1>
         <div class="topbar-links">
             <a href="dashboard.php" class="Back">Back</a>
         </div>
@@ -263,30 +265,30 @@ if(isset($_GET['delete'])){
 
     <div class="table-box">
 
-        <h3>Categories List</h3>
+        <h3>Brands List</h3>
 
-        <a href="add_category.php" class="btn-add">+ Add Category</a>
+        <a href="add_brands.php" class="btn-add">+ Add Brand</a>
 
         <table>
             <thead>
                 <tr>
                     <th style="width: 15%;">ID</th>
-                    <th style="width: 60%;">Category Name</th>
+                    <th style="width: 60%;">Brand Name</th>
                     <th style="width: 25%;">Action</th>
                 </tr>
             </thead>
             <tbody>
-                <?php if(count($categories) > 0) { ?>
-                    <?php foreach($categories as $cat) { ?>
+                <?php if(count($brands) > 0) { ?>
+                    <?php foreach($brands as $brand) { ?>
                         <tr>
-                            <td><?= $cat->category_id ?></td>
-                            <td><?= htmlspecialchars($cat->category_name) ?></td>
+                            <td><?= $brand->brand_id ?></td>
+                            <td><?= htmlspecialchars($brand->brand_name) ?></td>
                             <td>
-                                <a href="edit_categories.php?id=<?= $cat->category_id ?>" class="action-btn edit">Edit</a>
+                                <a href="edit_brands.php?id=<?= $brand->brand_id ?>" class="action-btn edit">Edit</a>
                                 <span class="divider">|</span>
-                                <a href="categories.php?delete=<?php echo $cat->category_id; ?>" 
+                                <a href="brands.php?delete=<?php echo $brand->brand_id; ?>" 
                                     class="action-btn delete"
-                                    onclick="return confirm('Are you sure you want to delete this category?')">
+                                    onclick="return confirm('Are you sure you want to delete this brand?')">
                                     Delete
                                 </a>
                             </td>
@@ -294,7 +296,7 @@ if(isset($_GET['delete'])){
                     <?php } ?>
                 <?php } else { ?>
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #888; padding: 25px;">No categories available.</td>
+                        <td colspan="3" style="text-align: center; color: #888; padding: 25px;">No brands available.</td>
                     </tr>
                 <?php } ?>
             </tbody>

@@ -249,9 +249,10 @@ table th{
     <h2>Admin</h2>
 
     <a href="dashboard.php">🏠 Dashboard</a>
-    <a href="product.php">📦 Products</a>
+    <a href="products.php">📦 Products</a>
     <a href="categories.php">📂 Categories</a>
-    <a href="Orders.php">🛒 Orders</a>
+    <a href="brands.php">🏷️ Brands</a>
+    <a href="orders.php">🛒 Orders</a>
     <a href="users.php">👥 Users</a>
     <a href="admin.php">⚙ Admin</a>
 

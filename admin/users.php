@@ -7,34 +7,34 @@ if(!isset($_SESSION['admin_login'])){
     exit;
 }
 
-$sql = "SELECT * FROM categories ORDER BY category_id DESC";
+$sql = "SELECT * FROM tbluser ORDER BY user_id DESC";
 $query = $dbh->prepare($sql);
 $query->execute();
 
-$categories = $query->fetchAll(PDO::FETCH_OBJ);
+$users = $query->fetchAll(PDO::FETCH_OBJ);
 
 /* =========================
-   DELETE CATEGORY
+   DELETE USER
 ========================= */
 
 if(isset($_GET['delete'])){
     $id = intval($_GET['delete']);
     
-    // CHECK PRODUCT USING CATEGORY
+    // CHECK IF USER IS ASSOCIATED WITH ANY ORDERS
 
-    $checkSql = "SELECT * FROM products WHERE category_id = :id";
+    $checkSql = "SELECT * FROM orders WHERE user_id = :id";
     $checkQuery = $dbh->prepare($checkSql);
     $checkQuery->bindParam(':id', $id, PDO::PARAM_INT);
     $checkQuery->execute();
 
     if($checkQuery->rowCount() > 0){
-        echo "<script>alert('Cannot delete category. Products are using this category.');</script>";
+        echo "<script>alert('Cannot delete user. Orders are associated with this user.');</script>";
     } else {
-        $sql = "DELETE FROM categories WHERE category_id = :id";
+        $sql = "DELETE FROM tbluser WHERE user_id = :id";
         $query = $dbh->prepare($sql);
         $query->bindParam(':id', $id, PDO::PARAM_INT);
         $query->execute();
-        header("Location: categories.php");
+        header("Location: users.php");
         exit;
     }
 }
@@ -45,7 +45,7 @@ if(isset($_GET['delete'])){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Categories Management | My PC Store</title>
+    <title>Users Management | My PC Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <style>
@@ -250,12 +250,12 @@ if(isset($_GET['delete'])){
 
 <div class="sidebar">
     <h2>Admin</h2>
-    <a href="categories.php" class="active">Categories</a> </div>
+    <a href="users.php" class="active">User Management</a> </div>
 
 <div class="main">
 
     <div class="topbar">
-        <h1>Categories</h1>
+        <h1>Users</h1>
         <div class="topbar-links">
             <a href="dashboard.php" class="Back">Back</a>
         </div>
@@ -263,30 +263,27 @@ if(isset($_GET['delete'])){
 
     <div class="table-box">
 
-        <h3>Categories List</h3>
-
-        <a href="add_category.php" class="btn-add">+ Add Category</a>
+        <h3>Users List</h3>
 
         <table>
             <thead>
                 <tr>
                     <th style="width: 15%;">ID</th>
-                    <th style="width: 60%;">Category Name</th>
+                    <th style="width: 60%;">User Name</th>
                     <th style="width: 25%;">Action</th>
                 </tr>
             </thead>
             <tbody>
-                <?php if(count($categories) > 0) { ?>
-                    <?php foreach($categories as $cat) { ?>
+                <?php if(count($users) > 0) { ?>
+                    <?php foreach($users as $user) { ?>
                         <tr>
-                            <td><?= $cat->category_id ?></td>
-                            <td><?= htmlspecialchars($cat->category_name) ?></td>
+                            <td><?= $user->user_id ?></td>
+                            <td><?= htmlspecialchars($user->username) ?></td>
                             <td>
-                                <a href="edit_categories.php?id=<?= $cat->category_id ?>" class="action-btn edit">Edit</a>
                                 <span class="divider">|</span>
-                                <a href="categories.php?delete=<?php echo $cat->category_id; ?>" 
+                                <a href="users.php?delete=<?= $user->user_id ?>" 
                                     class="action-btn delete"
-                                    onclick="return confirm('Are you sure you want to delete this category?')">
+                                    onclick="return confirm('Are you sure you want to delete this user?')">
                                     Delete
                                 </a>
                             </td>
@@ -294,7 +291,7 @@ if(isset($_GET['delete'])){
                     <?php } ?>
                 <?php } else { ?>
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #888; padding: 25px;">No categories available.</td>
+                        <td colspan="3" style="text-align: center; color: #888; padding: 25px;">No users available.</td>
                     </tr>
                 <?php } ?>
             </tbody>

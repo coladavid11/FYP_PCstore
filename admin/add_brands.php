@@ -9,15 +9,15 @@ if(!isset($_SESSION['admin_login'])){
 
 if(isset($_POST['submit'])){
 
-    $name = trim($_POST['category_name']);
+    $name = trim($_POST['brand_name']);
 
-    $sql = "INSERT INTO categories(category_name) VALUES(:name)";
+    $sql = "INSERT INTO tblbrand(brand_name) VALUES(:name)";
 
     $query = $dbh->prepare($sql);
     $query->bindParam(':name', $name, PDO::PARAM_STR);
     $query->execute();
 
-    header("Location: categories.php");
+    header("Location: brands.php");
     exit;
 }
 ?>
@@ -27,7 +27,7 @@ if(isset($_POST['submit'])){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Category | My PC Store</title>
+    <title>Add Brand  | My PC Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <style>
@@ -226,15 +226,15 @@ if(isset($_POST['submit'])){
 
 <div class="sidebar">
     <h2>Admin</h2>
-    <a href="categories.php" class="active">Categories</a>
+    <a href="brands.php" class="active">Brands</a>
 </div>
 
 <div class="main">
 
     <div class="topbar">
-        <h1>Add New Category</h1>
+        <h1>Add New Brand</h1>
         <div class="topbar-links">
-            <a href="categories.php" class="Back">Back</a>
+            <a href="brands.php" class="Back">Back</a>
         </div>
     </div>
 
@@ -243,17 +243,17 @@ if(isset($_POST['submit'])){
         <form method="POST">
             
             <div class="form-group">
-                <label for="category_name">Category Name</label>
+                <label for="brand_name">Brand Name</label>
                 <input type="text" 
-                       id="category_name"
-                       name="category_name" 
-                       placeholder="e.g., Graphics Card, Processors" 
+                       id="brand_name"
+                       name="brand_name" 
+                       placeholder="e.g. ASUS, MSI" 
                        required>
             </div>
 
             <div class="form-actions">
-                <button type="submit" name="submit" class="btn-submit">Add Category</button>
-                <a href="categories.php" class="btn-cancel">Cancel</a>
+                <button type="submit" name="submit" class="btn-submit">Add Brand</button>
+                <a href="brands.php" class="btn-cancel">Cancel</a>
             </div>
 
         </form>

@@ -10,10 +10,34 @@ if(!isset($_SESSION['admin_login'])){
 $msg = "";
 $error = "";
 
+/* =========================
+   FETCH CATEGORIES
+========================= */
+
 $sql = "SELECT * FROM categories WHERE status = 1";
+
 $query = $dbh->prepare($sql);
+
 $query->execute();
+
 $categories = $query->fetchAll(PDO::FETCH_OBJ);
+
+/* =========================
+   FETCH BRANDS
+
+========================= */
+
+$sql = "SELECT * FROM tblbrand ORDER BY brand_id ASC";
+
+$query= $dbh->prepare($sql);
+
+$query->execute();
+
+$brands = $query->fetchAll(PDO::FETCH_OBJ);
+
+/* =========================
+   ADD PRODUCT
+========================= */
 
 if(isset($_POST['add_product'])){
 
@@ -22,52 +46,103 @@ if(isset($_POST['add_product'])){
     $price = $_POST['price'];
     $stock = $_POST['stock'];
     $category_id = $_POST['category_id'];
+    $brand_id = $_POST['brand_id'];
+    /* =========================
+       IMAGE
+    ========================= */
 
-    // IMAGE
-    $image = $_FILES['image']['name'];
+    $image = str_replace(' ', '_', $_FILES['image']['name']);
+
     $tmp_name = $_FILES['image']['tmp_name'];
 
-    // Generate unique image name
+    // IMAGE EXTENSION
+    $imageExtension = strtolower(
+        pathinfo($image, PATHINFO_EXTENSION)
+    );
+
+    // ALLOWED TYPES
+    $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+    // GENERATE UNIQUE IMAGE NAME
     $newImageName = time() . "_" . $image;
 
-    // Upload folder
-    $uploadPath = "../uploads/" . $newImageName;
+    // UPLOAD PATH
+    $uploadPath = "img/" . $newImageName;
 
-    // =========================
-    // VALIDATION
-    // =========================
+    /* =========================
+       VALIDATION
+    ========================= */
 
-    if(empty($name) || empty($price) || empty($stock)){
+    if($name == "" || $price === "" || $stock === ""){
 
         $error = "Please fill in all required fields.";
 
-    } else {
+    }elseif($price < 0){
 
-        // Upload Image
-        move_uploaded_file($tmp_name, $uploadPath);
+        $error = "Price cannot be negative.";
 
-        // Insert Product
-        $sql = "INSERT INTO products
-                (name, description, price, stock, category_id, image)
-                VALUES
-                (:name, :description, :price, :stock, :category_id, :image)";
+    }elseif($stock < 0){
 
-        $query = $dbh->prepare($sql);
+        $error = "Stock cannot be negative.";
 
-        $query->bindParam(':name', $name, PDO::PARAM_STR);
-        $query->bindParam(':description', $description, PDO::PARAM_STR);
-        $query->bindParam(':price', $price, PDO::PARAM_STR);
-        $query->bindParam(':stock', $stock, PDO::PARAM_INT);
-        $query->bindParam(':category_id', $category_id, PDO::PARAM_INT);
-        $query->bindParam(':image', $newImageName, PDO::PARAM_STR);
+    }elseif(!in_array($imageExtension, $allowedExtensions)){
 
-        if($query->execute()){
+        $error = "Only JPG, JPEG, PNG and WEBP files are allowed.";
 
-            $msg = "Product added successfully!";
+    }else{
 
-        } else {
+        /* =========================
+           CREATE IMG FOLDER
+        ========================= */
 
-            $error = "Something went wrong.";
+        if(!file_exists("img")){
+
+            mkdir("img", 0777, true);
+        }
+
+        /* =========================
+           UPLOAD IMAGE
+        ========================= */
+
+        if(move_uploaded_file($tmp_name, $uploadPath)){
+
+            /* =========================
+               INSERT PRODUCT
+            ========================= */
+
+            $sql = "INSERT INTO products
+                    (name, description, price, stock, category_id, brand_id, image)
+                    VALUES
+                    (:name, :description, :price, :stock, :category_id, :brand_id, :image)";
+
+            $query = $dbh->prepare($sql);
+
+            $query->bindParam(':name', $name, PDO::PARAM_STR);
+
+            $query->bindParam(':description', $description, PDO::PARAM_STR);
+
+            $query->bindParam(':price', $price, PDO::PARAM_STR);
+
+            $query->bindParam(':stock', $stock, PDO::PARAM_INT);
+
+            $query->bindParam(':category_id', $category_id, PDO::PARAM_INT);
+
+            $query->bindParam(':brand_id', $brand_id, PDO::PARAM_INT);
+
+            $query->bindParam(':image', $newImageName, PDO::PARAM_STR);
+
+            if($query->execute()){
+
+                $msg = "Product added successfully!";
+
+            }else{
+
+                $error = "Database insert failed.";
+            }
+
+        }else{
+
+            $error = "Failed to upload image.";
         }
     }
 }
@@ -76,7 +151,9 @@ if(isset($_POST['add_product'])){
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Add Product</title>
@@ -85,11 +162,19 @@ if(isset($_POST['add_product'])){
 
 <style>
 
+/* =========================
+   RESET
+========================= */
+
 *{
     margin:0;
     padding:0;
     box-sizing:border-box;
 }
+
+/* =========================
+   BODY
+========================= */
 
 body{
     font-family:'Poppins', sans-serif;
@@ -101,6 +186,7 @@ body{
 ========================= */
 
 .container{
+
     width:100%;
     max-width:700px;
 
@@ -118,27 +204,70 @@ body{
 }
 
 /* =========================
+   TOP BAR
+========================= */
+
+.top-bar{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:25px;
+}
+
+/* =========================
    TITLE
 ========================= */
 
 .title{
-    font-size:2rem;
-    font-weight:600;
 
-    margin-bottom:30px;
+    font-size:2rem;
+
+    font-weight:600;
 
     color:#111;
 }
 
 /* =========================
-   FORM
+   BACK BUTTON
+========================= */
+
+.back-btn{
+
+    text-decoration:none;
+
+    background:#eee;
+
+    color:#333;
+
+    padding:10px 15px;
+
+    border-radius:4px;
+
+    transition:0.3s;
+}
+
+.back-btn:hover{
+
+    background:#000;
+
+    color:#fff;
+}
+
+/* =========================
+   FORM GROUP
 ========================= */
 
 .form-group{
+
     margin-bottom:20px;
 }
 
 label{
+
     display:block;
 
     margin-bottom:8px;
@@ -146,12 +275,14 @@ label{
     color:#ccac3d;
 
     font-size:0.9rem;
+
     font-weight:600;
 }
 
 input,
 textarea,
 select{
+
     width:100%;
 
     padding:12px;
@@ -168,6 +299,7 @@ select{
 input:focus,
 textarea:focus,
 select:focus{
+
     outline:none;
 
     border-color:#ccac3d;
@@ -176,7 +308,9 @@ select:focus{
 }
 
 textarea{
+
     resize:none;
+
     height:120px;
 }
 
@@ -185,9 +319,11 @@ textarea{
 ========================= */
 
 .btn{
+
     width:100%;
 
     background:#ccac3d;
+
     color:#fff;
 
     border:none;
@@ -195,6 +331,7 @@ textarea{
     padding:14px;
 
     font-size:1rem;
+
     font-weight:600;
 
     border-radius:4px;
@@ -205,15 +342,18 @@ textarea{
 }
 
 .btn:hover{
+
     background:#000;
 }
 
 /* =========================
-   ALERT
+   ALERTS
 ========================= */
 
 .success{
+
     background:#d4edda;
+
     color:#155724;
 
     padding:12px;
@@ -224,7 +364,9 @@ textarea{
 }
 
 .error{
+
     background:#f8d7da;
+
     color:#721c24;
 
     padding:12px;
@@ -234,67 +376,47 @@ textarea{
     border-radius:4px;
 }
 
-/* =========================
-   TOP BAR
-========================= */
-
-.top-bar{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-
-    margin-bottom:25px;
-}
-
-.back-btn{
-    text-decoration:none;
-
-    background:#eee;
-    color:#333;
-
-    padding:10px 15px;
-
-    border-radius:4px;
-
-    transition:0.3s;
-}
-
-.back-btn:hover{
-    background:#000;
-    color:#fff;
-}
-
 </style>
+
 </head>
 
 <body>
 
 <div class="container">
 
+    <!-- TOP BAR -->
     <div class="top-bar">
 
         <h1 class="title">
             Add Product
         </h1>
 
-        <a href="product.php" class="back-btn">
+        <a href="products.php" class="back-btn">
             Back
         </a>
 
     </div>
 
-    <!-- SUCCESS MESSAGE -->
+    <!-- SUCCESS -->
     <?php if($msg){ ?>
+
         <div class="success">
+
             <?php echo $msg; ?>
+
         </div>
+
     <?php } ?>
 
-    <!-- ERROR MESSAGE -->
+    <!-- ERROR -->
     <?php if($error){ ?>
+
         <div class="error">
+
             <?php echo $error; ?>
+
         </div>
+
     <?php } ?>
 
     <!-- FORM -->
@@ -335,6 +457,7 @@ textarea{
 
             <input type="number"
                    step="0.01"
+                   min="0"
                    name="price"
                    placeholder="Enter price"
                    required>
@@ -349,6 +472,7 @@ textarea{
             </label>
 
             <input type="number"
+                   min="0"
                    name="stock"
                    placeholder="Enter stock quantity"
                    required>
@@ -372,7 +496,34 @@ textarea{
 
                     <option value="<?php echo $category->category_id; ?>">
 
-                        <?php echo $category->category_name; ?>
+                        <?php echo htmlspecialchars($category->category_name); ?>
+
+                    </option>
+
+                <?php } ?>
+
+            </select>
+
+        </div>
+
+        <!-- BRAND -->
+        <div class="form-group">
+
+            <label>
+                Brand
+            </label>
+
+            <select name="brand_id" required>
+
+                <option value="">
+                    Select Brand
+                </option>
+
+                <?php foreach($brands as $brand){ ?>
+
+                    <option value="<?php echo $brand->brand_id; ?>">
+
+                        <?php echo htmlspecialchars($brand->brand_name); ?>
 
                     </option>
 
@@ -391,6 +542,7 @@ textarea{
 
             <input type="file"
                    name="image"
+                   accept=".jpg,.jpeg,.png,.webp"
                    required>
 
         </div>
