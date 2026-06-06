@@ -86,18 +86,18 @@ style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url('https
 
             <div class="col-md-4">
                 <div class="info-card p-3">
-                    <img src="https://images.unsplash.com/photo-1593642634315-48f5414c3ad9" class="img-fluid mb-3">
-                    <h5>Workstation Pro</h5>
-                    <p class="text-soft">Editing • Rendering • Productivity</p>
-                    <a href="#" class="btn-cta mt-2">View</a>
+                    <img src="https://www.pcworld.com/wp-content/uploads/2025/04/pcw08_Asus-Gaming-PC.jpg?resize=1536%2C864&quality=50&strip=all" class="img-fluid mb-3">
+                    <h5>Complete PC Setups</h5>
+                    <p class="text-soft">Ready-to-use systems with monitor, peripherals, and accessories included.</p>
+                    <a href="full_set.php" class="btn-cta mt-2">View</a>
                 </div>
             </div>
 
             <div class="col-md-4">
                 <div class="info-card p-3">
-                    <img src="https://images.unsplash.com/photo-1587831990711-23ca6441447b" class="img-fluid mb-3">
-                    <h5>Budget Build</h5>
-                    <p class="text-soft">Affordable • Reliable • Everyday Use</p>
+                    <img src="https://platform.theverge.com/wp-content/uploads/sites/2/chorus/uploads/chorus_asset/file/12793557/akrales_180824_2838_0014.jpg?quality=90&strip=all&crop=0%2C0%2C100%2C100&w=1440" class="img-fluid mb-3">
+                    <h5>Custom PC Builder</h5>
+                    <p class="text-soft">Build your ideal PC with personalized components and configurations.</p>
                     <a href="pcbuild.php" class="btn-cta mt-2">View</a>
                 </div>
             </div>

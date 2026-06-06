@@ -1,70 +1,11 @@
 <?php
 session_start();
 include('includes/config.php');
-error_reporting(0);
 
-$games = [
-    [
-        'name'    => 'Counter-Strike 2',
-        'image'   => '../image/products/game_1.jpg',
-        'cpu'     => 'Intel i5-10400F / Ryzen 5 3600',
-        'ram'     => '16GB',
-        'gpu'     => 'GTX 1660 Super',
-        'storage' => '50GB SSD',
-        'badge'   => 'Competitive',
-        'badge_color' => '#d4af37',
-    ],
-    [
-        'name'    => 'Valorant',
-        'image'   => '../image/products/game_2.jpg',
-        'cpu'     => 'Intel i3-12100F / Ryzen 5 5500',
-        'ram'     => '16GB',
-        'gpu'     => 'GTX 1650',
-        'storage' => '30GB SSD',
-        'badge'   => 'Tactical FPS',
-        'badge_color' => '#d4af37',
-    ],
-    [
-        'name'    => 'Black Myth: Wukong',
-        'image'   => '../image/products/game_3.jpg',
-        'cpu'     => 'Intel i5-14400F / Ryzen 7 5700X',
-        'ram'     => '16GB',
-        'gpu'     => 'RTX 4060 8GB',
-        'storage' => '130GB SSD',
-        'badge'   => 'Action RPG',
-        'badge_color' => '#d4af37',
-    ],
-    [
-        'name'    => 'EA Sports FC 26',
-        'image'   => '../image/products/game_4.jpg',
-        'cpu'     => 'Intel i5-12400F / Ryzen 5 5600',
-        'ram'     => '16GB',
-        'gpu'     => 'RTX 3050 8GB',
-        'storage' => '100GB SSD',
-        'badge'   => 'Sports',
-        'badge_color' => '#d4af37',
-    ],
-    [
-        'name'    => 'Grand Theft Auto VI',
-        'image'   => '../image/products/game_5.png',
-        'cpu'     => 'Intel i7-14700F / Ryzen 7 7700',
-        'ram'     => '32GB',
-        'gpu'     => 'RTX 4070 Super',
-        'storage' => '150GB SSD',
-        'badge'   => 'Open World',
-        'badge_color' => '#d4af37',
-    ],
-    [
-        'name'    => 'Forza Horizon 5',
-        'image'   => '../image/products/game_6.png',
-        'cpu'     => 'Intel i5-14400F / Ryzen 7 7700',
-        'ram'     => '16GB',
-        'gpu'     => 'RTX 4060 8GB',
-        'storage' => '150GB SSD',
-        'badge'   => 'Multiplayer Racing',
-        'badge_color' => '#d4af37',
-    ],
-];
+/* ── FETCH ALL ACTIVE GAMES FROM DB ── */
+$stmt = $dbh->prepare("SELECT * FROM tblgamecheck WHERE status = 1 ORDER BY game_id ASC");
+$stmt->execute();
+$games = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,185 +20,121 @@ $games = [
 <link rel="stylesheet" href="newstyle.css">
 
 <style>
-/* ── PAGE HERO ── */
-.page-hero {
-    padding: 60px 0 40px;
-    text-align: center;
-}
+body { background:#0f0f0f; color:#fff; font-family:'Poppins',sans-serif; }
+
+/* ── HERO ── */
+.page-hero { padding:60px 0 40px; text-align:center; }
 .page-hero h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.8rem;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 8px;
+    font-family:'Playfair Display',serif;
+    font-size:2.8rem; font-weight:700; color:#fff; margin-bottom:8px;
 }
-.page-hero p {
-    color: #666;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-size: 0.85rem;
+.page-hero .eyebrow {
+    font-size:0.75rem; color:#d4af37; letter-spacing:3px;
+    text-transform:uppercase; margin-bottom:10px;
 }
-
-/* ── GAME CARD ── */
-.game-card {
-    background: #121212;
-    border: 1px solid #2a2a2a;
-    border-radius: 14px;
-    overflow: hidden;
-    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-}
-.game-card:hover {
-    transform: translateY(-8px);
-    border-color: #d4af37;
-    box-shadow: 0 20px 50px rgba(212,175,55,0.15);
-}
-
-/* ── GAME BANNER ── */
-.game-banner {
-    position: relative;
-    width: 100%;
-    height: 180px;
-    overflow: hidden;
-}
-.game-banner img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.4s ease;
-    filter: brightness(0.85);
-}
-.game-card:hover .game-banner img {
-    transform: scale(1.06);
-    filter: brightness(1);
-}
-.game-banner-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(18,18,18,0.95) 0%, transparent 60%);
-}
-.game-badge {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: #000;
-}
-.game-title-overlay {
-    position: absolute;
-    bottom: 12px;
-    left: 14px;
-    right: 14px;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #fff;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
-    line-height: 1.3;
-}
-
-/* ── SPEC TABLE ── */
-.spec-body {
-    padding: 16px;
-}
-.spec-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 9px 0;
-    border-bottom: 1px solid #1e1e1e;
-}
-.spec-row:last-child { border-bottom: none; }
-.spec-icon {
-    width: 30px; height: 30px;
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 7px;
-    display: flex; align-items: center; justify-content: center;
-    color: #d4af37;
-    font-size: 0.75rem;
-    flex-shrink: 0;
-    margin-top: 1px;
-}
-.spec-info { flex: 1; min-width: 0; }
-.spec-label {
-    font-size: 0.68rem;
-    color: #555;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    margin-bottom: 2px;
-}
-.spec-value {
-    font-size: 0.82rem;
-    color: #ddd;
-    font-weight: 500;
-    line-height: 1.3;
-    word-break: break-word;
-}
-
-/* ── SHOP BUTTON ── */
-.btn-shop {
-    display: block;
-    margin: 0 16px 16px;
-    padding: 9px;
-    background: linear-gradient(45deg, #d4af37, #c5a028);
-    color: #000;
-    font-weight: 700;
-    font-size: 0.8rem;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    text-align: center;
-    text-decoration: none;
-    border-radius: 8px;
-    transition: all 0.2s;
-}
-.btn-shop:hover {
-    background: #fff;
-    color: #000;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(212,175,55,0.3);
-}
+.page-hero p { color:#666; letter-spacing:2px; text-transform:uppercase; font-size:0.82rem; }
 
 /* ── INFO BANNER ── */
 .info-banner {
-    background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%);
-    border: 1px solid #2a2a2a;
-    border-left: 3px solid #d4af37;
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin-bottom: 40px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
+    background:#141414;
+    border:1px solid #2a2a2a;
+    border-left:3px solid #d4af37;
+    border-radius:10px;
+    padding:16px 20px;
+    margin-bottom:36px;
+    display:flex; align-items:center; gap:14px;
 }
-.info-banner i { color: #d4af37; font-size: 1.2rem; flex-shrink: 0; }
-.info-banner p { margin: 0; color: #888; font-size: 0.85rem; line-height: 1.5; }
-.info-banner strong { color: #d4af37; }
+.info-banner i { color:#d4af37; font-size:1.1rem; flex-shrink:0; }
+.info-banner p { margin:0; color:#888; font-size:0.84rem; line-height:1.55; }
+.info-banner strong { color:#d4af37; }
 
-/* ── SECTION LABEL ── */
-.btn-cta i {
-    color: #000 !important;
+/* ── GAME CARD ── */
+.game-card {
+    background:#121212;
+    border:1px solid #2a2a2a;
+    border-radius:14px;
+    overflow:hidden;
+    transition:transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    height:100%;
+    display:flex; flex-direction:column;
+    text-decoration:none; color:inherit;
+}
+.game-card:hover {
+    transform:translateY(-8px);
+    border-color:#d4af37;
+    box-shadow:0 20px 50px rgba(212,175,55,0.15);
+    color:inherit; text-decoration:none;
 }
 
-    font-size: 0.75rem;
-    color: #d4af37;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    margin-bottom: 6px;
+/* ── BANNER IMAGE ── */
+.game-banner {
+    position:relative; width:100%; height:185px; overflow:hidden; flex-shrink:0;
+}
+.game-banner img {
+    width:100%; height:100%; object-fit:cover;
+    transition:transform 0.4s ease, filter 0.3s;
+    filter:brightness(0.82);
+}
+.game-card:hover .game-banner img { transform:scale(1.06); filter:brightness(1); }
+.game-banner-overlay {
+    position:absolute; inset:0;
+    background:linear-gradient(to top, rgba(18,18,18,0.95) 0%, transparent 55%);
+}
+.game-badge {
+    position:absolute; top:12px; left:12px;
+    padding:3px 10px; border-radius:20px;
+    font-size:0.68rem; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; color:#000;
+}
+.game-title-overlay {
+    position:absolute; bottom:12px; left:14px; right:14px;
+    font-size:1rem; font-weight:700; color:#fff;
+    text-shadow:0 2px 8px rgba(0,0,0,0.9); line-height:1.3;
+}
+
+/* ── SPEC BODY ── */
+.spec-body { padding:16px; flex:1; }
+
+.spec-row {
+    display:flex; align-items:flex-start; gap:12px;
+    padding:9px 0; border-bottom:1px solid #1e1e1e;
+}
+.spec-row:last-child { border-bottom:none; }
+.spec-icon {
+    width:30px; height:30px;
+    background:#1a1a1a; border:1px solid #222; border-radius:7px;
+    display:flex; align-items:center; justify-content:center;
+    color:#d4af37; font-size:0.72rem; flex-shrink:0; margin-top:1px;
+}
+.spec-label { font-size:0.67rem; color:#555; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:2px; }
+.spec-value { font-size:0.82rem; color:#ddd; font-weight:500; line-height:1.3; word-break:break-word; }
+
+/* ── VIEW BUTTON ── */
+.btn-view {
+    display:block; margin:0 16px 16px;
+    padding:9px; border-radius:8px;
+    background:linear-gradient(45deg,#d4af37,#c5a028);
+    color:#000; font-weight:700; font-size:0.78rem;
+    letter-spacing:1px; text-transform:uppercase;
+    text-align:center; text-decoration:none;
+    transition:all 0.2s;
+}
+.btn-view:hover { background:#fff; color:#000; }
+
+/* ── GENRE TAG ── */
+.genre-tag {
+    font-size:0.7rem; color:#555; letter-spacing:1px;
+    text-transform:uppercase; margin-bottom:0;
 }
 </style>
 </head>
 <body>
-
 <?php include('includes/header.php'); ?>
 
 <!-- HERO -->
 <section class="page-hero">
     <div class="container">
-        <p class="section-eyebrow">Performance Guide</p>
+        <div class="eyebrow">Performance Guide</div>
         <h1>Game Check</h1>
         <p>Minimum specs to run today's top titles smoothly</p>
         <div class="accent-line mx-auto mt-3"></div>
@@ -270,80 +147,99 @@ $games = [
     <div class="info-banner">
         <i class="fa fa-circle-info"></i>
         <p>
-            The specs below are <strong>minimum recommended requirements</strong> for smooth gameplay at 1080p medium settings.
-            For high/ultra settings or higher resolutions, consider upgrading your components.
+            Specs shown are <strong>minimum recommended requirements</strong> for smooth gameplay at 1080p medium settings.
+            Click any game to see full specs, recommended requirements, and matching products from our store.
         </p>
     </div>
 
     <!-- Game Cards Grid -->
+    <?php if (empty($games)): ?>
+    <div class="text-center py-5" style="color:#555;">
+        <i class="fa fa-gamepad fa-3x mb-3" style="color:#2a2a2a;"></i>
+        <h5>No games found.</h5>
+        <p>Check back soon or add games via the admin panel.</p>
+    </div>
+    <?php else: ?>
+
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
 
     <?php foreach ($games as $game): ?>
     <div class="col">
-        <div class="game-card h-100">
+
+        <a href="game_check_detail.php?id=<?php echo $game['game_id']; ?>" class="game-card">
 
             <!-- Banner -->
             <div class="game-banner">
-                <img src="<?php echo $game['image']; ?>"
+                <img src="<?php echo htmlspecialchars($game['image']); ?>"
                      alt="<?php echo htmlspecialchars($game['name']); ?>"
                      onerror="this.src='assets/images/placeholder.jpg'">
                 <div class="game-banner-overlay"></div>
-                <span class="game-badge" style="background:<?php echo $game['badge_color']; ?>;">
-                    <?php echo $game['badge']; ?>
+                <span class="game-badge" style="background:<?php echo htmlspecialchars($game['badge_color']); ?>;">
+                    <?php echo htmlspecialchars($game['badge']); ?>
                 </span>
                 <div class="game-title-overlay">
                     <?php echo htmlspecialchars($game['name']); ?>
                 </div>
             </div>
 
-            <!-- Specs -->
+            <!-- Minimum Specs (quick view) -->
             <div class="spec-body">
+
+                <p class="genre-tag mb-3">
+                    <i class="fa fa-tag me-1"></i><?php echo htmlspecialchars($game['genre'] ?? $game['badge']); ?>
+                </p>
 
                 <div class="spec-row">
                     <div class="spec-icon"><i class="fa fa-microchip"></i></div>
-                    <div class="spec-info">
-                        <div class="spec-label">Processor (CPU)</div>
-                        <div class="spec-value"><?php echo htmlspecialchars($game['cpu']); ?></div>
+                    <div>
+                        <div class="spec-label">CPU (Min)</div>
+                        <div class="spec-value"><?php echo htmlspecialchars($game['min_cpu']); ?></div>
                     </div>
                 </div>
 
                 <div class="spec-row">
                     <div class="spec-icon"><i class="fa fa-memory"></i></div>
-                    <div class="spec-info">
-                        <div class="spec-label">Memory (RAM)</div>
-                        <div class="spec-value"><?php echo htmlspecialchars($game['ram']); ?></div>
+                    <div>
+                        <div class="spec-label">RAM (Min)</div>
+                        <div class="spec-value"><?php echo htmlspecialchars($game['min_ram']); ?></div>
                     </div>
                 </div>
 
                 <div class="spec-row">
                     <div class="spec-icon"><i class="fa fa-display"></i></div>
-                    <div class="spec-info">
-                        <div class="spec-label">Graphics Card (GPU)</div>
-                        <div class="spec-value"><?php echo htmlspecialchars($game['gpu']); ?></div>
+                    <div>
+                        <div class="spec-label">GPU (Min)</div>
+                        <div class="spec-value"><?php echo htmlspecialchars($game['min_gpu']); ?></div>
                     </div>
                 </div>
 
                 <div class="spec-row">
                     <div class="spec-icon"><i class="fa fa-hard-drive"></i></div>
-                    <div class="spec-info">
-                        <div class="spec-label">Storage</div>
-                        <div class="spec-value"><?php echo htmlspecialchars($game['storage']); ?></div>
+                    <div>
+                        <div class="spec-label">Storage (Min)</div>
+                        <div class="spec-value"><?php echo htmlspecialchars($game['min_storage']); ?></div>
                     </div>
                 </div>
 
-            </div>
+            </div><!-- spec-body -->
 
-        </div>
+            <span class="btn-view">
+                <i class="fa fa-arrow-right me-1"></i> View Full Specs & Products
+            </span>
+
+        </a>
     </div>
     <?php endforeach; ?>
 
-    </div>
+    </div><!-- row -->
+    <?php endif; ?>
 
     <!-- Bottom CTA -->
     <div class="text-center mt-5 pt-3">
-        <p class="text-soft mb-3">Want to build a PC for any of these games?</p>
-        <a href="pcbuild.php" class="btn-cta me-2">PC Builder</a>
-        <a href="product.php" class="btn-cta">Browse All Products</a>
+        <p style="color:#555; font-size:0.88rem; margin-bottom:16px;">
+            Not sure which build suits your games?
+        </p>
+        <a href="product.php" class="btn-cta me-2">Browse All Products</a>
     </div>
 
 </div>
