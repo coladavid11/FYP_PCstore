@@ -34,14 +34,15 @@ $iStmt->execute([$order_id]);
 $items = $iStmt->fetchAll(PDO::FETCH_ASSOC);
 
 /* ── STATUS HELPERS ── */
-$STATUS_FLOW = ['processing', 'packed', 'shipped', 'completed'];
+// 注意：数据库 enum 用 'delivered'，不是 'completed'
+$STATUS_FLOW = ['processing', 'packed', 'shipped', 'delivered'];
 
 function statusConfig(string $status): array {
     return match(strtolower($status)) {
         'processing' => ['label'=>'Processing', 'color'=>'#ffc107', 'bg'=>'rgba(255,193,7,0.12)',  'icon'=>'fa-clock'],
         'packed'     => ['label'=>'Packed',     'color'=>'#17a2b8', 'bg'=>'rgba(23,162,184,0.12)', 'icon'=>'fa-box'],
         'shipped'    => ['label'=>'Shipped',    'color'=>'#007bff', 'bg'=>'rgba(0,123,255,0.12)',  'icon'=>'fa-truck'],
-        'completed'  => ['label'=>'Completed',  'color'=>'#28a745', 'bg'=>'rgba(40,167,69,0.12)', 'icon'=>'fa-check-circle'],
+        'delivered'  => ['label'=>'Delivered',  'color'=>'#28a745', 'bg'=>'rgba(40,167,69,0.12)', 'icon'=>'fa-check-circle'],
         'cancelled'  => ['label'=>'Cancelled',  'color'=>'#dc3545', 'bg'=>'rgba(220,53,69,0.12)', 'icon'=>'fa-times-circle'],
         default      => ['label'=>ucfirst($status),'color'=>'#aaa', 'bg'=>'rgba(170,170,170,0.1)','icon'=>'fa-circle'],
     };
@@ -58,7 +59,8 @@ function paymentStatusConfig(string $status): array {
 
 $statusCfg  = statusConfig($order['order_status']);
 $paymentCfg = paymentStatusConfig($order['payment_status'] ?? 'pending');
-$isCancelled = strtolower($order['order_status']) === 'cancelled';
+$isCancelled  = strtolower($order['order_status']) === 'cancelled';
+$isDelivered  = strtolower($order['order_status']) === 'delivered';  // ← 修正：用 'delivered'
 
 /* ── TRACKING: find current step ── */
 $currentStep = $isCancelled ? -1 : array_search(strtolower($order['order_status']), $STATUS_FLOW);
@@ -347,7 +349,7 @@ $invoiceData = json_encode([
             <i class="fa fa-times"></i> Cancel Order
         </button>
         <?php endif; ?>
-        <?php if (strtolower($order['order_status']) === 'completed'): ?>
+        <?php if ($isDelivered): ?>
         <button class="btn-act btn-act-info" onclick="reviewOrder()">
             <i class="fa fa-star"></i> Review Products
         </button>
@@ -372,7 +374,7 @@ $invoiceData = json_encode([
                     ['key'=>'processing', 'icon'=>'fa-clock',        'label'=>'Order Placed'],
                     ['key'=>'packed',     'icon'=>'fa-box',           'label'=>'Packed'],
                     ['key'=>'shipped',    'icon'=>'fa-truck',         'label'=>'Shipped'],
-                    ['key'=>'completed',  'icon'=>'fa-check-circle',  'label'=>'Delivered'],
+                    ['key'=>'delivered',  'icon'=>'fa-check-circle',  'label'=>'Delivered'],  // ← 修正
                 ];
                 $progressPct = $currentStep === 0 ? 0 : round(($currentStep / (count($steps) - 1)) * 100);
                 ?>
@@ -401,7 +403,7 @@ $invoiceData = json_encode([
                 </div>
 
                 <!-- estimated note -->
-                <?php if (!in_array(strtolower($order['order_status']), ['completed','cancelled'])): ?>
+                <?php if (!in_array(strtolower($order['order_status']), ['delivered','cancelled'])): ?>
                 <div style="margin-top:20px; padding:12px 16px; background:#161616; border-radius:8px; border:1px solid #1e1e1e;">
                     <div style="font-size:0.75rem; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Estimated Delivery</div>
                     <div style="font-size:0.88rem; color:#aaa;">
@@ -442,7 +444,7 @@ $invoiceData = json_encode([
                         <div class="item-meta">
                             RM <?php echo number_format($item['product_price'],2); ?> × <?php echo $item['quantity']; ?>
                         </div>
-                        <?php if (strtolower($order['order_status']) === 'completed'): ?>
+                        <?php if ($isDelivered): ?>
                         <button class="btn-act btn-act-info mt-2"
                                 style="padding:5px 12px;font-size:0.72rem;"
                                 onclick="reviewProduct(<?php echo $item['product_id']; ?>, '<?php echo htmlspecialchars(addslashes($item['product_name'])); ?>')">
@@ -695,6 +697,7 @@ $invoiceData = json_encode([
 
 <?php include('includes/footer.php'); ?>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
@@ -796,7 +799,6 @@ function reorder(orderId) {
 let selectedStar = 0;
 
 function reviewOrder() {
-    // Open review for first item
     const firstItem = <?php echo json_encode(!empty($items) ? ['id'=>$items[0]['product_id'],'name'=>$items[0]['product_name']] : null); ?>;
     if (firstItem) reviewProduct(firstItem.id, firstItem.name);
 }
@@ -835,12 +837,6 @@ function submitReview() {
             background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
         return;
     }
-    if (review.length < 5) {
-        Swal.fire({ icon:'warning', title:'Review too short', text:'Please write at least a few words.',
-            background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
-        return;
-    }
-
     fetch('submit_review.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
