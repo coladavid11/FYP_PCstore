@@ -67,15 +67,16 @@ if (isset($_GET['delete'])) {
         }
 
         /* =========================
-   SIDEBAR
-========================= */
-
+           SIDEBAR
+        ========================= */
         .sidebar {
             width: 220px;
             height: 100vh;
             background: #000;
             padding: 20px;
             position: fixed;
+            left: 0;
+            top: 0;
         }
 
         .sidebar h2 {
@@ -83,6 +84,7 @@ if (isset($_GET['delete'])) {
             margin-bottom: 30px;
             text-align: center;
             font-size: 2rem;
+            font-weight: 600;
         }
 
         .sidebar a {
@@ -93,6 +95,7 @@ if (isset($_GET['delete'])) {
             margin: 10px 0;
             border-radius: 5px;
             transition: 0.3s;
+            font-size: 0.95rem;
         }
 
         .sidebar a:hover {
@@ -100,9 +103,11 @@ if (isset($_GET['delete'])) {
             color: #000;
         }
 
-        .sidebar a.sidebar-active {
+        /* Highlight Active Menu Item */
+        .sidebar a.active {
             background: #d4af37;
             color: #000;
+            font-weight: 500;
         }
 
         /* =========================
@@ -248,19 +253,10 @@ if (isset($_GET['delete'])) {
 
 <body>
 
-    <div class="sidebar">
-
-        <h2>Admin</h2>
-
-        <a href="dashboard.php">🏠 Dashboard</a>
-        <a href="products.php">📦 Products</a>
-        <a href="categories.php">📂 Categories</a>
-        <a href="brands.php" class="sidebar-active">🏷️ Brands</a>
-        <a href="orders.php">🛒 Orders</a>
-        <a href="users.php">👥 Users</a>
-        <a href="admin.php">⚙ Admin</a>
-
-    </div>
+<div class="sidebar">
+    <h2>Admin</h2>
+    <a href="brands.php" class="active">Brands</a>
+</div>
 
     <div class="main">
 
