@@ -2,12 +2,12 @@
 session_start();
 include('includes/config.php');
 
-if(!isset($_SESSION['admin_login'])){
+if (!isset($_SESSION['admin_login'])) {
     header("Location: admin_login.php");
     exit;
 }
 
-if(isset($_POST['submit'])){
+if (isset($_POST['submit'])) {
 
     $name = trim($_POST['category_name']);
 
@@ -24,12 +24,13 @@ if(isset($_POST['submit'])){
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Category | My PC Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
+
     <style>
         /* =========================
            GENERAL RESET
@@ -109,7 +110,7 @@ if(isset($_POST['submit'])){
             background: #fff;
             padding: 15px 25px;
             border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
         .topbar h1 {
@@ -129,7 +130,8 @@ if(isset($_POST['submit'])){
             font-weight: 500;
             transition: 0.3s;
             color: #d4af37;
-            font-size: 0.95rem;0
+            font-size: 0.95rem;
+            0
         }
 
         /* =========================
@@ -138,9 +140,10 @@ if(isset($_POST['submit'])){
         .table-box {
             background: #fff;
             padding: 40px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
             border-radius: 4px;
-            max-width: 600px; /* Limits the form width so it doesn't stretch too wide */
+            max-width: 600px;
+            /* Limits the form width so it doesn't stretch too wide */
         }
 
         /* Form Group Styles */
@@ -222,45 +225,44 @@ if(isset($_POST['submit'])){
         }
     </style>
 </head>
+
 <body>
 
-<div class="sidebar">
-    <h2>Admin</h2>
-    <a href="categories.php" class="active">Categories</a>
-</div>
+    <div class="sidebar">
+        <h2>Admin</h2>
+        <a href="categories.php" class="active">Categories</a>
+    </div>
 
-<div class="main">
+    <div class="main">
 
-    <div class="topbar">
-        <h1>Add New Category</h1>
-        <div class="topbar-links">
-            <a href="categories.php" class="Back">Back</a>
+        <div class="topbar">
+            <h1>Add New Category</h1>
+            <div class="topbar-links">
+                <a href="categories.php" class="Back">Back</a>
+            </div>
         </div>
-    </div>
 
-    <div class="table-box">
+        <div class="table-box">
 
-        <form method="POST">
-            
-            <div class="form-group">
-                <label for="category_name">Category Name</label>
-                <input type="text" 
-                       id="category_name"
-                       name="category_name" 
-                       placeholder="e.g., Graphics Card, Processors" 
-                       required>
-            </div>
+            <form method="POST">
 
-            <div class="form-actions">
-                <button type="submit" name="submit" class="btn-submit">Add Category</button>
-                <a href="categories.php" class="btn-cancel">Cancel</a>
-            </div>
+                <div class="form-group">
+                    <label for="category_name">Category Name</label>
+                    <input type="text" id="category_name" name="category_name"
+                        placeholder="e.g., Graphics Card, Processors" required>
+                </div>
 
-        </form>
+                <div class="form-actions">
+                    <button type="submit" name="submit" class="btn-submit">Add Category</button>
+                    <a href="categories.php" class="btn-cancel">Cancel</a>
+                </div>
+
+            </form>
+
+        </div>
 
     </div>
-
-</div>
 
 </body>
+
 </html>
