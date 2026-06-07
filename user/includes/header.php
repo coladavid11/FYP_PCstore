@@ -1,17 +1,18 @@
 <?php
 
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+  session_start();
 }
 
 $currentPage = basename($_SERVER['PHP_SELF']);
 
 // FUNCTION TO SET ACTIVE CLASS
-function navActive($page, $currentPage) {
-    if (is_array($page)) {
-        return in_array($currentPage, $page) ? 'active' : '';
-    }
-    return ($page === $currentPage) ? 'active' : '';
+function navActive($page, $currentPage)
+{
+  if (is_array($page)) {
+    return in_array($currentPage, $page) ? 'active' : '';
+  }
+  return ($page === $currentPage) ? 'active' : '';
 }
 
 // SAFE session variables
@@ -19,30 +20,28 @@ $isLoggedIn = !empty($_SESSION['login']);
 $username = $_SESSION['fname'] ?? 'User';
 
 // SHORTEN USERNAME FOR DISPLAY
-function shortName($name, $limit = 12) {
-    return (mb_strlen($name) > $limit)
-        ? mb_substr($name, 0, $limit) . '...'
-        : $name;
+function shortName($name, $limit = 12)
+{
+  return (mb_strlen($name) > $limit)
+    ? mb_substr($name, 0, $limit) . '...'
+    : $name;
 }
 
 ?>
 <!-- NAVBAR -->
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top"
-     style="box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 2px solid #d4af37;">
+  style="box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 2px solid #d4af37;">
 
   <div class="container">
 
     <!-- BRAND -->
-    <a class="navbar-brand fw-bold" href="index.php"
-       style="font-size: 1.5rem; color: #d4af37;">
+    <a class="navbar-brand fw-bold" href="index.php" style="font-size: 1.5rem; color: #d4af37;">
       <i class="fa fa-laptop-code"></i> MY PC STORE
     </a>
 
     <!-- TOGGLER -->
-    <button class="navbar-toggler" type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#userNav">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#userNav">
       <span class="navbar-toggler-icon"></span>
     </button>
 
@@ -67,12 +66,14 @@ function shortName($name, $limit = 12) {
         </li>
 
         <li class="nav-item">
-          <a class="nav-link <?php echo navActive('game_check.php', $currentPage); ?>" href="game_check.php">Game Check</a>
+          <a class="nav-link <?php echo navActive('game_check.php', $currentPage); ?>" href="game_check.php">Game
+            Check</a>
         </li>
 
         <!-- ABOUT DROPDOWN -->
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle <?php echo navActive(['about.php', 'contact.php'], $currentPage); ?>" href="#" data-bs-toggle="dropdown">
+          <a class="nav-link dropdown-toggle <?php echo navActive(['about.php', 'contact.php'], $currentPage); ?>"
+            href="#" data-bs-toggle="dropdown">
             About
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
@@ -88,11 +89,11 @@ function shortName($name, $limit = 12) {
             <span class="badge bg-danger position-absolute top-0 start-100 translate-middle">
               <?php
               if ($isLoggedIn) {
-                  $stmt = $dbh->prepare("SELECT COUNT(*) FROM tblcart WHERE user_id=? AND status='active'");
-                  $stmt->execute([$_SESSION['user_id']]);
-                  echo $stmt->fetchColumn();
+                $stmt = $dbh->prepare("SELECT COUNT(*) FROM tblcart WHERE user_id=? AND status='active'");
+                $stmt->execute([$_SESSION['user_id']]);
+                echo $stmt->fetchColumn();
               } else {
-                  echo 0;
+                echo 0;
               }
               ?>
             </span>
@@ -111,9 +112,7 @@ function shortName($name, $limit = 12) {
         <?php } else { ?>
 
           <li class="nav-item dropdown ms-3">
-            <a class="nav-link dropdown-toggle text-warning fw-bold"
-               href="#"
-               data-bs-toggle="dropdown">
+            <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" data-bs-toggle="dropdown">
 
               <i class="fa fa-user-circle"></i>
               <?php echo htmlentities(shortName($username)); ?>
@@ -139,7 +138,9 @@ function shortName($name, $limit = 12) {
                 </a>
               </li>
 
-              <li><hr class="dropdown-divider"></li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
 
               <li>
                 <a class="dropdown-item text-danger" href="logout.php">

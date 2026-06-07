@@ -2,7 +2,7 @@
 session_start();
 include('includes/config.php');
 
-if(!isset($_SESSION['admin_login'])){
+if (!isset($_SESSION['admin_login'])) {
     header("Location: admin_login.php");
     exit;
 }
@@ -29,7 +29,7 @@ $categories = $query->fetchAll(PDO::FETCH_OBJ);
 
 $sql = "SELECT * FROM tblbrand ORDER BY brand_id ASC";
 
-$query= $dbh->prepare($sql);
+$query = $dbh->prepare($sql);
 
 $query->execute();
 
@@ -39,7 +39,7 @@ $brands = $query->fetchAll(PDO::FETCH_OBJ);
    ADD PRODUCT
 ========================= */
 
-if(isset($_POST['add_product'])){
+if (isset($_POST['add_product'])) {
 
     $name = trim($_POST['name']);
     $description = trim($_POST['description']);
@@ -73,29 +73,29 @@ if(isset($_POST['add_product'])){
        VALIDATION
     ========================= */
 
-    if($name == "" || $price === "" || $stock === ""){
+    if ($name == "" || $price === "" || $stock === "") {
 
         $error = "Please fill in all required fields.";
 
-    }elseif($price < 0){
+    } elseif ($price < 0) {
 
         $error = "Price cannot be negative.";
 
-    }elseif($stock < 0){
+    } elseif ($stock < 0) {
 
         $error = "Stock cannot be negative.";
 
-    }elseif(!in_array($imageExtension, $allowedExtensions)){
+    } elseif (!in_array($imageExtension, $allowedExtensions)) {
 
         $error = "Only JPG, JPEG, PNG and WEBP files are allowed.";
 
-    }else{
+    } else {
 
         /* =========================
            CREATE IMG FOLDER
         ========================= */
 
-        if(!file_exists("img")){
+        if (!file_exists("img")) {
 
             mkdir("img", 0777, true);
         }
@@ -104,7 +104,7 @@ if(isset($_POST['add_product'])){
            UPLOAD IMAGE
         ========================= */
 
-        if(move_uploaded_file($tmp_name, $uploadPath)){
+        if (move_uploaded_file($tmp_name, $uploadPath)) {
 
             /* =========================
                INSERT PRODUCT
@@ -131,16 +131,16 @@ if(isset($_POST['add_product'])){
 
             $query->bindParam(':image', $newImageName, PDO::PARAM_STR);
 
-            if($query->execute()){
+            if ($query->execute()) {
 
                 $msg = "Product added successfully!";
 
-            }else{
+            } else {
 
                 $error = "Database insert failed.";
             }
 
-        }else{
+        } else {
 
             $error = "Failed to upload image.";
         }
@@ -150,415 +150,397 @@ if(isset($_POST['add_product'])){
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
-<meta charset="UTF-8">
+    <meta charset="UTF-8">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Add Product</title>
+    <title>Add Product</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<style>
-
-/* =========================
+    <style>
+        /* =========================
    RESET
 ========================= */
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-/* =========================
+        /* =========================
    BODY
 ========================= */
 
-body{
-    font-family:'Poppins', sans-serif;
-    background:#f5f5f5;
-}
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f5f5f5;
+        }
 
-/* =========================
+        /* =========================
    CONTAINER
 ========================= */
 
-.container{
+        .container {
 
-    width:100%;
-    max-width:700px;
+            width: 100%;
+            max-width: 700px;
 
-    margin:50px auto;
+            margin: 50px auto;
 
-    background:#fff;
+            background: #fff;
 
-    padding:40px;
+            padding: 40px;
 
-    border-radius:5px;
+            border-radius: 5px;
 
-    box-shadow:0 5px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
 
-    border-left:5px solid #ccac3d;
-}
+            border-left: 5px solid #ccac3d;
+        }
 
-/* =========================
+        /* =========================
    TOP BAR
 ========================= */
 
-.top-bar{
+        .top-bar {
 
-    display:flex;
+            display: flex;
 
-    justify-content:space-between;
+            justify-content: space-between;
 
-    align-items:center;
+            align-items: center;
 
-    margin-bottom:25px;
-}
+            margin-bottom: 25px;
+        }
 
-/* =========================
+        /* =========================
    TITLE
 ========================= */
 
-.title{
+        .title {
 
-    font-size:2rem;
+            font-size: 2rem;
 
-    font-weight:600;
+            font-weight: 600;
 
-    color:#111;
-}
+            color: #111;
+        }
 
-/* =========================
+        /* =========================
    BACK BUTTON
 ========================= */
 
-.back-btn{
+        .back-btn {
 
-    text-decoration:none;
+            text-decoration: none;
 
-    background:#eee;
+            background: #eee;
 
-    color:#333;
+            color: #333;
 
-    padding:10px 15px;
+            padding: 10px 15px;
 
-    border-radius:4px;
+            border-radius: 4px;
 
-    transition:0.3s;
-}
+            transition: 0.3s;
+        }
 
-.back-btn:hover{
+        .back-btn:hover {
 
-    background:#000;
+            background: #000;
 
-    color:#fff;
-}
+            color: #fff;
+        }
 
-/* =========================
+        /* =========================
    FORM GROUP
 ========================= */
 
-.form-group{
+        .form-group {
 
-    margin-bottom:20px;
-}
+            margin-bottom: 20px;
+        }
 
-label{
+        label {
 
-    display:block;
+            display: block;
 
-    margin-bottom:8px;
+            margin-bottom: 8px;
 
-    color:#ccac3d;
+            color: #ccac3d;
 
-    font-size:0.9rem;
+            font-size: 0.9rem;
 
-    font-weight:600;
-}
+            font-weight: 600;
+        }
 
-input,
-textarea,
-select{
+        input,
+        textarea,
+        select {
 
-    width:100%;
+            width: 100%;
 
-    padding:12px;
+            padding: 12px;
 
-    border:1px solid #ddd;
+            border: 1px solid #ddd;
 
-    border-radius:4px;
+            border-radius: 4px;
 
-    font-family:'Poppins', sans-serif;
+            font-family: 'Poppins', sans-serif;
 
-    background:#fafafa;
-}
+            background: #fafafa;
+        }
 
-input:focus,
-textarea:focus,
-select:focus{
+        input:focus,
+        textarea:focus,
+        select:focus {
 
-    outline:none;
+            outline: none;
 
-    border-color:#ccac3d;
+            border-color: #ccac3d;
 
-    background:#fff;
-}
+            background: #fff;
+        }
 
-textarea{
+        textarea {
 
-    resize:none;
+            resize: none;
 
-    height:120px;
-}
+            height: 120px;
+        }
 
-/* =========================
+        /* =========================
    BUTTON
 ========================= */
 
-.btn{
+        .btn {
 
-    width:100%;
+            width: 100%;
 
-    background:#ccac3d;
+            background: #ccac3d;
 
-    color:#fff;
+            color: #fff;
 
-    border:none;
+            border: none;
 
-    padding:14px;
+            padding: 14px;
 
-    font-size:1rem;
+            font-size: 1rem;
 
-    font-weight:600;
+            font-weight: 600;
 
-    border-radius:4px;
+            border-radius: 4px;
 
-    cursor:pointer;
+            cursor: pointer;
 
-    transition:0.3s;
-}
+            transition: 0.3s;
+        }
 
-.btn:hover{
+        .btn:hover {
 
-    background:#000;
-}
+            background: #000;
+        }
 
-/* =========================
+        /* =========================
    ALERTS
 ========================= */
 
-.success{
+        .success {
 
-    background:#d4edda;
+            background: #d4edda;
 
-    color:#155724;
+            color: #155724;
 
-    padding:12px;
+            padding: 12px;
 
-    margin-bottom:20px;
+            margin-bottom: 20px;
 
-    border-radius:4px;
-}
+            border-radius: 4px;
+        }
 
-.error{
+        .error {
 
-    background:#f8d7da;
+            background: #f8d7da;
 
-    color:#721c24;
+            color: #721c24;
 
-    padding:12px;
+            padding: 12px;
 
-    margin-bottom:20px;
+            margin-bottom: 20px;
 
-    border-radius:4px;
-}
-
-</style>
+            border-radius: 4px;
+        }
+    </style>
 
 </head>
 
 <body>
 
-<div class="container">
+    <div class="container">
 
-    <!-- TOP BAR -->
-    <div class="top-bar">
+        <!-- TOP BAR -->
+        <div class="top-bar">
 
-        <h1 class="title">
-            Add Product
-        </h1>
+            <h1 class="title">
+                Add Product
+            </h1>
 
-        <a href="products.php" class="back-btn">
-            Back
-        </a>
+            <a href="products.php" class="back-btn">
+                Back
+            </a>
+
+        </div>
+
+        <!-- SUCCESS -->
+        <?php if ($msg) { ?>
+
+            <div class="success">
+
+                <?php echo $msg; ?>
+
+            </div>
+
+        <?php } ?>
+
+        <!-- ERROR -->
+        <?php if ($error) { ?>
+
+            <div class="error">
+
+                <?php echo $error; ?>
+
+            </div>
+
+        <?php } ?>
+
+        <!-- FORM -->
+        <form method="POST" enctype="multipart/form-data">
+
+            <!-- PRODUCT NAME -->
+            <div class="form-group">
+
+                <label>
+                    Product Name
+                </label>
+
+                <input type="text" name="name" placeholder="Enter product name" required>
+
+            </div>
+
+            <!-- DESCRIPTION -->
+            <div class="form-group">
+
+                <label>
+                    Description
+                </label>
+
+                <textarea name="description" placeholder="Enter product description"></textarea>
+
+            </div>
+
+            <!-- PRICE -->
+            <div class="form-group">
+
+                <label>
+                    Price (RM)
+                </label>
+
+                <input type="number" step="0.01" min="0" name="price" placeholder="Enter price" required>
+
+            </div>
+
+            <!-- STOCK -->
+            <div class="form-group">
+
+                <label>
+                    Stock Quantity
+                </label>
+
+                <input type="number" min="0" name="stock" placeholder="Enter stock quantity" required>
+
+            </div>
+
+            <!-- CATEGORY -->
+            <div class="form-group">
+
+                <label>
+                    Category
+                </label>
+
+                <select name="category_id" required>
+
+                    <option value="">
+                        Select Category
+                    </option>
+
+                    <?php foreach ($categories as $category) { ?>
+
+                        <option value="<?php echo $category->category_id; ?>">
+
+                            <?php echo htmlspecialchars($category->category_name); ?>
+
+                        </option>
+
+                    <?php } ?>
+
+                </select>
+
+            </div>
+
+            <!-- BRAND -->
+            <div class="form-group">
+
+                <label>
+                    Brand
+                </label>
+
+                <select name="brand_id" required>
+
+                    <option value="">
+                        Select Brand
+                    </option>
+
+                    <?php foreach ($brands as $brand) { ?>
+
+                        <option value="<?php echo $brand->brand_id; ?>">
+
+                            <?php echo htmlspecialchars($brand->brand_name); ?>
+
+                        </option>
+
+                    <?php } ?>
+
+                </select>
+
+            </div>
+
+            <!-- IMAGE -->
+            <div class="form-group">
+
+                <label>
+                    Product Image
+                </label>
+
+                <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp" required>
+
+            </div>
+
+            <!-- BUTTON -->
+            <button type="submit" name="add_product" class="btn">
+
+                Add Product
+
+            </button>
+
+        </form>
 
     </div>
 
-    <!-- SUCCESS -->
-    <?php if($msg){ ?>
-
-        <div class="success">
-
-            <?php echo $msg; ?>
-
-        </div>
-
-    <?php } ?>
-
-    <!-- ERROR -->
-    <?php if($error){ ?>
-
-        <div class="error">
-
-            <?php echo $error; ?>
-
-        </div>
-
-    <?php } ?>
-
-    <!-- FORM -->
-    <form method="POST" enctype="multipart/form-data">
-
-        <!-- PRODUCT NAME -->
-        <div class="form-group">
-
-            <label>
-                Product Name
-            </label>
-
-            <input type="text"
-                   name="name"
-                   placeholder="Enter product name"
-                   required>
-
-        </div>
-
-        <!-- DESCRIPTION -->
-        <div class="form-group">
-
-            <label>
-                Description
-            </label>
-
-            <textarea name="description"
-                      placeholder="Enter product description"></textarea>
-
-        </div>
-
-        <!-- PRICE -->
-        <div class="form-group">
-
-            <label>
-                Price (RM)
-            </label>
-
-            <input type="number"
-                   step="0.01"
-                   min="0"
-                   name="price"
-                   placeholder="Enter price"
-                   required>
-
-        </div>
-
-        <!-- STOCK -->
-        <div class="form-group">
-
-            <label>
-                Stock Quantity
-            </label>
-
-            <input type="number"
-                   min="0"
-                   name="stock"
-                   placeholder="Enter stock quantity"
-                   required>
-
-        </div>
-
-        <!-- CATEGORY -->
-        <div class="form-group">
-
-            <label>
-                Category
-            </label>
-
-            <select name="category_id" required>
-
-                <option value="">
-                    Select Category
-                </option>
-
-                <?php foreach($categories as $category){ ?>
-
-                    <option value="<?php echo $category->category_id; ?>">
-
-                        <?php echo htmlspecialchars($category->category_name); ?>
-
-                    </option>
-
-                <?php } ?>
-
-            </select>
-
-        </div>
-
-        <!-- BRAND -->
-        <div class="form-group">
-
-            <label>
-                Brand
-            </label>
-
-            <select name="brand_id" required>
-
-                <option value="">
-                    Select Brand
-                </option>
-
-                <?php foreach($brands as $brand){ ?>
-
-                    <option value="<?php echo $brand->brand_id; ?>">
-
-                        <?php echo htmlspecialchars($brand->brand_name); ?>
-
-                    </option>
-
-                <?php } ?>
-
-            </select>
-
-        </div>
-
-        <!-- IMAGE -->
-        <div class="form-group">
-
-            <label>
-                Product Image
-            </label>
-
-            <input type="file"
-                   name="image"
-                   accept=".jpg,.jpeg,.png,.webp"
-                   required>
-
-        </div>
-
-        <!-- BUTTON -->
-        <button type="submit"
-                name="add_product"
-                class="btn">
-
-            Add Product
-
-        </button>
-
-    </form>
-
-</div>
-
 </body>
+
 </html>

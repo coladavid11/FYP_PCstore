@@ -7,37 +7,12 @@ if (!isset($_SESSION['admin_login'])) {
     exit;
 }
 
-$sql = "SELECT * FROM categories ORDER BY category_id DESC";
+$sql = "SELECT tblorders.*, tbluser.fullname FROM tblorders LEFT JOIN tbluser ON tblorders.user_id = tbluser.user_id ORDER BY tblorders.order_id DESC";
 $query = $dbh->prepare($sql);
 $query->execute();
 
-$categories = $query->fetchAll(PDO::FETCH_OBJ);
+$orders = $query->fetchAll(PDO::FETCH_OBJ);
 
-/* =========================
-   DELETE CATEGORY
-========================= */
-
-if (isset($_GET['delete'])) {
-    $id = intval($_GET['delete']);
-
-    // CHECK PRODUCT USING CATEGORY
-
-    $checkSql = "SELECT * FROM products WHERE category_id = :id";
-    $checkQuery = $dbh->prepare($checkSql);
-    $checkQuery->bindParam(':id', $id, PDO::PARAM_INT);
-    $checkQuery->execute();
-
-    if ($checkQuery->rowCount() > 0) {
-        echo "<script>alert('Cannot delete category. Products are using this category.');</script>";
-    } else {
-        $sql = "DELETE FROM categories WHERE category_id = :id";
-        $query = $dbh->prepare($sql);
-        $query->bindParam(':id', $id, PDO::PARAM_INT);
-        $query->execute();
-        header("Location: categories.php");
-        exit;
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -46,7 +21,7 @@ if (isset($_GET['delete'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Categories Management | My PC Store</title>
+    <title>Orders Management | MY PC Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
@@ -67,16 +42,15 @@ if (isset($_GET['delete'])) {
         }
 
         /* =========================
-           SIDEBAR
-        ========================= */
+   SIDEBAR
+========================= */
+
         .sidebar {
             width: 220px;
             height: 100vh;
             background: #000;
             padding: 20px;
             position: fixed;
-            left: 0;
-            top: 0;
         }
 
         .sidebar h2 {
@@ -84,7 +58,6 @@ if (isset($_GET['delete'])) {
             margin-bottom: 30px;
             text-align: center;
             font-size: 2rem;
-            font-weight: 600;
         }
 
         .sidebar a {
@@ -95,21 +68,17 @@ if (isset($_GET['delete'])) {
             margin: 10px 0;
             border-radius: 5px;
             transition: 0.3s;
-            font-size: 0.95rem;
         }
 
-        .sidebar a:hover{
-            background:#d4af37;
-            color:#000;
-        }
-
-        /* Highlight Active Menu Item */
-        .sidebar a.active {
+        .sidebar a:hover {
             background: #d4af37;
             color: #000;
-            font-weight: 500;
         }
 
+        .sidebar a.sidebar-active {
+            background: #d4af37;
+            color: #000;
+        }
 
         /* =========================
            MAIN CONTENT
@@ -252,15 +221,24 @@ if (isset($_GET['delete'])) {
 </head>
 
 <body>
+    <div class="sidebar">
 
-<div class="sidebar">
-    <h2>Admin</h2>
-    <a href="categories.php" class="active">Categories</a> </div>
+        <h2>Admin</h2>
+
+        <a href="dashboard.php">🏠 Dashboard</a>
+        <a href="products.php">📦 Products</a>
+        <a href="categories.php">📂 Categories</a>
+        <a href="brands.php">🏷️ Brands</a>
+        <a href="orders.php" class="sidebar-active">🛒 Orders</a>
+        <a href="users.php">👥 Users</a>
+        <a href="admin.php">⚙ Admin</a>
+
+    </div>
 
     <div class="main">
 
         <div class="topbar">
-            <h1>Categories</h1>
+            <h1>Orders Management</h1>
             <div class="topbar-links">
                 <a href="dashboard.php" class="Back"><i class="fa fa-arrow-left me-1"></i>Back</a>
             </div>
@@ -268,48 +246,65 @@ if (isset($_GET['delete'])) {
 
         <div class="table-box">
 
-            <h3>Categories List</h3>
-
-            <a href="add_category.php" class="btn-add">+ Add Category</a>
-
+            <h3>Orders List</h3>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 15%;">ID</th>
-                        <th style="width: 60%;">Category Name</th>
-                        <th style="width: 25%;">Action</th>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Order Date</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (count($categories) > 0) { ?>
-                        <?php foreach ($categories as $cat) { ?>
+
+                    <?php if (count($orders) > 0) { ?>
+
+                        <?php foreach ($orders as $order) { ?>
+
                             <tr>
-                                <td><?= $cat->category_id ?></td>
-                                <td><?= htmlspecialchars($cat->category_name) ?></td>
+
+                                <td><?= $order->order_id ?></td>
+
+                                <td><?= htmlspecialchars($order->fullname) ?></td>
+
                                 <td>
-                                    <a href="edit_categories.php?id=<?= $cat->category_id ?>" class="action-btn edit"><i
-                                            class="fa fa-pen-to-square"></i>Edit</a>
-                                    <span class="divider">|</span>
-                                    <a href="categories.php?delete=<?php echo $cat->category_id; ?>" class="action-btn delete"
-                                        onclick="return confirm('Are you sure you want to delete this category?')">
-                                        Delete
-                                    </a>
+                                    RM <?= number_format($order->total_amount, 2) ?>
                                 </td>
+
+                                <td><?= htmlspecialchars($order->order_status) ?></td>
+
+                                <td>
+                                    <?= date('d/m/Y', strtotime($order->created_at)) ?>
+                                </td>
+
+                                <td>
+
+                                    <a href="edit_orders.php?id=<?= $order->order_id ?>" class="action-btn edit">
+                                        Update
+                                    </a>
+
+                                </td>
+
                             </tr>
+
                         <?php } ?>
+
                     <?php } else { ?>
+
                         <tr>
-                            <td colspan="3" style="text-align: center; color: #888; padding: 25px;">No categories available.
+                            <td colspan="6" style="text-align:center;">
+                                No Orders Found
                             </td>
                         </tr>
+
                     <?php } ?>
+
                 </tbody>
             </table>
-
         </div>
-
-    </div>
-
 </body>
 
 </html>
