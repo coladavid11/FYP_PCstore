@@ -39,6 +39,17 @@ $stmt2 = $dbh->prepare("
 ");
 $stmt2->execute([$product['category_id'], $product_id]);
 $related = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+/* ── FETCH REVIEWS ── */
+$rStmt = $dbh->prepare("
+    SELECT r.rating, r.review_text, r.created_at, u.fullname
+    FROM tblreviews r
+    LEFT JOIN tbluser u ON r.user_id = u.user_id
+    WHERE r.product_id = ?
+    ORDER BY r.created_at DESC
+");
+$rStmt->execute([$product_id]);
+$reviews = $rStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -409,7 +420,14 @@ body { background:#0f0f0f; color:#fff; font-family:'Poppins',sans-serif; }
                 <a class="nav-link" data-bs-toggle="tab" href="#spec">Specifications</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="tab" href="#review">Reviews</a>
+                <a class="nav-link" data-bs-toggle="tab" href="#review">
+                    Reviews
+                    <?php if (count($reviews) > 0): ?>
+                    <span style="background:#d4af37;color:#000;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:4px;">
+                        <?php echo count($reviews); ?>
+                    </span>
+                    <?php endif; ?>
+                </a>
             </li>
         </ul>
 
@@ -420,7 +438,7 @@ body { background:#0f0f0f; color:#fff; font-family:'Poppins',sans-serif; }
                 <?php echo nl2br(htmlspecialchars($product['description'])); ?>
             </div>
 
-            <!-- SPEC TAB — ✅ 只改了这里，加了 7 个新栏位 -->
+            <!-- SPEC TAB -->
             <div class="tab-pane fade" id="spec">
                 <?php
                 $specs = [
@@ -458,10 +476,87 @@ body { background:#0f0f0f; color:#fff; font-family:'Poppins',sans-serif; }
                 <?php endif; ?>
             </div>
 
-            <!-- REVIEWS TAB -->
+            <!-- ════════ REVIEWS TAB ════════ -->
             <div class="tab-pane fade" id="review">
-                <p style="color:#555;">Reviews coming soon.</p>
+                <?php if (empty($reviews)): ?>
+                <div style="text-align:center; padding:40px 0; color:#555;">
+                    <i class="fa fa-star" style="font-size:2rem; margin-bottom:12px; display:block; color:#2a2a2a;"></i>
+                    No reviews yet. Be the first to review this product!
+                </div>
+                <?php else:
+                    $totalReviews = count($reviews);
+                    $avgRating    = array_sum(array_column($reviews, 'rating')) / $totalReviews;
+                    $starCounts   = array_fill(1, 5, 0);
+                    foreach ($reviews as $rv) $starCounts[intval($rv['rating'])]++;
+                ?>
+
+                <!-- RATING SUMMARY -->
+                <div style="display:flex; gap:32px; align-items:center; padding:4px 0 24px; border-bottom:1px solid #1e1e1e; margin-bottom:24px; flex-wrap:wrap;">
+
+                    <!-- AVG SCORE -->
+                    <div style="text-align:center; min-width:90px;">
+                        <div style="font-size:3rem; font-weight:700; color:#d4af37; line-height:1;"><?php echo number_format($avgRating, 1); ?></div>
+                        <div style="margin:6px 0 4px;">
+                            <?php for($s=1;$s<=5;$s++): ?>
+                            <i class="fa fa-star" style="font-size:0.85rem; color:<?php echo $s <= round($avgRating) ? '#d4af37' : '#2a2a2a'; ?>;"></i>
+                            <?php endfor; ?>
+                        </div>
+                        <div style="font-size:0.75rem; color:#555;"><?php echo $totalReviews; ?> review<?php echo $totalReviews > 1 ? 's' : ''; ?></div>
+                    </div>
+
+                    <!-- STAR BREAKDOWN BARS -->
+                    <div style="flex:1; min-width:180px;">
+                        <?php for($s=5;$s>=1;$s--): ?>
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                            <span style="font-size:0.78rem; color:#888; width:10px; text-align:right;"><?php echo $s; ?></span>
+                            <i class="fa fa-star" style="font-size:0.72rem; color:#d4af37;"></i>
+                            <div style="flex:1; height:6px; background:#1e1e1e; border-radius:3px; overflow:hidden;">
+                                <div style="height:100%; width:<?php echo $totalReviews ? round(($starCounts[$s]/$totalReviews)*100) : 0; ?>%; background:linear-gradient(90deg,#d4af37,#c5a028); border-radius:3px;"></div>
+                            </div>
+                            <span style="font-size:0.75rem; color:#555; width:16px;"><?php echo $starCounts[$s]; ?></span>
+                        </div>
+                        <?php endfor; ?>
+                    </div>
+                </div>
+
+                <!-- REVIEW LIST -->
+                <?php foreach($reviews as $rv):
+                    $name    = htmlspecialchars($rv['fullname'] ?? 'Anonymous');
+                    $initial = strtoupper(mb_substr($rv['fullname'] ?? 'A', 0, 1));
+                    $date    = date('d M Y', strtotime($rv['created_at']));
+                    $rating  = intval($rv['rating']);
+                    $text    = htmlspecialchars($rv['review_text'] ?? '');
+                ?>
+                <div style="display:flex; gap:14px; padding:18px 0; border-bottom:1px solid #1a1a1a;">
+                    <!-- AVATAR (首字母) -->
+                    <div style="width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,#d4af37,#c5a028); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1rem; color:#000; flex-shrink:0;">
+                        <?php echo $initial; ?>
+                    </div>
+                    <div style="flex:1;">
+                        <!-- NAME + DATE -->
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+                            <span style="font-weight:600; font-size:0.9rem; color:#eee;"><?php echo $name; ?></span>
+                            <span style="font-size:0.75rem; color:#444;"><?php echo $date; ?></span>
+                        </div>
+                        <!-- STARS -->
+                        <div style="margin-bottom:8px;">
+                            <?php for($s=1;$s<=5;$s++): ?>
+                            <i class="fa fa-star" style="font-size:0.82rem; color:<?php echo $s <= $rating ? '#d4af37' : '#2a2a2a'; ?>;"></i>
+                            <?php endfor; ?>
+                        </div>
+                        <!-- REVIEW TEXT -->
+                        <?php if (!empty($text)): ?>
+                        <p style="font-size:0.88rem; color:#bbb; line-height:1.65; margin:0;"><?php echo $text; ?></p>
+                        <?php else: ?>
+                        <p style="font-size:0.82rem; color:#444; font-style:italic; margin:0;">No written review.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+
+                <?php endif; ?>
             </div>
+            <!-- ════════ END REVIEWS TAB ════════ -->
 
         </div>
     </div>

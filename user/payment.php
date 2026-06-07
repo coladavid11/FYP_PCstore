@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
             $dbh->beginTransaction();
 
             // =======================
-            // ✅ STEP 1: VALIDATE STOCK FIRST (before inserting anything)
+            // STEP 1: VALIDATE STOCK FIRST (before inserting anything)
             // =======================
             $stockCheck = $dbh->prepare("
                 SELECT product_id, stock 
@@ -245,7 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 
     <h4 class="mb-3">Secure Payment</h4>
 
-    <form method="POST">
+    <form method="POST" id="paymentForm">
 
         <div class="mb-3">
     <label class="form-label">Card Number</label>
@@ -304,7 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 
     <?php 
     $shipping = 15.00;
-    $service_fee = 0.00;
+    $service_fee = $total * 0.03; // 3% service fee
     $grand_total = $total + $shipping + $service_fee;
     ?>
     
@@ -395,7 +395,7 @@ cvvInput.addEventListener('input', function () {
 
 
 // ================= FINAL FORM CHECK =================
-document.querySelector("form").addEventListener("submit", function (e) {
+document.getElementById('paymentForm').addEventListener('submit', function (e) {
 
     let card = cardInput.value.replace(/\s/g, '');
 
@@ -407,6 +407,25 @@ document.querySelector("form").addEventListener("submit", function (e) {
 
     if (expiryInput.value.length !== 5) {
         alert("Invalid expiry format (MM/YY)");
+        e.preventDefault();
+        return;
+    }
+
+    const parts    = expiryInput.value.split('/');
+    const expMonth = parseInt(parts[0], 10);
+    const expYear  = parseInt('20' + parts[1], 10);
+    const now      = new Date();
+    const nowMonth = now.getMonth() + 1; // 1-12
+    const nowYear  = now.getFullYear();
+
+    if (expMonth < 1 || expMonth > 12) {
+        alert("Invalid expiry month (01–12)");
+        e.preventDefault();
+        return;
+    }
+
+    if (expYear < nowYear || (expYear === nowYear && expMonth < nowMonth)) {
+        alert("Your card has expired. Please use a valid card.");
         e.preventDefault();
         return;
     }
