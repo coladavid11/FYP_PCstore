@@ -7,12 +7,13 @@ $isLoggedIn = isset($_SESSION['login']);
 $user_id = $_SESSION['user_id'] ?? null;
 
 // ── Fetch Gaming PC products (category_id = 2) ──
+//id 2 = gaming full set, id 17 = work station full set 
 $stmt = $dbh->prepare("
     SELECT p.*, b.brand_name, c.category_name
     FROM products p
     LEFT JOIN tblbrand b ON p.brand_id = b.brand_id
     LEFT JOIN categories c ON p.category_id = c.category_id
-    WHERE p.category_id = 2
+    WHERE p.category_id = 2 OR p.category_id = 17
     ORDER BY p.price ASC
 ");
 $stmt->execute();
