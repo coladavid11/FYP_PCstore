@@ -174,236 +174,236 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Cart - PC Store</title>
+<meta charset="UTF-8">
+<title>Cart - PC Store</title>
 
-    <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- Fonts -->
-    <link
-        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500&display=swap"
-        rel="stylesheet">
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
 
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Your CSS -->
-    <link rel="stylesheet" href="newstyle.css">
+<!-- Your CSS -->
+<link rel="stylesheet" href="newstyle.css">
 </head>
 
 <body>
 
-    <?php include('includes/header.php'); ?>
+<?php include('includes/header.php'); ?>
 
-    <div class="container py-5">
+<div class="container py-5">
 
-        <div class="row g-4">
+<div class="row g-4">
 
-            <!-- LEFT SIDE -->
-            <div class="col-lg-8">
+<!-- LEFT SIDE -->
+<div class="col-lg-8">
 
-                <?php if (!$isLoggedIn): ?>
+<?php if(!$isLoggedIn): ?>
 
-                    <div class="dark-card p-5 text-center">
-                        <i class="fa fa-lock fa-3x mb-3" style="color:#d4af37;"></i>
-                        <h3>Login Required</h3>
-                        <p class="text-soft">Please login to proceed payment.</p>
-                        <a href="login.php" class="btn-cta">Login</a>
-                    </div>
+    <div class="dark-card p-5 text-center">
+        <i class="fa fa-lock fa-3x mb-3" style="color:#d4af37;"></i>
+        <h3>Login Required</h3>
+        <p class="text-soft">Please login to proceed payment.</p>
+        <a href="login.php" class="btn-cta">Login</a>
+    </div>
 
-                <?php elseif ($success): ?>
+<?php elseif($success): ?>
 
-                    <div class="dark-card p-5 text-center">
+    <div class="dark-card p-5 text-center">
 
-                        <i class="fa fa-check-circle fa-3x mb-3" style="color:#d4af37;"></i>
+        <i class="fa fa-check-circle fa-3x mb-3" style="color:#d4af37;"></i>
 
-                        <h3>Payment Successful</h3>
+        <h3>Payment Successful</h3>
 
-                        <p class="text-soft">Your order has been placed.</p>
+        <p class="text-soft">Your order has been placed.</p>
 
-                        <h4 style="color:#d4af37;">
-                            RM <?php echo number_format($grand_total, 2); ?>
-                        </h4>
+        <h4 style="color:#d4af37;">
+            RM <?php echo number_format($grand_total,2); ?>
+        </h4>
 
-                        <a href="index.php" class="btn-cta mt-3">
-                            Back to Store
-                        </a>
+        <a href="index.php" class="btn-cta mt-3">
+            Back to Store
+        </a>
 
-                        <a href="myorder.php" class="btn-cta mt-3">
-                            My Orders
-                        </a>
+        <a href="myorder.php" class="btn-cta mt-3">
+            My Orders
+        </a>
 
-                    </div>
+    </div>
 
-                <?php else: ?>
+<?php else: ?>
 
-                    <?php if ($error): ?>
-                        <div class="alert alert-danger"><?php echo $error; ?></div>
-                    <?php endif; ?>
+<?php if($error): ?>
+<div class="alert alert-danger"><?php echo $error; ?></div>
+<?php endif; ?>
 
-                    <div class="stat-card p-4">
+<div class="stat-card p-4">
 
-                        <h4 class="mb-3">Secure Payment</h4>
+    <h4 class="mb-3">Secure Payment</h4>
 
-    <form method="POST">
+    <form method="POST" id="paymentForm">
 
-                            <div class="mb-3">
-                                <label class="form-label">Card Number</label>
-                                <input type="text" id="cardNumber" class="form-control" placeholder="0000 0000 0000 0000"
-                                    maxlength="19" required>
-                            </div>
+        <div class="mb-3">
+    <label class="form-label">Card Number</label>
+    <input type="text" id="cardNumber" class="form-control"
+           placeholder="0000 0000 0000 0000"
+           maxlength="19" required>
+</div>
 
-                            <div class="row">
-                                <div class="col">
-                                    <label class="form-label">Expiry</label>
-                                    <input type="text" id="expiry" class="form-control" placeholder="MM/YY" maxlength="5"
-                                        required>
-                                </div>
+<div class="row">
+    <div class="col">
+        <label class="form-label">Expiry</label>
+        <input type="text" id="expiry" class="form-control"
+               placeholder="MM/YY"
+               maxlength="5" required>
+    </div>
 
-                                <div class="col">
-                                    <label class="form-label">CVV</label>
-                                    <input type="text" id="cvv" class="form-control" placeholder="123" maxlength="3"
-                                        required>
-                                </div>
-                            </div>
+    <div class="col">
+        <label class="form-label">CVV</label>
+        <input type="text" id="cvv" class="form-control"
+               placeholder="123"
+               maxlength="3" required>
+    </div>
+</div>
 
-                            <button type="submit" class="btn-gold mt-4 w-100">
-                                PAY RM <?php echo number_format($grand_total, 2); ?>
-                            </button>
+        <button type="submit" class="btn-gold mt-4 w-100">
+            PAY RM <?php echo number_format($grand_total,2); ?>
+        </button>
 
-                        </form>
+    </form>
 
-                    </div>
+</div>
 
-                <?php endif; ?>
+<?php endif; ?>
 
-            </div>
+</div>
 
-            <!-- RIGHT SIDE -->
-            <div class="col-lg-4">
+<!-- RIGHT SIDE -->
+<div class="col-lg-4">
 
-                <div class="stat-card p-4">
+<div class="stat-card p-4">
 
-                    <h4 class="mb-3">Order Summary</h4>
+    <h4 class="mb-3">Order Summary</h4>
 
-                    <hr style="border-color:#2a2a2a;">
+    <hr style="border-color:#2a2a2a;">
 
-                    <?php foreach ($cartItems as $item): ?>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-soft">
-                                <?php echo $item['product_name']; ?> x <?php echo $item['quantity']; ?>
-                            </span>
-                            <span>
-                                RM <?php echo number_format($item['product_price'] * $item['quantity'], 2); ?>
-                            </span>
-                        </div>
-                    <?php endforeach; ?>
+    <?php foreach($cartItems as $item): ?>
+        <div class="d-flex justify-content-between mb-2">
+            <span class="text-soft">
+                <?php echo $item['product_name']; ?> x <?php echo $item['quantity']; ?>
+            </span>
+            <span>
+                RM <?php echo number_format($item['product_price']*$item['quantity'],2); ?>
+            </span>
+        </div>
+    <?php endforeach; ?>
 
     <?php 
     $shipping = 15.00;
-    $service_fee = 0.00;
+    $service_fee = $total * 0.03; // 3% service fee
     $grand_total = $total + $shipping + $service_fee;
     ?>
     
     <hr style="border-color:#2a2a2a;">
 
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-soft">Subtotal</span>
-                        <span>RM <?php echo number_format($total, 2); ?></span>
-                    </div>
+<div class="d-flex justify-content-between mb-2">
+    <span class="text-soft">Subtotal</span>
+    <span>RM <?php echo number_format($total,2); ?></span>
+</div>
 
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-soft">Service Fee</span>
-                        <span>RM <?php echo number_format($service_fee, 2); ?></span>
-                    </div>
+<div class="d-flex justify-content-between mb-2">
+    <span class="text-soft">Service Fee</span>
+    <span>RM <?php echo number_format($service_fee,2); ?></span>
+</div>
 
-                    <div class="d-flex justify-content-between mb-3">
-                        <span class="text-soft">Shipping</span>
-                        <span>RM <?php echo number_format($shipping, 2); ?></span>
-                    </div>
+<div class="d-flex justify-content-between mb-3">
+    <span class="text-soft">Shipping</span>
+    <span>RM <?php echo number_format($shipping,2); ?></span>
+</div>
 
-                    <hr style="border-color:#2a2a2a;">
+<hr style="border-color:#2a2a2a;">
 
-                    <div class="d-flex justify-content-between mb-3">
-                        <strong>Total</strong>
-                        <strong style="color:#d4af37;">
-                            RM <?php echo number_format($grand_total, 2); ?>
-                        </strong>
-                    </div>
+<div class="d-flex justify-content-between mb-3">
+    <strong>Total</strong>
+    <strong style="color:#d4af37;">
+        RM <?php echo number_format($grand_total,2); ?>
+    </strong>
+</div>
 
-                </div>
+</div>
 
-            </div>
+</div>
 
-        </div>
+</div>
 
-    </div>
+</div>
 
-    <?php include('includes/footer.php'); ?>
-    <script>
-        // ================= CARD NUMBER =================
-        const cardInput = document.getElementById('cardNumber');
+<?php include('includes/footer.php'); ?>
+<script>
+  // ================= CARD NUMBER =================
+const cardInput = document.getElementById('cardNumber');
 
-        cardInput.addEventListener('input', function () {
-            let value = this.value.replace(/\D/g, ''); // remove letters
+cardInput.addEventListener('input', function () {
+    let value = this.value.replace(/\D/g, ''); // remove letters
 
-            if (value.length > 16) {
-                alert("Card number cannot exceed 16 digits");
-                value = value.substring(0, 16);
-            }
+    if (value.length > 16) {
+        alert("Card number cannot exceed 16 digits");
+        value = value.substring(0, 16);
+    }
 
-            // format 4-4-4-4
-            let formatted = value.replace(/(\d{4})/g, '$1 ').trim();
-            this.value = formatted;
-        });
-
-
-        // ================= EXPIRY =================
-        const expiryInput = document.getElementById('expiry');
-
-        expiryInput.addEventListener('input', function () {
-            let value = this.value.replace(/\D/g, ''); // only digits
-
-            if (value.length > 4) {
-                value = value.substring(0, 4);
-            }
-
-            if (value.length >= 3) {
-                this.value = value.substring(0, 2) + '/' + value.substring(2);
-            } else {
-                this.value = value;
-            }
-        });
+    // format 4-4-4-4
+    let formatted = value.replace(/(\d{4})/g, '$1 ').trim();
+    this.value = formatted;
+});
 
 
-        // ================= CVV =================
-        const cvvInput = document.getElementById('cvv');
+// ================= EXPIRY =================
+const expiryInput = document.getElementById('expiry');
 
-        cvvInput.addEventListener('input', function () {
-            let value = this.value.replace(/\D/g, '');
+expiryInput.addEventListener('input', function () {
+    let value = this.value.replace(/\D/g, ''); // only digits
 
-            if (value.length > 3) {
-                alert("CVV must be 3 digits only");
-                value = value.substring(0, 3);
-            }
+    if (value.length > 4) {
+        value = value.substring(0, 4);
+    }
 
-            this.value = value;
-        });
+    if (value.length >= 3) {
+        this.value = value.substring(0, 2) + '/' + value.substring(2);
+    } else {
+        this.value = value;
+    }
+});
+
+
+// ================= CVV =================
+const cvvInput = document.getElementById('cvv');
+
+cvvInput.addEventListener('input', function () {
+    let value = this.value.replace(/\D/g, '');
+
+    if (value.length > 3) {
+        alert("CVV must be 3 digits only");
+        value = value.substring(0, 3);
+    }
+
+    this.value = value;
+});
 
 
 // ================= FINAL FORM CHECK =================
-document.querySelector("form").addEventListener("submit", function (e) {
+document.getElementById('paymentForm').addEventListener('submit', function (e) {
 
-            let card = cardInput.value.replace(/\s/g, '');
+    let card = cardInput.value.replace(/\s/g, '');
 
-            if (card.length !== 16) {
-                alert("Card number must be exactly 16 digits");
-                e.preventDefault();
-                return;
-            }
+    if (card.length !== 16) {
+        alert("Card number must be exactly 16 digits");
+        e.preventDefault();
+        return;
+    }
 
     if (expiryInput.value.length !== 5) {
         alert("Invalid expiry format (MM/YY)");
@@ -411,11 +411,31 @@ document.querySelector("form").addEventListener("submit", function (e) {
         return;
     }
 
-            if (cvvInput.value.length !== 3) {
-                alert("CVV must be 3 digits");
-                e.preventDefault();
-                return;
-            }
-        });
-    </script>
+    // ── 到期日验证：不能是过去的月份 ──
+    const parts    = expiryInput.value.split('/');
+    const expMonth = parseInt(parts[0], 10);
+    const expYear  = parseInt('20' + parts[1], 10);
+    const now      = new Date();
+    const nowMonth = now.getMonth() + 1; // 1-12
+    const nowYear  = now.getFullYear();
+
+    if (expMonth < 1 || expMonth > 12) {
+        alert("Invalid expiry month (01–12)");
+        e.preventDefault();
+        return;
+    }
+
+    if (expYear < nowYear || (expYear === nowYear && expMonth < nowMonth)) {
+        alert("Your card has expired. Please use a valid card.");
+        e.preventDefault();
+        return;
+    }
+
+    if (cvvInput.value.length !== 3) {
+        alert("CVV must be 3 digits");
+        e.preventDefault();
+        return;
+    }
+});
+</script>
 </body>
