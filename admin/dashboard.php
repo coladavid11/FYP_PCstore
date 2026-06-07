@@ -17,7 +17,7 @@ $stmt = $dbh->query("SELECT COUNT(*) FROM products");
 $totalProducts = $stmt->fetchColumn();
 
 // Total Orders
-$stmt = $dbh->query("SELECT COUNT(*) FROM orders");
+$stmt = $dbh->query("SELECT COUNT(*) FROM tblorders");
 $totalOrders = $stmt->fetchColumn();
 
 // Total Users
@@ -25,11 +25,11 @@ $stmt = $dbh->query("SELECT COUNT(*) FROM tbluser");
 $totalUsers = $stmt->fetchColumn();
 
 // Total Revenue
-$stmt = $dbh->query("SELECT SUM(total) FROM orders WHERE status='Completed'");
+$stmt = $dbh->query("SELECT SUM(grand_total) FROM tblorders WHERE order_status='Completed'");
 $totalRevenue = $stmt->fetchColumn();
 
 // Recent Orders
-$stmt = $dbh->query("SELECT * FROM orders ORDER BY created_at DESC LIMIT 5");
+$stmt = $dbh->query("SELECT * FROM tblorders ORDER BY created_at DESC LIMIT 5");
 $orders = $stmt->fetchAll();
 
 ?>
@@ -329,12 +329,12 @@ table th{
                     </td>
 
                     <td>
-                        RM <?php echo number_format($order->total, 2); ?>
+                        RM <?php echo number_format($order->grand_total, 2); ?>
                     </td>
 
                     <td>
-                        <span class="status <?php echo strtolower($order->status); ?>">
-                            <?php echo $order->status; ?>
+                        <span class="status <?php echo strtolower($order->order_status); ?>">
+                            <?php echo $order->order_status; ?>
                         </span>
                     </td>
 

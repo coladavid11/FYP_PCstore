@@ -27,17 +27,13 @@ if ($rating < 1 || $rating > 5) {
     exit();
 }
 
-if (strlen($review) < 5) {
-    echo json_encode(['status' => 'error', 'message' => 'Review is too short. Please write at least a few words.']);
-    exit();
-}
-
+// review 长度上限保留，但不设下限（可以不写）
 if (strlen($review) > 2000) {
     echo json_encode(['status' => 'error', 'message' => 'Review is too long (max 2000 characters).']);
     exit();
 }
 
-/* ── VERIFY ORDER: belongs to user AND is completed ── */
+/* ── VERIFY ORDER: belongs to user AND is delivered ── */
 $orderStmt = $dbh->prepare("
     SELECT order_id, order_status
     FROM tblorders
@@ -52,10 +48,10 @@ if (!$order) {
     exit();
 }
 
-if (strtolower($order['order_status']) !== 'completed') {
+if (strtolower($order['order_status']) !== 'delivered') {
     echo json_encode([
         'status'  => 'error',
-        'message' => 'You can only review products from completed orders.'
+        'message' => 'You can only review products from delivered orders.'
     ]);
     exit();
 }
@@ -95,9 +91,9 @@ $now = date('Y-m-d H:i:s');
 
 $insert = $dbh->prepare("
     INSERT INTO tblreviews
-        (product_id, order_id, user_id, rating, review, status, created_at, updated_at)
+        (product_id, order_id, user_id, rating, review_text, created_at, updated_at)
     VALUES
-        (?, ?, ?, ?, ?, 'active', ?, ?)
+        (?, ?, ?, ?, ?, ?, ?)
 ");
 
 $success = $insert->execute([
