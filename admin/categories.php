@@ -65,48 +65,44 @@ if(isset($_GET['delete'])){
         }
 
         /* =========================
-           SIDEBAR
+        SIDEBAR
         ========================= */
-        .sidebar {
-            width: 220px;
-            height: 100vh;
-            background: #000;
-            padding: 20px;
-            position: fixed;
-            left: 0;
-            top: 0;
+
+        .sidebar{
+            width:220px;
+            height:100vh;
+            background:#000;
+            padding:20px;
+            position:fixed;
         }
 
-        .sidebar h2 {
-            color: #d4af37;
-            margin-bottom: 30px;
-            text-align: center;
-            font-size: 2rem;
-            font-weight: 600;
+        .sidebar h2{
+            color:#d4af37;
+            margin-bottom:30px;
+            text-align:center;
+            font-size:2rem;
         }
 
-        .sidebar a {
-            display: block;
-            color: #adadad;
-            text-decoration: none;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 5px;
-            transition: 0.3s;
-            font-size: 0.95rem;
+        .sidebar a{
+            display:block;
+            color:#adadad;
+            text-decoration:none;
+            padding:12px;
+            margin:10px 0;
+            border-radius:5px;
+            transition:0.3s;
         }
 
-        .sidebar a:hover {
-            background: #d4af37;
-            color: #000;
+        .sidebar a:hover{
+            background:#d4af37;
+            color:#000;
         }
 
-        /* Highlight Active Menu Item */
-        .sidebar a.active {
-            background: #d4af37;
-            color: #000;
-            font-weight: 500;
+        .sidebar a.sidebar-active{
+            background:#d4af37;
+            color:#000;
         }
+
 
         /* =========================
            MAIN CONTENT
@@ -248,9 +244,20 @@ if(isset($_GET['delete'])){
 </head>
 <body>
 
+<<!-- SIDEBAR -->
 <div class="sidebar">
+
     <h2>Admin</h2>
-    <a href="categories.php" class="active">Categories</a> </div>
+
+    <a href="dashboard.php">🏠 Dashboard</a>
+    <a href="products.php" >📦 Products</a>
+    <a href="categories.php" class="sidebar-active">📂 Categories</a>
+    <a href="brands.php">🏷️ Brands</a>
+    <a href="orders.php">🛒 Orders</a>
+    <a href="users.php">👥 Users</a>
+    <a href="admin.php">⚙ Admin</a>
+
+</div>
 
 <div class="main">
 
