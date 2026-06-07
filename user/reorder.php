@@ -21,7 +21,7 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-$user_id  = $_SESSION['user_id'];
+$user_id = $_SESSION['user_id'];
 $order_id = intval($_POST['order_id'] ?? 0);
 
 if ($order_id <= 0) {
@@ -80,15 +80,15 @@ $updateCart = $dbh->prepare("
 ");
 
 /* ── LOOP THROUGH ITEMS ── */
-$added   = 0;
+$added = 0;
 $skipped = [];
-$now     = date('Y-m-d H:i:s');
+$now = date('Y-m-d H:i:s');
 
 foreach ($items as $item) {
-    $pid      = intval($item['product_id']);
-    $reqQty   = intval($item['quantity']);
-    $stock    = intval($item['stock'] ?? 0);
-    $price    = floatval($item['product_price']);
+    $pid = intval($item['product_id']);
+    $reqQty = intval($item['quantity']);
+    $stock = intval($item['stock'] ?? 0);
+    $price = floatval($item['product_price']);
 
     /* Skip if product no longer exists or out of stock */
     if ($pid <= 0 || $stock <= 0) {
@@ -133,7 +133,7 @@ foreach ($items as $item) {
 /* ── BUILD RESPONSE ── */
 if ($added === 0) {
     echo json_encode([
-        'status'  => 'error',
+        'status' => 'error',
         'message' => 'All items are currently out of stock and could not be added to cart.'
     ]);
     exit();
@@ -145,9 +145,9 @@ if (!empty($skipped)) {
 }
 
 echo json_encode([
-    'status'       => 'success',
-    'message'      => $msg,
-    'added'        => $added,
-    'skipped'      => $skipped,
+    'status' => 'success',
+    'message' => $msg,
+    'added' => $added,
+    'skipped' => $skipped,
 ]);
 ?>

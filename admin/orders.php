@@ -7,37 +7,12 @@ if (!isset($_SESSION['admin_login'])) {
     exit;
 }
 
-$sql = "SELECT * FROM tbluser ORDER BY user_id DESC";
+$sql = "SELECT tblorders.*, tbluser.fullname FROM tblorders LEFT JOIN tbluser ON tblorders.user_id = tbluser.user_id ORDER BY tblorders.order_id DESC";
 $query = $dbh->prepare($sql);
 $query->execute();
 
-$users = $query->fetchAll(PDO::FETCH_OBJ);
+$orders = $query->fetchAll(PDO::FETCH_OBJ);
 
-/* =========================
-   DELETE USER
-========================= */
-
-if (isset($_GET['delete'])) {
-    $id = intval($_GET['delete']);
-
-    // CHECK IF USER IS ASSOCIATED WITH ANY ORDERS
-
-    $checkSql = "SELECT * FROM orders WHERE user_id = :id";
-    $checkQuery = $dbh->prepare($checkSql);
-    $checkQuery->bindParam(':id', $id, PDO::PARAM_INT);
-    $checkQuery->execute();
-
-    if ($checkQuery->rowCount() > 0) {
-        echo "<script>alert('Cannot delete user. Orders are associated with this user.');</script>";
-    } else {
-        $sql = "DELETE FROM tbluser WHERE user_id = :id";
-        $query = $dbh->prepare($sql);
-        $query->bindParam(':id', $id, PDO::PARAM_INT);
-        $query->execute();
-        header("Location: users.php");
-        exit;
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -46,7 +21,7 @@ if (isset($_GET['delete'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Users Management | My PC Store</title>
+    <title>Orders Management | MY PC Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
@@ -246,7 +221,6 @@ if (isset($_GET['delete'])) {
 </head>
 
 <body>
-
     <div class="sidebar">
 
         <h2>Admin</h2>
@@ -255,8 +229,8 @@ if (isset($_GET['delete'])) {
         <a href="products.php">📦 Products</a>
         <a href="categories.php">📂 Categories</a>
         <a href="brands.php">🏷️ Brands</a>
-        <a href="orders.php">🛒 Orders</a>
-        <a href="users.php" class="sidebar-active">👥 Users</a>
+        <a href="orders.php" class="sidebar-active">🛒 Orders</a>
+        <a href="users.php">👥 Users</a>
         <a href="admin.php">⚙ Admin</a>
 
     </div>
@@ -264,7 +238,7 @@ if (isset($_GET['delete'])) {
     <div class="main">
 
         <div class="topbar">
-            <h1>Users Management</h1>
+            <h1>Orders Management</h1>
             <div class="topbar-links">
                 <a href="dashboard.php" class="Back"><i class="fa fa-arrow-left me-1"></i>Back</a>
             </div>
@@ -272,52 +246,65 @@ if (isset($_GET['delete'])) {
 
         <div class="table-box">
 
-            <h3>Users List</h3>
-
+            <h3>Orders List</h3>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 5%;">ID</th>
-                        <th style="width: 15%;">Full Name</th>
-                        <th style="width: 15%;">Email</th>
-                        <th style="width: 15%;">Phone</th>
-                        <th style="width: 20%;">Address</th>
-                        <th style="width: 10%;">Gender</th>
-                        <th style="width: 10%;">Registered</th>
-                        <th style="width: 10%;">Action</th>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Order Date</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (count($users) > 0) { ?>
-                        <?php foreach ($users as $user) { ?>
+
+                    <?php if (count($orders) > 0) { ?>
+
+                        <?php foreach ($orders as $order) { ?>
+
                             <tr>
-                                <td><?= $user->user_id ?></td>
-                                <td><?= htmlspecialchars($user->fullname) ?></td>
-                                <td><?= htmlspecialchars($user->gmail) ?></td>
-                                <td><?= htmlspecialchars($user->phone_num) ?></td>
-                                <td><?= htmlspecialchars($user->address) ?></td>
-                                <td><?= htmlspecialchars($user->gender) ?></td>
-                                <td><?= date('d/m/Y', strtotime($user->reg_date)) ?></td>
+
+                                <td><?= $order->order_id ?></td>
+
+                                <td><?= htmlspecialchars($order->fullname) ?></td>
+
                                 <td>
-                                    <a href="users.php?delete=<?= $user->user_id ?>" class="action-btn delete"
-                                        onclick="return confirm('Are you sure you want to delete this user?')">
-                                        <i class="fa fa-trash"></i> Delete
-                                    </a>
+                                    RM <?= number_format($order->total_amount, 2) ?>
                                 </td>
+
+                                <td><?= htmlspecialchars($order->order_status) ?></td>
+
+                                <td>
+                                    <?= date('d/m/Y', strtotime($order->created_at)) ?>
+                                </td>
+
+                                <td>
+
+                                    <a href="edit_orders.php?id=<?= $order->order_id ?>" class="action-btn edit">
+                                        Update
+                                    </a>
+
+                                </td>
+
                             </tr>
+
                         <?php } ?>
+
                     <?php } else { ?>
+
                         <tr>
-                            <td colspan="8" style="text-align: center; color: #888; padding: 25px;">No users available.</td>
+                            <td colspan="6" style="text-align:center;">
+                                No Orders Found
+                            </td>
                         </tr>
+
                     <?php } ?>
+
                 </tbody>
             </table>
-
         </div>
-
-    </div>
-
 </body>
 
 </html>

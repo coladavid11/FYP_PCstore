@@ -2,7 +2,7 @@
 session_start();
 include('includes/config.php');
 
-if(!isset($_SESSION['admin_login'])){
+if (!isset($_SESSION['admin_login'])) {
     header("Location: admin_login.php");
     exit;
 }
@@ -17,9 +17,9 @@ $categories = $query->fetchAll(PDO::FETCH_OBJ);
    DELETE CATEGORY
 ========================= */
 
-if(isset($_GET['delete'])){
+if (isset($_GET['delete'])) {
     $id = intval($_GET['delete']);
-    
+
     // CHECK PRODUCT USING CATEGORY
 
     $checkSql = "SELECT * FROM products WHERE category_id = :id";
@@ -27,7 +27,7 @@ if(isset($_GET['delete'])){
     $checkQuery->bindParam(':id', $id, PDO::PARAM_INT);
     $checkQuery->execute();
 
-    if($checkQuery->rowCount() > 0){
+    if ($checkQuery->rowCount() > 0) {
         echo "<script>alert('Cannot delete category. Products are using this category.');</script>";
     } else {
         $sql = "DELETE FROM categories WHERE category_id = :id";
@@ -42,12 +42,14 @@ if(isset($_GET['delete'])){
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Categories Management | My PC Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
     <style>
         /* =========================
            GENERAL RESET
@@ -65,16 +67,15 @@ if(isset($_GET['delete'])){
         }
 
         /* =========================
-           SIDEBAR
-        ========================= */
+   SIDEBAR
+========================= */
+
         .sidebar {
             width: 220px;
             height: 100vh;
             background: #000;
             padding: 20px;
             position: fixed;
-            left: 0;
-            top: 0;
         }
 
         .sidebar h2 {
@@ -82,7 +83,6 @@ if(isset($_GET['delete'])){
             margin-bottom: 30px;
             text-align: center;
             font-size: 2rem;
-            font-weight: 600;
         }
 
         .sidebar a {
@@ -93,7 +93,6 @@ if(isset($_GET['delete'])){
             margin: 10px 0;
             border-radius: 5px;
             transition: 0.3s;
-            font-size: 0.95rem;
         }
 
         .sidebar a:hover {
@@ -101,11 +100,9 @@ if(isset($_GET['delete'])){
             color: #000;
         }
 
-        /* Highlight Active Menu Item */
-        .sidebar a.active {
+        .sidebar a.sidebar-active {
             background: #d4af37;
             color: #000;
-            font-weight: 500;
         }
 
         /* =========================
@@ -128,7 +125,7 @@ if(isset($_GET['delete'])){
             background: #fff;
             padding: 15px 25px;
             border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
         .topbar h1 {
@@ -148,7 +145,7 @@ if(isset($_GET['delete'])){
             font-weight: 500;
             transition: 0.3s;
             color: #d4af37;
-            font-size: 0.95rem;0
+            font-size: 0.95rem;
         }
 
         /* =========================
@@ -157,7 +154,7 @@ if(isset($_GET['delete'])){
         .table-box {
             background: #fff;
             padding: 30px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
             border-radius: 4px;
         }
 
@@ -217,7 +214,8 @@ if(isset($_GET['delete'])){
         }
 
         table tr:hover td {
-            background-color: #fcfcfc; /* Subtle hover highlight for rows */
+            background-color: #fcfcfc;
+            /* Subtle hover highlight for rows */
         }
 
         /* Inline Action Link Adjustments */
@@ -246,63 +244,76 @@ if(isset($_GET['delete'])){
         }
     </style>
 </head>
+
 <body>
 
-<div class="sidebar">
-    <h2>Admin</h2>
-    <a href="categories.php" class="active">Categories</a> </div>
+    <div class="sidebar">
 
-<div class="main">
+        <h2>Admin</h2>
 
-    <div class="topbar">
-        <h1>Categories</h1>
-        <div class="topbar-links">
-            <a href="dashboard.php" class="Back">Back</a>
-        </div>
+        <a href="dashboard.php">🏠 Dashboard</a>
+        <a href="products.php">📦 Products</a>
+        <a href="categories.php" class="sidebar-active">📂 Categories</a>
+        <a href="brands.php">🏷️ Brands</a>
+        <a href="orders.php">🛒 Orders</a>
+        <a href="users.php">👥 Users</a>
+        <a href="admin.php">⚙ Admin</a>
+
     </div>
 
-    <div class="table-box">
+    <div class="main">
 
-        <h3>Categories List</h3>
+        <div class="topbar">
+            <h1>Categories</h1>
+            <div class="topbar-links">
+                <a href="dashboard.php" class="Back"><i class="fa fa-arrow-left me-1"></i>Back</a>
+            </div>
+        </div>
 
-        <a href="add_category.php" class="btn-add">+ Add Category</a>
+        <div class="table-box">
 
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 15%;">ID</th>
-                    <th style="width: 60%;">Category Name</th>
-                    <th style="width: 25%;">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if(count($categories) > 0) { ?>
-                    <?php foreach($categories as $cat) { ?>
+            <h3>Categories List</h3>
+
+            <a href="add_category.php" class="btn-add">+ Add Category</a>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">ID</th>
+                        <th style="width: 60%;">Category Name</th>
+                        <th style="width: 25%;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (count($categories) > 0) { ?>
+                        <?php foreach ($categories as $cat) { ?>
+                            <tr>
+                                <td><?= $cat->category_id ?></td>
+                                <td><?= htmlspecialchars($cat->category_name) ?></td>
+                                <td>
+                                    <a href="edit_categories.php?id=<?= $cat->category_id ?>" class="action-btn edit"><i
+                                            class="fa fa-pen-to-square"></i>Edit</a>
+                                    <span class="divider">|</span>
+                                    <a href="categories.php?delete=<?php echo $cat->category_id; ?>" class="action-btn delete"
+                                        onclick="return confirm('Are you sure you want to delete this category?')">
+                                        Delete
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php } ?>
+                    <?php } else { ?>
                         <tr>
-                            <td><?= $cat->category_id ?></td>
-                            <td><?= htmlspecialchars($cat->category_name) ?></td>
-                            <td>
-                                <a href="edit_categories.php?id=<?= $cat->category_id ?>" class="action-btn edit">Edit</a>
-                                <span class="divider">|</span>
-                                <a href="categories.php?delete=<?php echo $cat->category_id; ?>" 
-                                    class="action-btn delete"
-                                    onclick="return confirm('Are you sure you want to delete this category?')">
-                                    Delete
-                                </a>
+                            <td colspan="3" style="text-align: center; color: #888; padding: 25px;">No categories available.
                             </td>
                         </tr>
                     <?php } ?>
-                <?php } else { ?>
-                    <tr>
-                        <td colspan="3" style="text-align: center; color: #888; padding: 25px;">No categories available.</td>
-                    </tr>
-                <?php } ?>
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+
+        </div>
 
     </div>
 
-</div>
-
 </body>
+
 </html>
