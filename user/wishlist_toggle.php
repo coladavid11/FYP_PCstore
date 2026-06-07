@@ -4,10 +4,10 @@ header('Content-Type: application/json');
 
 include('includes/config.php');
 
-if(!isset($_SESSION['user_id'])){
+if (!isset($_SESSION['user_id'])) {
     echo json_encode([
-        'status'=>'login_required',
-        'message'=>'Please login first'
+        'status' => 'login_required',
+        'message' => 'Please login first'
     ]);
     exit();
 }
@@ -24,10 +24,10 @@ $stmt->execute([$user_id, $product_id]);
 
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if($row){
+if ($row) {
 
     // TOGGLE STATUS
-    if($row['status'] == 'active'){
+    if ($row['status'] == 'active') {
 
         $update = $dbh->prepare("
             UPDATE tblwishlist 
@@ -37,11 +37,11 @@ if($row){
         $update->execute([$row['wishlist_id']]);
 
         echo json_encode([
-            'status'=>'removed',
-            'message'=>'Removed from wishlist'
+            'status' => 'removed',
+            'message' => 'Removed from wishlist'
         ]);
 
-    }else{
+    } else {
 
         $update = $dbh->prepare("
             UPDATE tblwishlist 
@@ -51,12 +51,12 @@ if($row){
         $update->execute([$row['wishlist_id']]);
 
         echo json_encode([
-            'status'=>'added',
-            'message'=>'Added to wishlist'
+            'status' => 'added',
+            'message' => 'Added to wishlist'
         ]);
     }
 
-}else{
+} else {
 
     // FIRST TIME INSERT
     $insert = $dbh->prepare("
@@ -68,8 +68,8 @@ if($row){
     $insert->execute([$user_id, $product_id]);
 
     echo json_encode([
-        'status'=>'added',
-        'message'=>'Added to wishlist'
+        'status' => 'added',
+        'message' => 'Added to wishlist'
     ]);
 }
 ?>

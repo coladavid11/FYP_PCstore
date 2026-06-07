@@ -26,26 +26,26 @@ if (!$user) {
     die("User not found.");
 }
 //couting member days
-    $regDate = $user['reg_date'];
+$regDate = $user['reg_date'];
 
-    $today = new DateTime();
-    $reg   = new DateTime($regDate);
+$today = new DateTime();
+$reg = new DateTime($regDate);
 
-    $interval = $today->diff($reg);
+$interval = $today->diff($reg);
 
-    $memberDays = $interval->days;
+$memberDays = $interval->days;
 
 /* =========================
    VARIABLES
 ========================= */
 $successMsg = '';
-$errorMsg   = '';
+$errorMsg = '';
 
 $fullname = $user['fullname'];
-$gmail    = $user['gmail'];
-$gender   = $user['gender'];
-$phone    = $user['phone_num'];
-$address  = $user['address'];
+$gmail = $user['gmail'];
+$gender = $user['gender'];
+$phone = $user['phone_num'];
+$address = $user['address'];
 
 /* =========================
    UPDATE PROFILE
@@ -53,12 +53,12 @@ $address  = $user['address'];
 if (isset($_POST['update_profile'])) {
 
     $fullname = trim($_POST['fullname'] ?? '');
-    $gender   = trim($_POST['gender'] ?? '');
-    $phone    = trim($_POST['phone_num'] ?? '');
-    $address  = trim($_POST['address'] ?? '');
+    $gender = trim($_POST['gender'] ?? '');
+    $phone = trim($_POST['phone_num'] ?? '');
+    $address = trim($_POST['address'] ?? '');
 
     $current_password = trim($_POST['current_password'] ?? '');
-    $new_password     = trim($_POST['new_password'] ?? '');
+    $new_password = trim($_POST['new_password'] ?? '');
     $confirm_password = trim($_POST['confirm_password'] ?? '');
 
     /* ========= VALIDATION ========= */
@@ -101,7 +101,7 @@ if (isset($_POST['update_profile'])) {
             $errorMsg = "Current password is incorrect.";
 
         }
-        
+
         // Password length
         elseif (strlen($new_password) < 8) {
 
@@ -115,7 +115,7 @@ if (isset($_POST['update_profile'])) {
             $errorMsg = "Password cannot contain spaces.";
 
         }
-         // NEW RULE: new password cannot be same as current password
+        // NEW RULE: new password cannot be same as current password
         elseif ($current_password === $new_password) {
 
             $errorMsg = "New password cannot be the same as current password.";
@@ -197,366 +197,334 @@ if (isset($_POST['update_profile'])) {
 
         }
     }
-}   
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<title>My Profile - My PC Store</title>
+    <meta charset="UTF-8">
+    <title>My Profile - My PC Store</title>
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Bootstrap -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<!-- Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500&display=swap"
+        rel="stylesheet">
 
-<!-- Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<!-- External CSS -->
-<link rel="stylesheet" href="newstyle.css">
+    <!-- External CSS -->
+    <link rel="stylesheet" href="newstyle.css">
 
 </head>
 
 <body>
 
-<?php include('includes/header.php'); ?>
+    <?php include('includes/header.php'); ?>
 
-<div class="container py-5">
+    <div class="container py-5">
 
-    <div class="row g-4">
+        <div class="row g-4">
 
-        <!-- LEFT PROFILE CARD -->
-        <div class="col-lg-4">
+            <!-- LEFT PROFILE CARD -->
+            <div class="col-lg-4">
 
-            <div class="dark-card p-4 text-center">
+                <div class="dark-card p-4 text-center">
 
-                <div class="mb-4">
-                    <i class="fa-solid fa-circle-user"
-                       style="font-size:120px; color:#d4af37;"></i>
-                </div>
+                    <div class="mb-4">
+                        <i class="fa-solid fa-circle-user" style="font-size:120px; color:#d4af37;"></i>
+                    </div>
 
-                <h3 class="mb-2">
-                    <?php echo htmlentities(shortName($username)); ?>
-                </h3>
+                    <h3 class="mb-2">
+                        <?php echo htmlentities(shortName($username)); ?>
+                    </h3>
 
-                <p class="text-soft mb-1">
-                    <?php echo htmlentities($gmail); ?>
-                </p>
-
-                <hr style="border-color:#2a2a2a;">
-
-                <div class="text-start">
-
-                    <p>
-                        <i class="fa fa-user text-warning me-2"></i>
-                        Customer Account
+                    <p class="text-soft mb-1">
+                        <?php echo htmlentities($gmail); ?>
                     </p>
 
-                    <p>
-                        <i class="fa fa-shield-halved text-warning me-2"></i>
-                        Secure Profile
-                    </p>
+                    <hr style="border-color:#2a2a2a;">
 
-                    <p>
-                        <i class="fa fa-envelope text-warning me-2"></i>
-                        Verified Email
-                    </p>
+                    <div class="text-start">
 
-                    <p>
-                        <i class="fa fa-calendar text-warning me-2"></i>
-                        Member for <?php echo $memberDays; ?> days
-                    </p>
+                        <p>
+                            <i class="fa fa-user text-warning me-2"></i>
+                            Customer Account
+                        </p>
+
+                        <p>
+                            <i class="fa fa-shield-halved text-warning me-2"></i>
+                            Secure Profile
+                        </p>
+
+                        <p>
+                            <i class="fa fa-envelope text-warning me-2"></i>
+                            Verified Email
+                        </p>
+
+                        <p>
+                            <i class="fa fa-calendar text-warning me-2"></i>
+                            Member for <?php echo $memberDays; ?> days
+                        </p>
+
+                    </div>
 
                 </div>
 
             </div>
 
-        </div>
+            <!-- RIGHT FORM -->
+            <div class="col-lg-8">
 
-        <!-- RIGHT FORM -->
-        <div class="col-lg-8">
+                <div class="dark-card p-4">
 
-            <div class="dark-card p-4">
+                    <h2 class="section-title mb-4" style="color:white;">
+                        My Profile
+                    </h2>
 
-                <h2 class="section-title mb-4" style="color:white;">
-                    My Profile
-                </h2>
+                    <!-- SUCCESS -->
+                    <?php if (!empty($successMsg)): ?>
 
-                <!-- SUCCESS -->
-                <?php if(!empty($successMsg)): ?>
-
-                    <div class="alert alert-success">
-                        <?php echo $successMsg; ?>
-                    </div>
-
-                <?php endif; ?>
-
-                <!-- ERROR -->
-                <?php if(!empty($errorMsg)): ?>
-
-                    <div class="alert alert-danger">
-                        <?php echo $errorMsg; ?>
-                    </div>
-
-                <?php endif; ?>
-
-                <form method="POST">
-
-                    <div class="row">
-
-                        <!-- FULLNAME -->
-                        <div class="col-md-6 mb-3">
-
-                            <label class="form-label">
-                                User Name
-                            </label>
-
-                            <input type="text"
-                                   name="fullname"
-                                   class="form-control"
-                                   value="<?php echo htmlentities($fullname); ?>"
-                                   required>
-
+                        <div class="alert alert-success">
+                            <?php echo $successMsg; ?>
                         </div>
 
-                        <!-- EMAIL -->
-                        <div class="col-md-6 mb-3">
+                    <?php endif; ?>
 
-                            <label class="form-label">
-                                Email Address
-                            </label>
+                    <!-- ERROR -->
+                    <?php if (!empty($errorMsg)): ?>
 
-                            <input type="email"
-                                   class="form-control"
-                                   value="<?php echo htmlentities($gmail); ?>"
-                                   disabled>
-
+                        <div class="alert alert-danger">
+                            <?php echo $errorMsg; ?>
                         </div>
 
-                    </div>
+                    <?php endif; ?>
 
-                    <div class="row">
+                    <form method="POST">
 
-                        <!-- PHONE -->
-                        <div class="col-md-6 mb-3">
+                        <div class="row">
 
-                            <label class="form-label">
-                                Phone Number
-                            </label>
-
-                            <input type="text"
-                                   name="phone_num"
-                                   id="phone_num"
-                                   class="form-control"
-                                   maxlength="12"
-                                   value="<?php echo htmlentities($phone); ?>"
-                                   required>
-
-                        </div>
-
-                        <!-- GENDER -->
-                        <div class="col-md-6 mb-3">
-
-                            <label class="form-label">
-                                Gender
-                            </label>
-
-                            <select name="gender"
-                                    class="form-select"
-                                    required>
-
-                                <option value="">Select Gender</option>
-
-                                <option value="Male"
-                                    <?php if($gender == 'Male') echo 'selected'; ?>>
-                                    Male
-                                </option>
-
-                                <option value="Female"
-                                    <?php if($gender == 'Female') echo 'selected'; ?>>
-                                    Female
-                                </option>
-
-                                <option value="Other"
-                                    <?php if($gender == 'Other') echo 'selected'; ?>>
-                                    Other
-                                </option>
-
-                            </select>
-
-                        </div>
-
-                    </div>
-
-                    <!-- ADDRESS -->
-                    <div class="mb-4">
-
-                        <label class="form-label">
-                            Address
-                        </label>
-
-                        <textarea name="address"
-                                  class="form-control"
-                                  rows="4"
-                                  required><?php echo htmlentities($address); ?></textarea>
-
-                    </div>
-
-                    <hr style="border-color:#2a2a2a;">
-
-                    <h4 class="mb-4" style="color:#d4af37;">
-                        Change Password
-                    </h4>
-
-                    <!-- INFO TEXT -->
-                    <div class="mb-4">
-
-                        <div class="alert alert-dark border border-warning text-light"
-                            style="background:#151515;">
-
-                            <i class="fa fa-shield-halved text-warning me-2"></i>
-
-                            For security purposes, OTP verification is required
-                            before changing your password.
-
-                        </div>
-
-                    </div>
-
-                    <!-- CURRENT PASSWORD -->
-                    <div class="mb-4">
-
-                        <label class="form-label">
-                            Current Password
-                        </label>
-
-                        <input type="password"
-                            name="current_password"
-                            class="form-control"
-                            placeholder="Enter current password">
-
-                    </div>
-
-                    <!-- OTP CARD -->
-                    <div class="dark-card p-4 mb-4"
-                        style="background:#121212;
-                                border:1px solid #2a2a2a;">
-
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-
-                            <div>
-
-                                <h5 class="mb-1 text-warning">
-                                    OTP Verification
-                                </h5>
-
-                                <small class="text-soft">
-                                    Verify your registered email before password change
-                                </small>
-
-                            </div>
-
-                            <button type="button"
-                                    class="btn btn-warning"
-                                    id="sendOtpBtn">
-
-                                Get OTP
-
-                            </button>
-
-                        </div>
-
-                        <!-- OTP INPUT -->
-                        <div class="row g-3 align-items-end">
-
-                            <div class="col-md-8">
+                            <!-- FULLNAME -->
+                            <div class="col-md-6 mb-3">
 
                                 <label class="form-label">
-                                    Enter OTP
+                                    User Name
                                 </label>
 
-                                <input type="text"
-                                    id="otp_input"
-                                    class="form-control"
-                                    maxlength="4"
-                                    placeholder="4-digit OTP">
+                                <input type="text" name="fullname" class="form-control"
+                                    value="<?php echo htmlentities($fullname); ?>" required>
 
                             </div>
 
-                            <div class="col-md-4">
+                            <!-- EMAIL -->
+                            <div class="col-md-6 mb-3">
 
-                                <button type="button"
-                                        class="btn btn-success w-100"
-                                        id="verifyOtpBtn">
+                                <label class="form-label">
+                                    Email Address
+                                </label>
 
-                                    Verify OTP
+                                <input type="email" class="form-control" value="<?php echo htmlentities($gmail); ?>"
+                                    disabled>
+
+                            </div>
+
+                        </div>
+
+                        <div class="row">
+
+                            <!-- PHONE -->
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+                                    Phone Number
+                                </label>
+
+                                <input type="text" name="phone_num" id="phone_num" class="form-control" maxlength="12"
+                                    value="<?php echo htmlentities($phone); ?>" required>
+
+                            </div>
+
+                            <!-- GENDER -->
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+                                    Gender
+                                </label>
+
+                                <select name="gender" class="form-select" required>
+
+                                    <option value="">Select Gender</option>
+
+                                    <option value="Male" <?php if ($gender == 'Male')
+                                        echo 'selected'; ?>>
+                                        Male
+                                    </option>
+
+                                    <option value="Female" <?php if ($gender == 'Female')
+                                        echo 'selected'; ?>>
+                                        Female
+                                    </option>
+
+                                    <option value="Other" <?php if ($gender == 'Other')
+                                        echo 'selected'; ?>>
+                                        Other
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+                        <!-- ADDRESS -->
+                        <div class="mb-4">
+
+                            <label class="form-label">
+                                Address
+                            </label>
+
+                            <textarea name="address" class="form-control" rows="4"
+                                required><?php echo htmlentities($address); ?></textarea>
+
+                        </div>
+
+                        <hr style="border-color:#2a2a2a;">
+
+                        <h4 class="mb-4" style="color:#d4af37;">
+                            Change Password
+                        </h4>
+
+                        <!-- INFO TEXT -->
+                        <div class="mb-4">
+
+                            <div class="alert alert-dark border border-warning text-light" style="background:#151515;">
+
+                                <i class="fa fa-shield-halved text-warning me-2"></i>
+
+                                For security purposes, OTP verification is required
+                                before changing your password.
+
+                            </div>
+
+                        </div>
+
+                        <!-- CURRENT PASSWORD -->
+                        <div class="mb-4">
+
+                            <label class="form-label">
+                                Current Password
+                            </label>
+
+                            <input type="password" name="current_password" class="form-control"
+                                placeholder="Enter current password">
+
+                        </div>
+
+                        <!-- OTP CARD -->
+                        <div class="dark-card p-4 mb-4" style="background:#121212;
+                                border:1px solid #2a2a2a;">
+
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+
+                                <div>
+
+                                    <h5 class="mb-1 text-warning">
+                                        OTP Verification
+                                    </h5>
+
+                                    <small class="text-soft">
+                                        Verify your registered email before password change
+                                    </small>
+
+                                </div>
+
+                                <button type="button" class="btn btn-warning" id="sendOtpBtn">
+
+                                    Get OTP
 
                                 </button>
 
                             </div>
 
+                            <!-- OTP INPUT -->
+                            <div class="row g-3 align-items-end">
+
+                                <div class="col-md-8">
+
+                                    <label class="form-label">
+                                        Enter OTP
+                                    </label>
+
+                                    <input type="text" id="otp_input" class="form-control" maxlength="4"
+                                        placeholder="4-digit OTP">
+
+                                </div>
+
+                                <div class="col-md-4">
+
+                                    <button type="button" class="btn btn-success w-100" id="verifyOtpBtn">
+
+                                        Verify OTP
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
                         </div>
-
-                    </div>
-
-                    <!-- NEW PASSWORD -->
-                    <div class="row">
 
                         <!-- NEW PASSWORD -->
-                        <div class="col-md-6 mb-3">
+                        <div class="row">
 
-                            <label class="form-label">
-                                New Password
-                            </label>
+                            <!-- NEW PASSWORD -->
+                            <div class="col-md-6 mb-3">
 
-                            <input type="password"
-                                name="new_password"
-                                id="new_password"
-                                class="form-control"
-                                placeholder="Minimum 8 characters"
-                                pattern="^(?!.*\s).{8,}$"
-                                title="Password must be at least 8 characters and cannot contain spaces"
-                                disabled>
+                                <label class="form-label">
+                                    New Password
+                                </label>
 
-                        </div>
+                                <input type="password" name="new_password" id="new_password" class="form-control"
+                                    placeholder="Minimum 8 characters" pattern="^(?!.*\s).{8,}$"
+                                    title="Password must be at least 8 characters and cannot contain spaces" disabled>
 
-                        <!-- CONFIRM PASSWORD -->
-                        <div class="col-md-6 mb-3">
+                            </div>
 
-                            <label class="form-label">
-                                Confirm Password
-                            </label>
+                            <!-- CONFIRM PASSWORD -->
+                            <div class="col-md-6 mb-3">
 
-                            <input type="password"
-                                name="confirm_password"
-                                id="confirm_password"
-                                class="form-control"
-                                placeholder="Re-enter new password"
-                                disabled>
+                                <label class="form-label">
+                                    Confirm Password
+                                </label>
+
+                                <input type="password" name="confirm_password" id="confirm_password"
+                                    class="form-control" placeholder="Re-enter new password" disabled>
+
+                            </div>
 
                         </div>
 
-                    </div>
+                        <!-- SAVE BUTTON -->
+                        <div class="mt-4">
 
-                    <!-- SAVE BUTTON -->
-                    <div class="mt-4">
+                            <button type="submit" name="update_profile" class="btn-cta">
 
-                        <button type="submit"
-                                name="update_profile"
-                                class="btn-cta">
+                                Save Changes
 
-                            Save Changes
+                            </button>
 
-                        </button>
+                        </div>
 
-                    </div>
+                    </form>
 
-                </form>
+                </div>
 
             </div>
 
@@ -564,176 +532,175 @@ if (isset($_POST['update_profile'])) {
 
     </div>
 
-</div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
+        // PHONE AUTO FORMAT 
+        document.getElementById('phone_num').addEventListener('input', function (e) {
 
-// PHONE AUTO FORMAT 
-document.getElementById('phone_num').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
 
-    let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 3) {
+                value = value.slice(0, 3) + '-' + value.slice(3);
+            }
 
-    if (value.length > 3) {
-        value = value.slice(0,3) + '-' + value.slice(3);
-    }
+            e.target.value = value;
 
-    e.target.value = value;
+        });
 
-});
+        // SEND OTP
+        document.getElementById('sendOtpBtn')
+            .addEventListener('click', function () {
 
-// SEND OTP
-document.getElementById('sendOtpBtn')
-.addEventListener('click', function() {
+                const btn = this;
 
-    const btn = this;
+                btn.disabled = true;
+                btn.innerText = 'Sending...';
 
-    btn.disabled = true;
-    btn.innerText = 'Sending...';
+                fetch('send_otp.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'email=<?php echo urlencode($gmail); ?>'
+                })
 
-    fetch('send_otp.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: 'email=<?php echo urlencode($gmail); ?>'
-    })
+                    .then(res => res.json())
+                    .then(data => {
 
-    .then(res => res.json())
-    .then(data => {
+                        if (data.status === "success") {
 
-        if (data.status === "success") {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'OTP Sent',
+                                text: data.message,
+                                background: '#1a1a1a',
+                                color: '#fff',
+                                confirmButtonColor: '#d4af37'
+                            });
 
-            Swal.fire({
-                icon: 'success',
-                title: 'OTP Sent',
-                text: data.message,
-                background: '#1a1a1a',
-                color: '#fff',
-                confirmButtonColor: '#d4af37'
+                            // cooldown
+                            let seconds = 30;
+
+                            btn.disabled = true;
+
+                            const interval = setInterval(() => {
+
+                                btn.innerText = `Resend OTP (${seconds}s)`;
+                                seconds--;
+
+                                if (seconds < 0) {
+
+                                    clearInterval(interval);
+
+                                    btn.disabled = false;
+                                    btn.innerText = 'Get OTP';
+                                }
+
+                            }, 1000);
+
+                        } else {
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed',
+                                text: data.message,
+                                background: '#1a1a1a',
+                                color: '#fff',
+                                confirmButtonColor: '#d4af37'
+                            });
+
+                            btn.disabled = false;
+                            btn.innerText = 'Get OTP';
+                        }
+
+                    })
+
+                    .catch(() => {
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Network error',
+                            background: '#1a1a1a',
+                            color: '#fff',
+                            confirmButtonColor: '#d4af37'
+                        });
+
+                        btn.disabled = false;
+                        btn.innerText = 'Get OTP';
+                    });
+
             });
 
-            // cooldown
-            let seconds = 30;
 
-            btn.disabled = true;
+        // VERIFY OTP
+        document.getElementById('verifyOtpBtn')
+            .addEventListener('click', function () {
 
-            const interval = setInterval(() => {
+                const otp = document.getElementById('otp_input').value.trim();
 
-                btn.innerText = `Resend OTP (${seconds}s)`;
-                seconds--;
+                // validation
+                if (!/^\d{4}$/.test(otp)) {
 
-                if (seconds < 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Invalid OTP',
+                        text: 'OTP must be 4 digits',
+                        background: '#1a1a1a',
+                        color: '#fff',
+                        confirmButtonColor: '#d4af37'
+                    });
 
-                    clearInterval(interval);
-
-                    btn.disabled = false;
-                    btn.innerText = 'Get OTP';
+                    return;
                 }
 
-            }, 1000);
+                fetch('verify_otp.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'otp=' + otp
+                })
 
-        } else {
+                    .then(res => res.json())
+                    .then(data => {
 
-            Swal.fire({
-                icon: 'error',
-                title: 'Failed',
-                text: data.message,
-                background: '#1a1a1a',
-                color: '#fff',
-                confirmButtonColor: '#d4af37'
+                        if (data.status === 'success') {
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Verified',
+                                text: data.message,
+                                background: '#1a1a1a',
+                                color: '#fff',
+                                confirmButtonColor: '#d4af37'
+                            });
+
+                            // unlock fields
+                            document.getElementById('new_password').disabled = false;
+                            document.getElementById('confirm_password').disabled = false;
+
+                        } else {
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed',
+                                text: data.message,
+                                background: '#1a1a1a',
+                                color: '#fff',
+                                confirmButtonColor: '#d4af37'
+                            });
+                        }
+
+                    });
+
             });
 
-            btn.disabled = false;
-            btn.innerText = 'Get OTP';
-        }
+    </script>
 
-    })
-
-    .catch(() => {
-
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Network error',
-            background: '#1a1a1a',
-            color: '#fff',
-            confirmButtonColor: '#d4af37'
-        });
-
-        btn.disabled = false;
-        btn.innerText = 'Get OTP';
-    });
-
-});
-
-
-// VERIFY OTP
-document.getElementById('verifyOtpBtn')
-.addEventListener('click', function() {
-
-    const otp = document.getElementById('otp_input').value.trim();
-
-    // validation
-    if (!/^\d{4}$/.test(otp)) {
-
-        Swal.fire({
-            icon: 'warning',
-            title: 'Invalid OTP',
-            text: 'OTP must be 4 digits',
-            background: '#1a1a1a',
-            color: '#fff',
-            confirmButtonColor: '#d4af37'
-        });
-
-        return;
-    }
-
-    fetch('verify_otp.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: 'otp=' + otp
-    })
-
-    .then(res => res.json())
-    .then(data => {
-
-        if (data.status === 'success') {
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Verified',
-                text: data.message,
-                background: '#1a1a1a',
-                color: '#fff',
-                confirmButtonColor: '#d4af37'
-            });
-
-            // unlock fields
-            document.getElementById('new_password').disabled = false;
-            document.getElementById('confirm_password').disabled = false;
-
-        } else {
-
-            Swal.fire({
-                icon: 'error',
-                title: 'Failed',
-                text: data.message,
-                background: '#1a1a1a',
-                color: '#fff',
-                confirmButtonColor: '#d4af37'
-            });
-        }
-
-    });
-
-});
-
-</script>
-
-<?php include('includes/footer.php'); ?>
+    <?php include('includes/footer.php'); ?>
 
 </body>
+
 </html>

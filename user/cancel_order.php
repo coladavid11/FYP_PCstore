@@ -21,7 +21,7 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-$user_id  = $_SESSION['user_id'];
+$user_id = $_SESSION['user_id'];
 $order_id = intval($_POST['order_id'] ?? 0);
 
 if ($order_id <= 0) {
@@ -47,7 +47,7 @@ if (!$order) {
 /* ── ONLY 'processing' CAN BE CANCELLED ── */
 if (strtolower($order['order_status']) !== 'processing') {
     echo json_encode([
-        'status'  => 'error',
+        'status' => 'error',
         'message' => "This order cannot be cancelled. Current status: {$order['order_status']}."
     ]);
     exit();
@@ -89,14 +89,14 @@ try {
     $dbh->commit();
 
     echo json_encode([
-        'status'  => 'success',
+        'status' => 'success',
         'message' => "Order {$order['order_number']} cancelled. Stock has been restored."
     ]);
 
 } catch (Exception $e) {
     $dbh->rollBack();
     echo json_encode([
-        'status'  => 'error',
+        'status' => 'error',
         'message' => 'Failed to cancel order. Please try again.'
     ]);
 }

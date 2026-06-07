@@ -10,11 +10,11 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-$user_id    = $_SESSION['user_id'];
+$user_id = $_SESSION['user_id'];
 $product_id = intval($_POST['product_id'] ?? 0);
-$order_id   = intval($_POST['order_id']   ?? 0);
-$rating     = intval($_POST['rating']     ?? 0);
-$review     = trim($_POST['review']       ?? '');
+$order_id = intval($_POST['order_id'] ?? 0);
+$rating = intval($_POST['rating'] ?? 0);
+$review = trim($_POST['review'] ?? '');
 
 /* ── INPUT VALIDATION ── */
 if ($product_id <= 0 || $order_id <= 0) {
@@ -27,7 +27,7 @@ if ($rating < 1 || $rating > 5) {
     exit();
 }
 
-// review 长度上限保留，但不设下限（可以不写）
+// limit review length to 2000 characters
 if (strlen($review) > 2000) {
     echo json_encode(['status' => 'error', 'message' => 'Review is too long (max 2000 characters).']);
     exit();
@@ -50,7 +50,7 @@ if (!$order) {
 
 if (strtolower($order['order_status']) !== 'delivered') {
     echo json_encode([
-        'status'  => 'error',
+        'status' => 'error',
         'message' => 'You can only review products from delivered orders.'
     ]);
     exit();
@@ -65,7 +65,7 @@ $itemStmt = $dbh->prepare("
 $itemStmt->execute([$order_id, $product_id]);
 if (!$itemStmt->fetch()) {
     echo json_encode([
-        'status'  => 'error',
+        'status' => 'error',
         'message' => 'This product was not part of the order.'
     ]);
     exit();
@@ -80,7 +80,7 @@ $dupStmt = $dbh->prepare("
 $dupStmt->execute([$user_id, $product_id, $order_id]);
 if ($dupStmt->fetch()) {
     echo json_encode([
-        'status'  => 'error',
+        'status' => 'error',
         'message' => 'You have already reviewed this product for this order.'
     ]);
     exit();
@@ -108,12 +108,12 @@ $success = $insert->execute([
 
 if ($success) {
     echo json_encode([
-        'status'  => 'success',
+        'status' => 'success',
         'message' => 'Thank you! Your review has been submitted.'
     ]);
 } else {
     echo json_encode([
-        'status'  => 'error',
+        'status' => 'error',
         'message' => 'Failed to save your review. Please try again.'
     ]);
 }

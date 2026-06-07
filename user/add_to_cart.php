@@ -7,15 +7,15 @@ include('includes/config.php'); // contains $dbh
 /* ── AUTH CHECK ── */
 if (!isset($_SESSION['user_id'])) {
     echo json_encode([
-        'status'  => 'login_required',
+        'status' => 'login_required',
         'message' => 'Please login to add items to your cart.'
     ]);
     exit();
 }
 
-$user_id    = $_SESSION['user_id'];
+$user_id = $_SESSION['user_id'];
 $product_id = intval($_POST['product_id'] ?? 0);
-$qty        = intval($_POST['qty'] ?? 1);
+$qty = intval($_POST['qty'] ?? 1);
 
 /* ── BASIC INPUT VALIDATION ── */
 if ($product_id <= 0) {
@@ -55,8 +55,8 @@ $total_requested = $already_in_cart + $qty;
 /* ── STOCK VALIDATION (backend enforced) ── */
 if ($available_stock <= 0) {
     echo json_encode([
-        'status'          => 'out_of_stock',
-        'message'         => 'Sorry, this product is currently out of stock.',
+        'status' => 'out_of_stock',
+        'message' => 'Sorry, this product is currently out of stock.',
         'available_stock' => 0
     ]);
     exit();
@@ -64,8 +64,8 @@ if ($available_stock <= 0) {
 
 if ($qty > $available_stock) {
     echo json_encode([
-        'status'          => 'error',
-        'message'         => "Only {$available_stock} item(s) available in stock.",
+        'status' => 'error',
+        'message' => "Only {$available_stock} item(s) available in stock.",
         'available_stock' => $available_stock
     ]);
     exit();
@@ -74,11 +74,11 @@ if ($qty > $available_stock) {
 if ($total_requested > $available_stock) {
     $can_add = $available_stock - $already_in_cart;
     echo json_encode([
-        'status'          => 'error',
-        'message'         => "You already have {$already_in_cart} in your cart. You can only add {$can_add} more (stock: {$available_stock}).",
+        'status' => 'error',
+        'message' => "You already have {$already_in_cart} in your cart. You can only add {$can_add} more (stock: {$available_stock}).",
         'available_stock' => $available_stock,
         'already_in_cart' => $already_in_cart,
-        'can_add_more'    => $can_add
+        'can_add_more' => $can_add
     ]);
     exit();
 }
@@ -88,7 +88,7 @@ $subtotal = $product['price'] * $qty;
 
 if ($existingCart) {
     /* UPDATE: add to existing row */
-    $newQty      = $already_in_cart + $qty;
+    $newQty = $already_in_cart + $qty;
     $newSubtotal = $product['price'] * $newQty;
 
     $update = $dbh->prepare("
@@ -129,13 +129,13 @@ if ($existingCart) {
 
 if ($success) {
     echo json_encode([
-        'status'          => 'success',
-        'message'         => "'{$product['name']}' added to your cart!",
+        'status' => 'success',
+        'message' => "'{$product['name']}' added to your cart!",
         'available_stock' => $available_stock
     ]);
 } else {
     echo json_encode([
-        'status'  => 'error',
+        'status' => 'error',
         'message' => 'Failed to update cart. Please try again.'
     ]);
 }
