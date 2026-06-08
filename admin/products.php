@@ -658,6 +658,10 @@ function filterUrl(array $overrides): string
                             value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
                     </div>
 
+                    <button type="submit" class="btn-filter btn-filter-go">
+                            <i class="fa fa-search" style="margin-right:5px;"></i> Search
+                        </button>
+
                     <!-- 📦 Category Dropdown -->
                     <input type="hidden" name="category" id="hiddenCategory" value="<?php echo $filterCat; ?>">
                     <div class="filter-dropdown" id="ddCat">
@@ -712,9 +716,6 @@ function filterUrl(array $overrides): string
                     </div>
 
                     <!-- Buttons -->
-                    <button type="submit" class="btn-filter btn-filter-go">
-                        <i class="fa fa-search" style="margin-right:5px;"></i> Search
-                    </button>
                     <a href="products.php" class="btn-filter btn-filter-reset" style="text-decoration:none;">
                         <i class="fa fa-rotate-left" style="margin-right:5px;"></i> Reset
                     </a>
