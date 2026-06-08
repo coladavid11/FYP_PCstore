@@ -196,17 +196,19 @@ table tr:hover td { background:#fcfcfc; }
 </head>
 <body>
 
-<!-- SIDEBAR -->
-<div class="sidebar">
-    <h2>Admin</h2>
-    <a href="dashboard.php">🏠 Dashboard</a>
-    <a href="products.php">📦 Products</a>
-    <a href="categories.php" class="sidebar-active">📂 Categories</a>
-    <a href="brands.php">🏷️ Brands</a>
-    <a href="orders.php">🛒 Orders</a>
-    <a href="users.php">👥 Users</a>
-    <a href="admin.php">⚙ Admin</a>
-</div>
+    <div class="sidebar">
+
+        <h2>Admin</h2>
+
+        <a href="dashboard.php">🏠 Dashboard</a>
+        <a href="products.php">📦 Products</a>
+        <a href="categories.php" class="sidebar-active">📂 Categories</a>
+        <a href="brands.php">🏷️ Brands</a>
+        <a href="orders.php">🛒 Orders</a>
+        <a href="users.php">👥 Users</a>
+        <a href="admins.php">⚙ Admin</a>
+
+    </div>
 
 <div class="main">
 

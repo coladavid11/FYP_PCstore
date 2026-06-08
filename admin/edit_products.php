@@ -390,6 +390,8 @@ if (isset($_POST['update_product'])) {
             color: #333;
             background: #fafafa;
             transition: border-color 0.2s;
+            display: block;
+            /* Ensures consistent layout behavior across browsers */
         }
 
         input:focus,
@@ -406,6 +408,7 @@ if (isset($_POST['update_product'])) {
             min-height: 100px;
         }
 
+        /* ── INPUT PREFIX (PRICE CONTAINER) ── */
         .input-prefix {
             display: flex;
             align-items: center;
@@ -413,6 +416,8 @@ if (isset($_POST['update_product'])) {
             border-radius: 4px;
             overflow: hidden;
             background: #fafafa;
+            width: 100%;
+            /* Force full-width growth inside grid item */
         }
 
         .input-prefix span {
@@ -428,6 +433,9 @@ if (isset($_POST['update_product'])) {
             border: none;
             border-radius: 0;
             flex: 1;
+            /* Instructs input to absorb all left-over wide space */
+            min-width: 0;
+            /* Keeps default HTML sizing from cracking flex bounds */
             background: transparent;
         }
 
@@ -440,6 +448,7 @@ if (isset($_POST['update_product'])) {
             box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.08);
         }
 
+        /* ── GRID ROW ── */
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -584,7 +593,7 @@ if (isset($_POST['update_product'])) {
             border-radius: 20px;
             font-size: 0.72rem;
             font-weight: 600;
-            margin-left: 8px;
+            margin-left: auto;
         }
 
         .stock-ok {
@@ -600,6 +609,17 @@ if (isset($_POST['update_product'])) {
         .stock-out {
             background: #f8d7da;
             color: #721c24;
+        }
+
+        .stock-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .stock-label label {
+            margin: 0;
         }
 
         /* ── BOTTOM SAVE BAR ── */
@@ -666,256 +686,257 @@ if (isset($_POST['update_product'])) {
                 <!-- ════════ LEFT COLUMN ════════ -->
                 <div>
 
-                    <!-- 1. BASIC INFO -->
                     <div class="card">
                         <div class="card-header">
                             <i class="fa fa-circle-info"></i>
                             <h3>Basic Information</h3>
                         </div>
-                        <div class="card-body">
 
+                        <!-- 1. BASIC INFO -->
+                        <div class="card-body">
                             <div class="form-group">
                                 <label>Product Name <span class="req">*</span></label>
                                 <input type="text" name="name" value="<?php echo htmlspecialchars($product->name); ?>"
                                     required placeholder="e.g. MSI Cyborg 15">
                             </div>
-                        </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Category <span class="req">*</span></label>
-                                <select name="category_id" required>
-                                    <?php foreach($categories as $cat): ?>
-                                        <option value="<?php echo $cat->category_id; ?>"
-                                            <?php echo $product->category_id == $cat->category_id ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($cat->category_name); ?>
-                                        </option>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Category <span class="req">*</span></label>
+                                    <select name="category_id" required>
+                                        <?php foreach ($categories as $cat): ?>
+                                            <option value="<?php echo $cat->category_id; ?>" <?php echo $product->category_id == $cat->category_id ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($cat->category_name); ?>
+                                            </option>
                                         <?php endforeach; ?>
-                                </select>
-                        </div>
+                                    </select>
+                                </div>
 
-                        <div class="form-group">
-                            <label>Brand <span class="req">*</span></label>
-                            <select name="brand_id" required>
-                                <?php foreach($brands as $b): ?>
-                                    <option value="<?php echo $b->brand_id; ?>"
-                                        <?php echo $product->brand_id == $b->brand_id ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($b->brand_name); ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                            </select>
-                        </div>
+                                <div class="form-group">
+                                    <label>Brand <span class="req">*</span></label>
+                                    <select name="brand_id" required>
+                                        <?php foreach ($brands as $b): ?>
+                                            <option value="<?php echo $b->brand_id; ?>" <?php echo $product->brand_id == $b->brand_id ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($b->brand_name); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Price (RM) <span class="req">*</span></label>
-                                <div class="input-prefix">
-                                    <span>RM</span>
-                                    <input type="number" name="price" step="0.01" min="0"
-                                        value="<?php echo $product->price; ?>" required>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Price (RM) <span class="req">*</span></label>
+                                    <div class="input-prefix">
+                                        <span>RM</span>
+                                        <input type="number" name="price" step="0.01" min="0"
+                                            value="<?php echo $product->price; ?>" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <div class="stock-label">
+                                        <label>Stock Quantity <span class="req">*</span></label>
+                                        <?php
+                                        $s = intval($product->stock);
+                                        if ($s <= 0)
+                                            echo '<span class="stock-indicator stock-out">Out of Stock</span>';
+                                        elseif ($s < 5)
+                                            echo '<span class="stock-indicator stock-low">Low Stock</span>';
+                                        else
+                                            echo '<span class="stock-indicator stock-ok">In Stock</span>';
+                                        ?>
+                                    </div>
+                                    <div class="input-container">
+                                        <input type="number" name="stock" min="0" value="<?php echo $product->stock; ?>"
+                                            required>
+                                    </div>
                                 </div>
                             </div>
 
                             <div class="form-group">
-                                <label>
-                                    Stock Quantity <span class="req">*</span>
-                                    <?php
-                                    $s = intval($product->stock);
-                                    if ($s <= 0)
-                                        echo '<span class="stock-indicator stock-out">Out of Stock</span>';
-                                    elseif ($s < 5)
-                                        echo '<span class="stock-indicator stock-low">Low Stock</span>';
-                                    else
-                                        echo '<span class="stock-indicator stock-ok">In Stock</span>';
-                                    ?>
-                                </label>
-                                <input type="number" name="stock" min="0" value="<?php echo $product->stock; ?>"
-                                    required>
+                                <label>Description</label>
+                                <textarea name="description" rows="5"
+                                    placeholder="Describe this product…"><?php echo htmlspecialchars($product->description); ?></textarea>
                             </div>
+
                         </div>
-
-                        <div class="form-group">
-                            <label>Description</label>
-                            <textarea name="description" rows="5"
-                                placeholder="Describe this product…"><?php echo htmlspecialchars($product->description); ?></textarea>
-                        </div>
-
-                    </div><!-- card-body -->
-                </div><!-- card -->
-
-                <!-- 2. SPEC FIELDS (TABBED) -->
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fa fa-microchip"></i>
-                        <h3>Technical Specifications</h3>
                     </div>
-                    <div class="card-body">
 
-                        <!-- TAB BUTTONS -->
-                        <div class="spec-tabs">
+                    <!-- 2. SPEC FIELDS (TABBED) -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fa fa-microchip"></i>
+                            <h3>Technical Specifications</h3>
+                        </div>
+                        <div class="card-body">
+
+                            <!-- TAB BUTTONS -->
+                            <div class="spec-tabs">
+                                <?php
+                                $tabGroups = [
+                                    'core' => ['label' => 'Core Components', 'icon' => 'fa-microchip', 'cols' => ['cpu', 'gpu', 'ram', 'storage']],
+                                    'display' => ['label' => 'Display & OS', 'icon' => 'fa-desktop', 'cols' => ['display_screen', 'operating_system']],
+                                    'build' => ['label' => 'PC Build', 'icon' => 'fa-screwdriver-wrench', 'cols' => ['motherboard', 'power_supply', 'cooler', 'pc_case']],
+                                    'periph' => ['label' => 'Peripherals', 'icon' => 'fa-keyboard', 'cols' => ['monitor', 'keyboard', 'mouse']],
+                                ];
+                                $first = true;
+                                foreach ($tabGroups as $tabKey => $tab):
+                                    ?>
+                                    <div class="spec-tab <?php echo $first ? 'active' : ''; ?>"
+                                        onclick="switchTab('<?php echo $tabKey; ?>')">
+                                        <i class="fa <?php echo $tab['icon']; ?>"
+                                            style="margin-right:4px;font-size:0.7rem;"></i>
+                                        <?php echo $tab['label']; ?>
+                                    </div>
+                                    <?php $first = false; endforeach; ?>
+                            </div>
+
+                            <!-- TAB PANELS -->
                             <?php
-                            $tabGroups = [
-                                'core' => ['label' => 'Core Components', 'icon' => 'fa-microchip', 'cols' => ['cpu', 'gpu', 'ram', 'storage']],
-                                'display' => ['label' => 'Display & OS', 'icon' => 'fa-desktop', 'cols' => ['display_screen', 'operating_system']],
-                                'build' => ['label' => 'PC Build', 'icon' => 'fa-screwdriver-wrench', 'cols' => ['motherboard', 'power_supply', 'cooler', 'pc_case']],
-                                'periph' => ['label' => 'Peripherals', 'icon' => 'fa-keyboard', 'cols' => ['monitor', 'keyboard', 'mouse']],
-                            ];
                             $first = true;
                             foreach ($tabGroups as $tabKey => $tab):
                                 ?>
-                                <div class="spec-tab <?php echo $first ? 'active' : ''; ?>"
-                                    onclick="switchTab('<?php echo $tabKey; ?>')">
-                                    <i class="fa <?php echo $tab['icon']; ?>"
-                                        style="margin-right:4px;font-size:0.7rem;"></i>
-                                    <?php echo $tab['label']; ?>
+                                <div class="spec-section <?php echo $first ? 'active' : ''; ?>"
+                                    id="tab-<?php echo $tabKey; ?>">
+                                    <?php foreach ($tab['cols'] as $col):
+                                        $label = $specFields[$col];
+                                        $val = htmlspecialchars($product->$col ?? '');
+                                        ?>
+                                        <div class="form-group">
+                                            <label><?php echo $label; ?></label>
+                                            <input type="text" name="<?php echo $col; ?>" value="<?php echo $val; ?>"
+                                                placeholder="e.g. <?php echo $col === 'cpu' ? 'Intel Core i7-13620H' : ($col === 'ram' ? '16GB DDR5' : ($col === 'gpu' ? 'NVIDIA RTX 4060 8GB' : '')); ?>">
+                                            <?php if ($val === ''): ?>
+                                                <div class="spec-hint">Leave blank if not applicable for this product.</div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
                                 <?php $first = false; endforeach; ?>
-                        </div>
 
-                        <!-- TAB PANELS -->
-                        <?php
-                        $first = true;
-                        foreach ($tabGroups as $tabKey => $tab):
-                            ?>
-                            <div class="spec-section <?php echo $first ? 'active' : ''; ?>" id="tab-<?php echo $tabKey; ?>">
-                                <?php foreach ($tab['cols'] as $col):
-                                    $label = $specFields[$col];
-                                    $val = htmlspecialchars($product->$col ?? '');
-                                    ?>
-                                    <div class="form-group">
-                                        <label><?php echo $label; ?></label>
-                                        <input type="text" name="<?php echo $col; ?>" value="<?php echo $val; ?>"
-                                            placeholder="e.g. <?php echo $col === 'cpu' ? 'Intel Core i7-13620H' : ($col === 'ram' ? '16GB DDR5' : ($col === 'gpu' ? 'NVIDIA RTX 4060 8GB' : '')); ?>">
-                                        <?php if ($val === ''): ?>
-                                            <div class="spec-hint">Leave blank if not applicable for this product.</div>
-                                        <?php endif; ?>
+                        </div>
+                    </div><!-- spec card -->
+
+                </div><!-- LEFT -->
+
+                <!-- ════════ RIGHT COLUMN ════════ -->
+                <div>
+
+                    <!-- PRODUCT IMAGE -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fa fa-image"></i>
+                            <h3>Product Image</h3>
+                        </div>
+                        <div class="card-body">
+
+                            <!-- CURRENT IMAGE PREVIEW -->
+                            <div class="img-preview-wrap">
+                                <?php if (!empty($product->image)): ?>
+                                    <img src="<?php echo htmlspecialchars($product->image); ?>" id="imgPreview"
+                                        alt="Product image"
+                                        onerror="this.style.display='none';document.getElementById('imgPlaceholder').style.display='block'">
+                                    <div class="img-placeholder" id="imgPlaceholder" style="display:none;">
+                                        <i class="fa fa-image"></i>
+                                        <p>Image not found</p>
                                     </div>
-                                <?php endforeach; ?>
+                                <?php else: ?>
+                                    <div class="img-placeholder" id="imgPlaceholder">
+                                        <i class="fa fa-image"></i>
+                                        <p>No image uploaded</p>
+                                    </div>
+                                    <img id="imgPreview" style="display:none;">
+                                <?php endif; ?>
                             </div>
-                            <?php $first = false; endforeach; ?>
 
-                    </div>
-                </div><!-- spec card -->
-
-            </div><!-- LEFT -->
-
-            <!-- ════════ RIGHT COLUMN ════════ -->
-            <div>
-
-                <!-- PRODUCT IMAGE -->
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fa fa-image"></i>
-                        <h3>Product Image</h3>
-                    </div>
-                    <div class="card-body">
-
-                        <!-- CURRENT IMAGE PREVIEW -->
-                        <div class="img-preview-wrap">
                             <?php if (!empty($product->image)): ?>
-                                <img src="<?php echo htmlspecialchars($product->image); ?>" id="imgPreview"
-                                    alt="Product image"
-                                    onerror="this.style.display='none';document.getElementById('imgPlaceholder').style.display='block'">
-                                <div class="img-placeholder" id="imgPlaceholder" style="display:none;">
-                                    <i class="fa fa-image"></i>
-                                    <p>Image not found</p>
+                                <!-- CURRENT IMAGE PATH -->
+                                <div
+                                    style="font-size:0.72rem;color:#aaa;margin-bottom:12px;word-break:break-all;padding:6px 10px;background:#fafafa;border-radius:4px;border:1px solid #f0f0f0;">
+                                    <i class="fa fa-folder-open" style="color:#d4af37;margin-right:5px;"></i>
+                                    <?php echo htmlspecialchars(basename($product->image)); ?>
                                 </div>
-                            <?php else: ?>
-                                <div class="img-placeholder" id="imgPlaceholder">
-                                    <i class="fa fa-image"></i>
-                                    <p>No image uploaded</p>
+
+                                <!-- DELETE CHECKBOX -->
+                                <div class="delete-img-wrap">
+                                    <input type="checkbox" name="delete_image" id="deleteImage" value="1"
+                                        onchange="toggleDeleteImg(this)">
+                                    <label for="deleteImage">
+                                        <i class="fa fa-trash"></i>
+                                        Delete current image
+                                    </label>
                                 </div>
-                                <img id="imgPreview" style="display:none;">
                             <?php endif; ?>
-                        </div>
 
-                        <?php if (!empty($product->image)): ?>
-                            <!-- CURRENT IMAGE PATH -->
-                            <div
-                                style="font-size:0.72rem;color:#aaa;margin-bottom:12px;word-break:break-all;padding:6px 10px;background:#fafafa;border-radius:4px;border:1px solid #f0f0f0;">
-                                <i class="fa fa-folder-open" style="color:#d4af37;margin-right:5px;"></i>
-                                <?php echo htmlspecialchars(basename($product->image)); ?>
+                            <!-- UPLOAD NEW IMAGE -->
+                            <div class="form-group">
+                                <label>Upload New Image</label>
+                                <input type="file" name="image" id="newImageInput"
+                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                    onchange="previewNewImage(this)">
                             </div>
 
-                            <!-- DELETE CHECKBOX -->
-                            <div class="delete-img-wrap">
-                                <input type="checkbox" name="delete_image" id="deleteImage" value="1"
-                                    onchange="toggleDeleteImg(this)">
-                                <label for="deleteImage">
-                                    <i class="fa fa-trash"></i>
-                                    Delete current image
-                                </label>
+                            <!-- NAMING NOTE -->
+                            <div class="upload-note">
+                                <i class="fa fa-circle-info"></i>
+                                <div>
+                                    New images are auto-named in sequence
+                                    (e.g. <strong>product_59.jpg</strong>).
+                                    File saved to <code
+                                        style="background:#fff3cd;padding:1px 4px;border-radius:2px;">../image/products/</code>
+                                </div>
                             </div>
-                        <?php endif; ?>
 
-                        <!-- UPLOAD NEW IMAGE -->
-                        <div class="form-group">
-                            <label>Upload New Image</label>
-                            <input type="file" name="image" id="newImageInput"
-                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                                onchange="previewNewImage(this)">
                         </div>
+                    </div><!-- image card -->
 
-                        <!-- NAMING NOTE -->
-                        <div class="upload-note">
+                    <!-- PRODUCT META (read-only info) -->
+                    <div class="card">
+                        <div class="card-header">
                             <i class="fa fa-circle-info"></i>
-                            <div>
-                                New images are auto-named in sequence
-                                (e.g. <strong>product_59.jpg</strong>).
-                                File saved to <code
-                                    style="background:#fff3cd;padding:1px 4px;border-radius:2px;">../image/products/</code>
-                            </div>
+                            <h3>Product Meta</h3>
                         </div>
-
+                        <div class="card-body">
+                            <?php
+                            $metaItems = [
+                                ['fa fa-hashtag', 'Product ID', '#' . $product->product_id],
+                                ['fa fa-calendar-days', 'Created', date('d M Y, g:i A', strtotime($product->created_at))],
+                            ];
+                            foreach ($metaItems as [$icon, $lbl, $val]):
+                                ?>
+                                <div
+                                    style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f5f5f5;">
+                                    <span style="font-size:0.78rem;color:#aaa;display:flex;align-items:center;gap:7px;">
+                                        <i class="fa <?php echo $icon; ?>"
+                                            style="color:#d4af37;width:14px;text-align:center;"></i>
+                                        <?php echo $lbl; ?>
+                                    </span>
+                                    <span style="font-size:0.82rem;color:#555;font-weight:500;"><?php echo $val; ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
-                </div><!-- image card -->
 
-                <!-- PRODUCT META (read-only info) -->
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fa fa-circle-info"></i>
-                        <h3>Product Meta</h3>
+                    <!-- SAVE ACTIONS -->
+                    <div class="card">
+                        <div class="card-body">
+                            <button type="submit" name="update_product" class="btn-save"
+                                style="width:100%;justify-content:center;padding:13px;">
+                                <i class="fa fa-floppy-disk"></i> Save Changes
+                            </button>
+                            <a href="products.php" class="btn-back"
+                                style="width:100%;justify-content:center;margin-top:10px;display:flex;">
+                                <i class="fa fa-xmark"></i> Discard & Go Back
+                            </a>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <?php
-                        $metaItems = [
-                            ['fa fa-hashtag', 'Product ID', '#' . $product->product_id],
-                            ['fa fa-calendar-days', 'Created', date('d M Y, g:i A', strtotime($product->created_at))],
-                        ];
-                        foreach ($metaItems as [$icon, $lbl, $val]):
-                            ?>
-                            <div
-                                style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f5f5f5;">
-                                <span style="font-size:0.78rem;color:#aaa;display:flex;align-items:center;gap:7px;">
-                                    <i class="fa <?php echo $icon; ?>"
-                                        style="color:#d4af37;width:14px;text-align:center;"></i>
-                                    <?php echo $lbl; ?>
-                                </span>
-                                <span style="font-size:0.82rem;color:#555;font-weight:500;"><?php echo $val; ?></span>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
 
-                <!-- SAVE ACTIONS -->
-                <div class="card">
-                    <div class="card-body">
-                        <button type="submit" name="update_product" class="btn-save"
-                            style="width:100%;justify-content:center;padding:13px;">
-                            <i class="fa fa-floppy-disk"></i> Save Changes
-                        </button>
-                        <a href="products.php" class="btn-back"
-                            style="width:100%;justify-content:center;margin-top:10px;display:flex;">
-                            <i class="fa fa-xmark"></i> Discard & Go Back
-                        </a>
-                    </div>
-                </div>
+                </div><!-- RIGHT -->
 
-            </div><!-- RIGHT -->
+            </div><!-- form-layout -->
 
-    </div><!-- form-layout -->
-
-    </form>
+        </form>
 
     </div><!-- main -->
 

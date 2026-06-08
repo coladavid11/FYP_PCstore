@@ -231,7 +231,7 @@ $orders = $query->fetchAll(PDO::FETCH_OBJ);
         <a href="brands.php">🏷️ Brands</a>
         <a href="orders.php" class="sidebar-active">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
-        <a href="admin.php">⚙ Admin</a>
+        <a href="admins.php">⚙ Admin</a>
 
     </div>
 

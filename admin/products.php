@@ -629,7 +629,7 @@ function filterUrl(array $overrides): string
         <a href="brands.php">🏷️ Brands</a>
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
-        <a href="admin.php">⚙ Admin</a>
+        <a href="admins.php">⚙ Admin</a>
 
     </div>
 
@@ -657,6 +657,10 @@ function filterUrl(array $overrides): string
                             placeholder="Search by product name, brand or category…"
                             value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
                     </div>
+
+                    <button type="submit" class="btn-filter btn-filter-go">
+                            <i class="fa fa-search" style="margin-right:5px;"></i> Search
+                        </button>
 
                     <!-- 📦 Category Dropdown -->
                     <input type="hidden" name="category" id="hiddenCategory" value="<?php echo $filterCat; ?>">
@@ -712,9 +716,6 @@ function filterUrl(array $overrides): string
                     </div>
 
                     <!-- Buttons -->
-                    <button type="submit" class="btn-filter btn-filter-go">
-                        <i class="fa fa-search" style="margin-right:5px;"></i> Search
-                    </button>
                     <a href="products.php" class="btn-filter btn-filter-reset" style="text-decoration:none;">
                         <i class="fa fa-rotate-left" style="margin-right:5px;"></i> Reset
                     </a>
