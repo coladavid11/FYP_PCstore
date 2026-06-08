@@ -629,7 +629,7 @@ function filterUrl(array $overrides): string
         <a href="brands.php">🏷️ Brands</a>
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
-        <a href="admin.php">⚙ Admin</a>
+        <a href="admins.php">⚙ Admin</a>
 
     </div>
 

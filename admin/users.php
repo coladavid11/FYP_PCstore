@@ -258,7 +258,7 @@ if (isset($_GET['delete'])) {
         <a href="brands.php">🏷️ Brands</a>
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php" class="sidebar-active">👥 Users</a>
-        <a href="admin.php">⚙ Admin</a>
+        <a href="admins.php">⚙ Admin</a>
 
     </div>
 
