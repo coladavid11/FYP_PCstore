@@ -21,7 +21,7 @@ if (isset($_POST['login'])) {
         $errMsg = "Please enter both email and password.";
     } else {
 
-        $sql = "SELECT email, password, fullname, role, status 
+        $sql = "SELECT admin_id, email, password, fullname, role, status 
                 FROM admin 
                 WHERE email = :email LIMIT 1";
 
@@ -38,7 +38,8 @@ if (isset($_POST['login'])) {
                 if ($admin->status == 0) {
                     $errMsg = "Account is blocked.";
                 } else {
-
+                    
+                    $_SSESSION['admin_id'] = $admin->admin_id;
                     $_SESSION['admin_login'] = $admin->email;
                     $_SESSION['admin_name'] = $admin->fullname;
                     $_SESSION['admin_role'] = $admin->role;

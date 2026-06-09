@@ -7,7 +7,11 @@ if (!isset($_SESSION['admin_login'])) {
     exit;
 }
 
-$sql = "SELECT * FROM admin ORDER BY admin_id DESC";
+if ($_SESSION['admin_role'] != 'superadmin') {
+    die("Access Denied");
+}
+
+$sql = "SELECT * FROM admin WHERE status = 1 ORDER BY admin_id DESC";
 $query = $dbh->prepare($sql);
 $query->execute();
 
@@ -20,19 +24,37 @@ $admins = $query->fetchAll(PDO::FETCH_OBJ);
 if (isset($_GET['delete'])) {
 
     $id = intval($_GET['delete']);
-    
 
-    $sql = "DELETE FROM admin
-            WHERE admin_id = :id";
+    if ($id == $_SESSION['admin_id']) {
 
-    $query = $dbh->prepare($sql);
+        echo "<script>alert('You cannot deactivate your own account');</script>";
 
-    $query->bindParam(':id', $id, PDO::PARAM_INT);
+    } else {
 
-    $query->execute();
+        $check = $dbh->prepare("SELECT role FROM admin WHERE admin_id = :id");
+        $check->bindParam(':id', $id, PDO::PARAM_INT);
+        $check->execute();
 
-    header("Location: admins.php");
-    exit;
+        $target = $check->fetch(PDO::FETCH_OBJ);
+
+        if ($target && $target->role == 'superadmin') {
+
+            echo "<script>alert('Cannot deactivate another Super Admin');</script>";
+
+        } else {
+
+            $sql = "UPDATE admin
+                    SET status = 0
+                    WHERE admin_id = :id";
+
+            $query = $dbh->prepare($sql);
+            $query->bindParam(':id', $id, PDO::PARAM_INT);
+            $query->execute();
+
+            header("Location: admins.php");
+            exit;
+        }
+    }
 }
 ?>
 
