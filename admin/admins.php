@@ -7,9 +7,6 @@ if (!isset($_SESSION['admin_login'])) {
     exit;
 }
 
-if ($_SESSION['admin_role'] != 'superadmin') {
-    die("Access Denied");
-}
 
 $sql = "SELECT * FROM admin WHERE status = 1 ORDER BY admin_id DESC";
 $query = $dbh->prepare($sql);
@@ -285,6 +282,7 @@ if (isset($_GET['delete'])) {
             <h1>Admin Management</h1>
             <div class="topbar-links">
                 <a href="dashboard.php" class="Back"><i class="fa fa-arrow-left me-1"></i>Back</a>
+                <a href="add_admin.php" class="btn-add"><i class="fa fa-plus"></i> Add Admin</a>
             </div>
         </div>
 
@@ -324,6 +322,10 @@ if (isset($_GET['delete'])) {
                                 </td>
                                 <td><?= date('d/m/Y', strtotime($admin->created_at)) ?></td>
                                 <td>
+                                    <a href="edit_admin.php?id=<?= $admin->admin_id ?>" class="action-btn edit">
+                                        <i class="fa fa-edit"></i> Edit
+                                    </a>
+                                    <span class="divider">|</span>
                                     <a href="admins.php?delete=<?= $admin->admin_id ?>" class="action-btn delete"
                                         onclick="return confirm('Are you sure you want to delete this admin?')">
                                         <i class="fa fa-trash"></i> Delete
