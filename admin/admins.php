@@ -7,6 +7,9 @@ if (!isset($_SESSION['admin_login'])) {
     exit;
 }
 
+if ($_SESSION['admin_role'] != 'superadmin') {
+    die("Access Denied");
+}
 
 $sql = "SELECT * FROM admin WHERE status = 1 ORDER BY admin_id DESC";
 $query = $dbh->prepare($sql);
