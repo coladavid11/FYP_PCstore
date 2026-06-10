@@ -2,8 +2,8 @@
 session_start();
 include('includes/config.php');
 
-if(!isset($_SESSION['admin_login'])) {
-    header("location:admin_login.php"); 
+if (!isset($_SESSION['admin_login'])) {
+    header("location:admin_login.php");
     exit();
 }
 
@@ -13,233 +13,341 @@ $sql = "SELECT * FROM admin WHERE email = :email";
 $query = $dbh->prepare($sql);
 $query->bindParam(':email', $email, PDO::PARAM_STR);
 $query->execute();
+
 $result = $query->fetch(PDO::FETCH_OBJ);
 
-if(!$result) {
-    echo "Admin details not found.";
-    exit();
+if (!$result) {
+    die("Admin not found.");
 }
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Profile | My PC Store</title>
 
-<title>Admin Profile | My PC Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
 
-<style>
+        body {
+            display: flex;
+            background: #f5f5f5;
+        }
 
-/* =========================
-   RESET
-========================= */
+        /* =========================
+           SIDEBAR
+        ========================= */
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
+        .sidebar {
+            width: 220px;
+            height: 100vh;
+            background: #000;
+            padding: 20px;
+            position: fixed;
+        }
 
-/* =========================
-   BODY
-========================= */
+        .sidebar h2 {
+            color: #d4af37;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2rem;
+        }
 
-body{
-    font-family:'Poppins', sans-serif;
-    background:#f5f5f5;
+        .sidebar a {
+            display: block;
+            color: #adadad;
+            text-decoration: none;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+            transition: .3s;
+        }
 
-    height:100vh;
+        .sidebar a:hover {
+            background: #d4af37;
+            color: #000;
+        }
 
-    display:flex;
-    justify-content:center;
-    align-items:center;
-}
+        /* =========================
+           MAIN
+        ========================= */
 
-/* =========================
-   PROFILE CONTAINER
-========================= */
+        .main {
+            margin-left: 220px;
+            width: calc(100% - 220px);
+            padding: 30px;
+        }
 
-.profile-container{
-    position:relative;
+        /* =========================
+           TOPBAR
+        ========================= */
 
-    background:#fff;
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
 
-    width:100%;
-    max-width:550px;
+            background: #fff;
+            padding: 15px 25px;
 
-    padding:40px;
+            border-radius: 4px;
 
-    border-radius:5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .05);
 
-    border-left:5px solid #ccac3d;
+            margin-bottom: 25px;
+        }
 
-    box-shadow:0 5px 20px rgba(0,0,0,0.08);
-}
+        .topbar h1 {
+            font-size: 1.8rem;
+            color: #111;
+        }
 
-/* =========================
-   TITLE
-========================= */
+        .back-btn {
+            color: #d4af37;
+            text-decoration: none;
+            font-weight: 500;
+        }
 
-.profile-title{
-    font-size:2rem;
-    font-weight:600;
+        /* =========================
+           PROFILE CARD
+        ========================= */
 
-    color:#111;
+        .profile-card {
+            background: #fff;
+            border-radius: 4px;
 
-    margin-bottom:30px;
-}
+            box-shadow: 0 5px 15px rgba(0, 0, 0, .05);
 
-/* =========================
-   PROFILE INFO
-========================= */
+            overflow: hidden;
+        }
 
-.profile-info p{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+        .card-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid #eee;
+        }
 
-    padding:15px 0;
+        .card-header h2 {
+            color: #111;
+            font-size: 1.2rem;
+        }
 
-    border-bottom:1px solid #eee;
-}
+        .card-body {
+            padding: 25px;
+        }
 
-.profile-info strong{
-    color:#ccac3d;
-    font-size:0.95rem;
-}
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
 
-.profile-info span{
-    color:#555;
-}
+            padding: 16px 0;
 
-/* =========================
-   EDIT BUTTON
-========================= */
+            border-bottom: 1px solid #f1f1f1;
+        }
 
-.btn-box{
-    margin-top:30px;
-}
+        .info-row:last-child {
+            border-bottom: none;
+        }
 
-.edit-btn{
-    display:block;
+        .info-label {
+            color: #777;
+            font-weight: 500;
+        }
 
-    width:100%;
+        .info-value {
+            color: #111;
+            font-weight: 600;
+        }
 
-    text-align:center;
+        /* =========================
+           BADGES
+        ========================= */
 
-    background:#ccac3d;
-    color:#fff;
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: .8rem;
+            font-weight: 600;
+        }
 
-    padding:13px;
+        .badge-active {
+            background: #d4edda;
+            color: #155724;
+        }
 
-    text-decoration:none;
-    font-weight:600;
+        .badge-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
 
-    border-radius:4px;
+        .badge-super {
+            background: #fff3cd;
+            color: #856404;
+        }
 
-    transition:0.3s;
-}
+        .badge-admin {
+            background: #e2e3e5;
+            color: #383d41;
+        }
 
-.edit-btn:hover{
-    background:#000;
-}
+        /* =========================
+           FOOTER
+        ========================= */
 
-/* =========================
-   CLOSE BUTTON
-========================= */
+        .card-footer {
+            padding: 20px 25px;
+            border-top: 1px solid #eee;
+        }
 
-.close-btn{
-    position:absolute;
+        .edit-btn {
+            display: inline-block;
 
-    top:20px;
-    right:20px;
+            background: #000;
+            color: #d4af37;
 
-    width:42px;
-    height:42px;
+            border: 1px solid #d4af37;
 
-    border-radius:50%;
+            padding: 10px 20px;
 
-    background:#fff;
-    color:#777;
+            text-decoration: none;
 
-    display:flex;
-    justify-content:center;
-    align-items:center;
+            border-radius: 4px;
 
-    text-decoration:none;
+            transition: .3s;
+        }
 
-    font-size:1.5rem;
-    font-weight:bold;
-
-    box-shadow:0 4px 12px rgba(0,0,0,0.1);
-
-    transition:0.3s;
-}
-
-.close-btn:hover{
-    background:#f3f3f3;
-    color:#000;
-
-    transform:scale(1.05);
-}
-
-</style>
+        .edit-btn:hover {
+            background: #d4af37;
+            color: #000;
+        }
+    </style>
 </head>
 
 <body>
 
-<div class="profile-container">
+    <div class="sidebar">
 
-    <!-- CLOSE BUTTON -->
-    <a href="dashboard.php" class="close-btn">
-        &times;
-    </a>
+        <h2>Admin</h2>
 
-    <!-- TITLE -->
-    <h1 class="profile-title">
-        Admin Profile
-    </h1>
-
-    <!-- PROFILE INFO -->
-    <div class="profile-info">
-
-        <p>
-            <strong>Name</strong>
-            <span>
-                <?php echo htmlspecialchars($result->fullname); ?>
-            </span>
-        </p>
-
-        <p>
-            <strong>Email</strong>
-            <span>
-                <?php echo htmlspecialchars($result->email); ?>
-            </span>
-        </p>
-
-        <p>
-            <strong>Role</strong>
-            <span>
-                <?php echo htmlspecialchars($result->role); ?>
-            </span>
-        </p>
+        <a href="dashboard.php">🏠 Dashboard</a>
+        <a href="products.php">📦 Products</a>
+        <a href="categories.php">📂 Categories</a>
+        <a href="brands.php">🏷️ Brands</a>
+        <a href="orders.php">🛒 Orders</a>
+        <a href="users.php">👥 Users</a>
+        <a href="admins.php">⚙ Admin</a>
 
     </div>
 
-    <!-- EDIT BUTTON -->
-    <div class="btn-box">
+    <div class="main">
 
-        <a href="edit_profile.php" class="edit-btn">
-            Edit Profile
-        </a>
+        <div class="topbar">
+
+            <h1>Admin Profile</h1>
+
+            <a href="dashboard.php" class="back-btn">
+                ← Back
+            </a>
+
+        </div>
+
+        <div class="profile-card">
+
+            <div class="card-header">
+                <h2>Profile Information</h2>
+            </div>
+
+            <div class="card-body">
+
+                <div class="info-row">
+                    <span class="info-label">Admin ID</span>
+                    <span class="info-value">
+                        #<?= $result->admin_id ?>
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Full Name</span>
+                    <span class="info-value">
+                        <?= htmlspecialchars($result->fullname) ?>
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Email Address</span>
+                    <span class="info-value">
+                        <?= htmlspecialchars($result->email) ?>
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Phone Number</span>
+                    <span class="info-value">
+                        <?= htmlspecialchars($result->phone ?: '-') ?>
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Role</span>
+
+                    <?php if ($result->role == 'superadmin') { ?>
+                        <span class="badge badge-super">
+                            Super Admin
+                        </span>
+                    <?php } else { ?>
+                        <span class="badge badge-admin">
+                            Admin
+                        </span>
+                    <?php } ?>
+
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+
+                    <?php if ($result->status == 1) { ?>
+                        <span class="badge badge-active">
+                            Active
+                        </span>
+                    <?php } else { ?>
+                        <span class="badge badge-inactive">
+                            Inactive
+                        </span>
+                    <?php } ?>
+
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Created At</span>
+                    <span class="info-value">
+                        <?= date('d M Y', strtotime($result->created_at)) ?>
+                    </span>
+                </div>
+
+            </div>
+
+            <div class="card-footer">
+
+                <a href="edit_profile.php" class="edit-btn">
+                    Edit Profile
+                </a>
+
+            </div>
+
+        </div>
 
     </div>
-
-</div>
 
 </body>
+
 </html>
-`

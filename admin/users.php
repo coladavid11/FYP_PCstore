@@ -12,32 +12,6 @@ $query = $dbh->prepare($sql);
 $query->execute();
 
 $users = $query->fetchAll(PDO::FETCH_OBJ);
-
-/* =========================
-   DELETE USER
-========================= */
-
-if (isset($_GET['delete'])) {
-    $id = intval($_GET['delete']);
-
-    // CHECK IF USER IS ASSOCIATED WITH ANY ORDERS
-
-    $checkSql = "SELECT * FROM orders WHERE user_id = :id";
-    $checkQuery = $dbh->prepare($checkSql);
-    $checkQuery->bindParam(':id', $id, PDO::PARAM_INT);
-    $checkQuery->execute();
-
-    if ($checkQuery->rowCount() > 0) {
-        echo "<script>alert('Cannot delete user. Orders are associated with this user.');</script>";
-    } else {
-        $sql = "DELETE FROM tbluser WHERE user_id = :id";
-        $query = $dbh->prepare($sql);
-        $query->bindParam(':id', $id, PDO::PARAM_INT);
-        $query->execute();
-        header("Location: users.php");
-        exit;
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -67,44 +41,42 @@ if (isset($_GET['delete'])) {
         }
 
         /* =========================
-   SIDEBAR
-========================= */
+           SIDEBAR
+        ========================= */
+        .sidebar {
+            width: 220px;
+            height: 100vh;
+            background: #000;
+            padding: 20px;
+            position: fixed;
+        }
 
-.sidebar{
-    width:220px;
-    height:100vh;
-    background:#000;
-    padding:20px;
-    position:fixed;
-}
+        .sidebar h2 {
+            color: #d4af37;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2rem;
+        }
 
-.sidebar h2{
-    color:#d4af37;
-    margin-bottom:30px;
-    text-align:center;
-    font-size:2rem;
-}
+        .sidebar a {
+            display: block;
+            color: #adadad;
+            text-decoration: none;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
 
-.sidebar a{
-    display:block;
-    color:#adadad;
-    text-decoration:none;
-    padding:12px;
-    margin:10px 0;
-    border-radius:5px;
-    transition:0.3s;
-}
+        .sidebar a:hover {
+            background: #d4af37;
+            color: #000;
+        }
 
-.sidebar a:hover{
-    background:#d4af37;
-    color:#000;
-}
-
-.sidebar a.sidebar-active{
-    background:#d4af37;
-    color:#000;
-}
-
+        .sidebar a.sidebar-active {
+            background: #d4af37;
+            color: #000;
+        }
 
         /* =========================
            MAIN CONTENT
@@ -166,26 +138,6 @@ if (isset($_GET['delete'])) {
             font-weight: 600;
         }
 
-        /* Custom Button for Adding Categories */
-        .btn-add {
-            display: inline-block;
-            background: #000;
-            color: #d4af37;
-            text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            font-weight: 500;
-            font-size: 0.9rem;
-            margin-bottom: 25px;
-            border: 1px solid #d4af37;
-            transition: 0.3s;
-        }
-
-        .btn-add:hover {
-            background: #d4af37;
-            color: #000;
-        }
-
         /* Table Architecture */
         table {
             width: 100%;
@@ -216,7 +168,6 @@ if (isset($_GET['delete'])) {
 
         table tr:hover td {
             background-color: #fcfcfc;
-            /* Subtle hover highlight for rows */
         }
 
         /* Inline Action Link Adjustments */
@@ -231,17 +182,31 @@ if (isset($_GET['delete'])) {
             color: #ccac3d;
         }
 
-        .action-btn.delete {
-            color: #ff4d4d;
-        }
-
         .action-btn:hover {
             text-decoration: underline;
         }
 
-        .divider {
-            color: #ccc;
-            margin: 0 5px;
+        /* Status Badge Styling */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid rgba(40, 167, 69, 0.2);
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid rgba(220, 53, 69, 0.2);
         }
     </style>
 </head>
@@ -249,9 +214,7 @@ if (isset($_GET['delete'])) {
 <body>
 
     <div class="sidebar">
-
         <h2>Admin</h2>
-
         <a href="dashboard.php">🏠 Dashboard</a>
         <a href="products.php">📦 Products</a>
         <a href="categories.php">📂 Categories</a>
@@ -259,7 +222,6 @@ if (isset($_GET['delete'])) {
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php" class="sidebar-active">👥 Users</a>
         <a href="admins.php">⚙ Admin</a>
-
     </div>
 
     <div class="main">
@@ -272,7 +234,6 @@ if (isset($_GET['delete'])) {
         </div>
 
         <div class="table-box">
-
             <h3>Users List</h3>
 
             <table>
@@ -281,11 +242,12 @@ if (isset($_GET['delete'])) {
                         <th style="width: 5%;">ID</th>
                         <th style="width: 15%;">Full Name</th>
                         <th style="width: 15%;">Email</th>
-                        <th style="width: 15%;">Phone</th>
-                        <th style="width: 20%;">Address</th>
-                        <th style="width: 10%;">Gender</th>
+                        <th style="width: 12%;">Phone</th>
+                        <th style="width: 18%;">Address</th>
+                        <th style="width: 8%;">Gender</th>
+                        <th style="width: 10%;">Status</th>
                         <th style="width: 10%;">Registered</th>
-                        <th style="width: 10%;">Action</th>
+                        <th style="width: 7%;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -298,27 +260,32 @@ if (isset($_GET['delete'])) {
                                 <td><?= htmlspecialchars($user->phone_num) ?></td>
                                 <td><?= htmlspecialchars($user->address) ?></td>
                                 <td><?= htmlspecialchars($user->gender) ?></td>
+                                <td>
+                                    <?php if (isset($user->status) && strtolower($user->status) === 'active'): ?>
+                                        <span class="status-badge status-active"><i class="fa fa-circle"
+                                                style="font-size:0.45rem;"></i> Active</span>
+                                    <?php else: ?>
+                                        <span class="status-badge status-inactive"><i class="fa fa-circle"
+                                                style="font-size:0.45rem;"></i> Inactive</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= date('d/m/Y', strtotime($user->reg_date)) ?></td>
                                 <td>
-                                    <a href="users.php?delete=<?= $user->user_id ?>" class="action-btn delete"
-                                        onclick="return confirm('Are you sure you want to delete this user?')">
-                                        <i class="fa fa-trash"></i> Delete
+                                    <a href="edit_user.php?id=<?= $user->user_id ?>" class="action-btn edit">
+                                        <i class="fa fa-pen-to-square"></i> Edit
                                     </a>
                                 </td>
                             </tr>
                         <?php } ?>
                     <?php } else { ?>
                         <tr>
-                            <td colspan="8" style="text-align: center; color: #888; padding: 25px;">No users available.</td>
+                            <td colspan="9" style="text-align: center; color: #888; padding: 25px;">No users available.</td>
                         </tr>
                     <?php } ?>
                 </tbody>
             </table>
-
         </div>
-
     </div>
-
 </body>
 
 </html>

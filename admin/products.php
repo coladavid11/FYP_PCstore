@@ -7,24 +7,17 @@ if (!isset($_SESSION['admin_login'])) {
     exit;
 }
 
-/* ── DELETE PRODUCT ── */
-if (isset($_GET['delete'])) {
-    $id = intval($_GET['delete']);
+/* ── TOGGLE STATUS FUNCTION (REPLACED DELETE) ── */
+if (isset($_GET['toggle_status']) && isset($_GET['current'])) {
+    $id = intval($_GET['toggle_status']);
+    $currentStatus = trim($_GET['current']);
 
-    $sql = "SELECT image FROM products WHERE product_id = :id";
+    // Determine new status based on current state
+    $newStatus = ($currentStatus === 'Active') ? 'Inactive' : 'Active';
+
+    $sql = "UPDATE products SET status = :new_status WHERE product_id = :id";
     $query = $dbh->prepare($sql);
-    $query->bindParam(':id', $id, PDO::PARAM_INT);
-    $query->execute();
-    $productDelete = $query->fetch(PDO::FETCH_OBJ);
-
-    if ($productDelete) {
-        $imagePath = "img/" . $productDelete->image;
-        if (file_exists($imagePath))
-            unlink($imagePath);
-    }
-
-    $sql = "DELETE FROM products WHERE product_id = :id";
-    $query = $dbh->prepare($sql);
+    $query->bindParam(':new_status', $newStatus, PDO::PARAM_STR);
     $query->bindParam(':id', $id, PDO::PARAM_INT);
     $query->execute();
 
@@ -36,6 +29,7 @@ if (isset($_GET['delete'])) {
 $search = trim($_GET['search'] ?? '');
 $filterCat = intval($_GET['category'] ?? 0);
 $filterBrand = intval($_GET['brand'] ?? 0);
+$filterStatus = trim($_GET['status'] ?? ''); // New filter for status
 
 /* ── FETCH CATEGORIES & BRANDS (for dropdowns) ── */
 $categories = $dbh->query("SELECT category_id, category_name FROM categories WHERE status=1 ORDER BY category_name ASC")->fetchAll(PDO::FETCH_OBJ);
@@ -64,6 +58,11 @@ if ($filterBrand > 0) {
     $sql .= " AND p.brand_id = ?";
     $params[] = $filterBrand;
 }
+// Apply status filtering if set
+if ($filterStatus !== '') {
+    $sql .= " AND p.status = ?";
+    $params[] = $filterStatus;
+}
 $sql .= " ORDER BY p.product_id DESC";
 
 $query = $dbh->prepare($sql);
@@ -74,6 +73,8 @@ $totalCount = count($products);
 /* ── SELECTED LABELS ── */
 $selectedCatName = 'All Categories';
 $selectedBrandName = 'All Brands';
+$selectedStatusName = 'All Statuses';
+
 foreach ($categories as $c) {
     if ($c->category_id == $filterCat)
         $selectedCatName = $c->category_name;
@@ -82,6 +83,10 @@ foreach ($brands as $b) {
     if ($b->brand_id == $filterBrand)
         $selectedBrandName = $b->brand_name;
 }
+if ($filterStatus === 'Active')
+    $selectedStatusName = 'Active';
+if ($filterStatus === 'Inactive')
+    $selectedStatusName = 'Inactive';
 
 /* ── HELPER: build URL preserving other params ── */
 function filterUrl(array $overrides): string
@@ -90,6 +95,7 @@ function filterUrl(array $overrides): string
         'search' => $_GET['search'] ?? '',
         'category' => $_GET['category'] ?? 0,
         'brand' => $_GET['brand'] ?? 0,
+        'status' => $_GET['status'] ?? '',
     ];
     $merged = array_merge($base, $overrides);
     $qs = http_build_query(array_filter($merged, fn($v) => $v !== '' && $v != 0));
@@ -119,10 +125,7 @@ function filterUrl(array $overrides): string
             background: #f5f5f5;
         }
 
-        /* =========================
-   SIDEBAR
-========================= */
-
+        /* ── SIDEBAR ── */
         .sidebar {
             width: 220px;
             height: 100vh;
@@ -237,7 +240,6 @@ function filterUrl(array $overrides): string
             align-items: center;
         }
 
-        /* Search input */
         .search-wrap {
             position: relative;
             flex: 1;
@@ -539,6 +541,25 @@ function filterUrl(array $overrides): string
             border: 1px solid rgba(212, 175, 55, 0.25);
         }
 
+        /* ── STATUS STYLING ── */
+        .status-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 3px;
+        }
+
+        .status-active {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .status-inactive {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
         .stock-badge {
             display: inline-block;
             font-size: 0.75rem;
@@ -573,8 +594,8 @@ function filterUrl(array $overrides): string
             color: #ccac3d;
         }
 
-        .action-btn.delete {
-            color: #ff4d4d;
+        .action-btn.toggle {
+            color: #0284c7;
         }
 
         .action-btn:hover {
@@ -591,7 +612,6 @@ function filterUrl(array $overrides): string
             color: #aaa;
         }
 
-        /* ── EMPTY STATE ── */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -618,11 +638,8 @@ function filterUrl(array $overrides): string
 
 <body>
 
-    <!-- SIDEBAR -->
     <div class="sidebar">
-
         <h2>Admin</h2>
-
         <a href="dashboard.php">🏠 Dashboard</a>
         <a href="products.php" class="sidebar-active">📦 Products</a>
         <a href="categories.php">📂 Categories</a>
@@ -630,12 +647,10 @@ function filterUrl(array $overrides): string
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
         <a href="admins.php">⚙ Admin</a>
-
     </div>
 
     <div class="main">
 
-        <!-- TOPBAR -->
         <div class="topbar">
             <h1>Products</h1>
             <div class="topbar-links">
@@ -644,13 +659,10 @@ function filterUrl(array $overrides): string
             </div>
         </div>
 
-        <!-- FILTER BAR -->
         <form method="GET" action="products.php" id="filterForm">
             <div class="filter-bar">
-
                 <div class="filter-row">
 
-                    <!-- 🔍 Search -->
                     <div class="search-wrap">
                         <i class="fa fa-search"></i>
                         <input type="text" name="search" class="search-input"
@@ -659,10 +671,9 @@ function filterUrl(array $overrides): string
                     </div>
 
                     <button type="submit" class="btn-filter btn-filter-go">
-                            <i class="fa fa-search" style="margin-right:5px;"></i> Search
-                        </button>
+                        <i class="fa fa-search" style="margin-right:5px;"></i> Search
+                    </button>
 
-                    <!-- 📦 Category Dropdown -->
                     <input type="hidden" name="category" id="hiddenCategory" value="<?php echo $filterCat; ?>">
                     <div class="filter-dropdown" id="ddCat">
                         <div class="dd-toggle <?php echo $filterCat > 0 ? 'active-filter' : ''; ?>"
@@ -689,7 +700,6 @@ function filterUrl(array $overrides): string
                         </div>
                     </div>
 
-                    <!-- 🏷️ Brand Dropdown -->
                     <input type="hidden" name="brand" id="hiddenBrand" value="<?php echo $filterBrand; ?>">
                     <div class="filter-dropdown" id="ddBrand">
                         <div class="dd-toggle <?php echo $filterBrand > 0 ? 'active-filter' : ''; ?>"
@@ -715,15 +725,41 @@ function filterUrl(array $overrides): string
                         </div>
                     </div>
 
-                    <!-- Buttons -->
+                    <input type="hidden" name="status" id="hiddenStatus"
+                        value="<?php echo htmlspecialchars($filterStatus); ?>">
+                    <div class="filter-dropdown" id="ddStatus">
+                        <div class="dd-toggle <?php echo $filterStatus !== '' ? 'active-filter' : ''; ?>"
+                            onclick="toggleDd('ddStatus')">
+                            <span id="ddStatusLabel">
+                                <i class="fa fa-eye" style="color:#d4af37;font-size:0.78rem;margin-right:5px;"></i>
+                                <?php echo htmlspecialchars($selectedStatusName); ?>
+                            </span>
+                            <i class="fa fa-chevron-down arrow"></i>
+                        </div>
+                        <div class="dd-menu" id="ddStatusMenu">
+                            <div class="dd-item <?php echo $filterStatus === '' ? 'selected' : ''; ?>"
+                                onclick="selectFilter('status','','All Statuses','ddStatus')">
+                                All Statuses
+                            </div>
+                            <hr class="dd-divider">
+                            <div class="dd-item <?php echo $filterStatus === 'Active' ? 'selected' : ''; ?>"
+                                onclick="selectFilter('status','Active','Active','ddStatus')">
+                                Active
+                            </div>
+                            <div class="dd-item <?php echo $filterStatus === 'Inactive' ? 'selected' : ''; ?>"
+                                onclick="selectFilter('status','Inactive','Inactive','ddStatus')">
+                                Inactive
+                            </div>
+                        </div>
+                    </div>
+
                     <a href="products.php" class="btn-filter btn-filter-reset" style="text-decoration:none;">
                         <i class="fa fa-rotate-left" style="margin-right:5px;"></i> Reset
                     </a>
 
-                </div><!-- filter-row -->
+                </div>
 
-                <!-- Active Filter Chips -->
-                <?php if ($search !== '' || $filterCat > 0 || $filterBrand > 0): ?>
+                <?php if ($search !== '' || $filterCat > 0 || $filterBrand > 0 || $filterStatus !== ''): ?>
                     <div class="filter-chips">
                         <?php if ($search !== ''): ?>
                             <a href="<?php echo filterUrl(['search' => '']); ?>" class="chip">
@@ -740,20 +776,23 @@ function filterUrl(array $overrides): string
                                 <i class="fa fa-times"></i> <?php echo htmlspecialchars($selectedBrandName); ?>
                             </a>
                         <?php endif; ?>
+                        <?php if ($filterStatus !== ''): ?>
+                            <a href="<?php echo filterUrl(['status' => '']); ?>" class="chip">
+                                <i class="fa fa-times"></i> Status: <?php echo htmlspecialchars($filterStatus); ?>
+                            </a>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
 
-            </div><!-- filter-bar -->
+            </div>
         </form>
 
-        <!-- TABLE -->
         <div class="table-box">
-
             <div class="table-meta">
                 <div class="result-count">
                     Showing <strong><?php echo $totalCount; ?></strong>
                     product<?php echo $totalCount !== 1 ? 's' : ''; ?>
-                    <?php if ($search !== '' || $filterCat > 0 || $filterBrand > 0): ?>
+                    <?php if ($search !== '' || $filterCat > 0 || $filterBrand > 0 || $filterStatus !== ''): ?>
                         <span style="color:#d4af37;"> (filtered)</span>
                     <?php endif; ?>
                 </div>
@@ -768,18 +807,16 @@ function filterUrl(array $overrides): string
                     <th>Brand</th>
                     <th>Price</th>
                     <th>Stock</th>
+                    <th>Status</th>
                     <th>Created</th>
-                    <th style="width:12%;">Action</th>
+                    <th style="width:15%;">Action</th>
                 </tr>
 
                 <?php if (!empty($products)): ?>
                     <?php foreach ($products as $product): ?>
                         <tr>
-
-                            <!-- ID -->
                             <td style="color:#bbb; font-size:0.8rem;">#<?php echo $product->product_id; ?></td>
 
-                            <!-- IMAGE -->
                             <td>
                                 <?php if (!empty($product->image)): ?>
                                     <img src="<?php echo htmlspecialchars($product->image); ?>" class="product-img"
@@ -790,13 +827,11 @@ function filterUrl(array $overrides): string
                                 <?php endif; ?>
                             </td>
 
-                            <!-- NAME -->
                             <td style="max-width:200px;">
                                 <div
                                     style="font-weight:500;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                                     <?php
                                     $name = htmlspecialchars($product->name);
-                                    /* Highlight search keyword in name */
                                     if ($search !== '') {
                                         $name = preg_replace(
                                             '/(' . preg_quote(htmlspecialchars($search), '/') . ')/i',
@@ -809,22 +844,18 @@ function filterUrl(array $overrides): string
                                 </div>
                             </td>
 
-                            <!-- CATEGORY -->
                             <td>
                                 <span class="badge-cat"><?php echo htmlspecialchars($product->category_name ?? '—'); ?></span>
                             </td>
 
-                            <!-- BRAND -->
                             <td>
                                 <span class="badge-brand"><?php echo htmlspecialchars($product->brand_name ?? '—'); ?></span>
                             </td>
 
-                            <!-- PRICE -->
                             <td style="font-weight:600; color:#333;">
                                 RM <?php echo number_format($product->price, 2); ?>
                             </td>
 
-                            <!-- STOCK -->
                             <td>
                                 <?php
                                 $stock = intval($product->stock);
@@ -842,49 +873,46 @@ function filterUrl(array $overrides): string
                                 <span class="stock-badge <?php echo $cls; ?>"><?php echo $label; ?></span>
                             </td>
 
-                            <!-- CREATED -->
+                            <td>
+                                <?php
+                                $prodStatus = $product->status ?? 'Active';
+                                $statusCls = ($prodStatus === 'Inactive') ? 'status-inactive' : 'status-active';
+                                ?>
+                                <span
+                                    class="status-badge <?php echo $statusCls; ?>"><?php echo htmlspecialchars($prodStatus); ?></span>
+                            </td>
+
                             <td>
                                 <span class="date-text">
                                     <?php echo date('d M Y', strtotime($product->created_at)); ?>
                                 </span>
                             </td>
 
-                            <!-- ACTION -->
                             <td>
                                 <a href="edit_products.php?id=<?php echo $product->product_id; ?>" class="action-btn edit">
                                     <i class="fa fa-pen-to-square"></i> Edit
                                 </a>
-                                <span class="divider">|</span>
-                                <a href="products.php?delete=<?php echo $product->product_id; ?>" class="action-btn delete"
-                                    onclick="return confirm('Delete \'<?php echo htmlspecialchars(addslashes($product->name)); ?>\'? This cannot be undone.')">
-                                    <i class="fa fa-trash"></i> Delete
-                                </a>
                             </td>
-
                         </tr>
                     <?php endforeach; ?>
-
                 <?php else: ?>
                     <tr>
-                        <td colspan="9">
+                        <td colspan="10">
                             <div class="empty-state">
                                 <i class="fa fa-box-open"></i>
                                 <p>No products
-                                    found<?php echo ($search !== '' || $filterCat > 0 || $filterBrand > 0) ? ' matching your filters' : ''; ?>.
+                                    found<?php echo ($search !== '' || $filterCat > 0 || $filterBrand > 0 || $filterStatus !== '') ? ' matching your filters' : ''; ?>.
                                 </p>
-                                <?php if ($search !== '' || $filterCat > 0 || $filterBrand > 0): ?>
+                                <?php if ($search !== '' || $filterCat > 0 || $filterBrand > 0 || $filterStatus !== ''): ?>
                                     <a href="products.php">Clear filters</a>
                                 <?php endif; ?>
                             </div>
                         </td>
                     </tr>
                 <?php endif; ?>
-
             </table>
-
-        </div><!-- table-box -->
-
-    </div><!-- main -->
+        </div>
+    </div>
 
     <script>
         /* ── DROPDOWN TOGGLE ── */
@@ -894,7 +922,6 @@ function filterUrl(array $overrides): string
             const menu = wrap.querySelector('.dd-menu');
             const isOpen = menu.classList.contains('show');
 
-            /* Close all dropdowns first */
             document.querySelectorAll('.dd-menu').forEach(m => m.classList.remove('show'));
             document.querySelectorAll('.dd-toggle').forEach(t => t.classList.remove('open'));
 
@@ -906,28 +933,23 @@ function filterUrl(array $overrides): string
 
         /* ── SELECT FILTER VALUE ── */
         function selectFilter(field, value, label, ddId) {
-            /* Update hidden input */
             document.getElementById('hidden' + field.charAt(0).toUpperCase() + field.slice(1)).value = value;
 
-            /* Update toggle label */
-            const icon = field === 'category'
-                ? '<i class="fa fa-layer-group" style="color:#d4af37;font-size:0.78rem;margin-right:5px;"></i>'
-                : '<i class="fa fa-tag" style="color:#d4af37;font-size:0.78rem;margin-right:5px;"></i>';
-            document.getElementById('dd' + (field === 'category' ? 'Cat' : 'Brand') + 'Label').innerHTML = icon + label;
+            let icon = '<i class="fa fa-tag" style="color:#d4af37;font-size:0.78rem;margin-right:5px;"></i>';
+            if (field === 'category') icon = '<i class="fa fa-layer-group" style="color:#d4af37;font-size:0.78rem;margin-right:5px;"></i>';
+            if (field === 'status') icon = '<i class="fa fa-eye" style="color:#d4af37;font-size:0.78rem;margin-right:5px;"></i>';
 
-            /* Toggle active style */
+            document.getElementById('dd' + field.charAt(0).toUpperCase() + field.slice(1) + 'Label').innerHTML = icon + label;
+
             const toggle = document.querySelector('#' + ddId + ' .dd-toggle');
             toggle.classList.toggle('active-filter', value !== '0' && value !== '');
 
-            /* Highlight selected item */
             document.querySelectorAll('#' + ddId + ' .dd-item').forEach(el => el.classList.remove('selected'));
             event.currentTarget.classList.add('selected');
 
-            /* Close dropdown */
             document.getElementById(ddId).querySelector('.dd-menu').classList.remove('show');
             document.getElementById(ddId).querySelector('.dd-toggle').classList.remove('open');
 
-            /* Auto-submit form */
             document.getElementById('filterForm').submit();
         }
 
@@ -947,7 +969,6 @@ function filterUrl(array $overrides): string
             }
         });
     </script>
-
 </body>
 
 </html>

@@ -337,11 +337,6 @@ if (isset($_POST['update'])) {
                 </div>
 
                 <div class="form-group">
-                    <label>New Password</label>
-                    <input type="password" name="password" placeholder="Leave blank to keep current password">
-                </div>
-
-                <div class="form-group">
                     <label>Role</label>
 
                     <select name="role">

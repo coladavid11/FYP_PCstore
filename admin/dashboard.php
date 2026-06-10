@@ -160,16 +160,22 @@ $orders = $stmt->fetchAll();
             gap: 20px;
         }
 
+        .cards a {
+            text-decoration: none;
+        }
+
         .card {
             background: #fff;
             padding: 25px;
             border-left: 5px solid #d4af37;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            transition: 0.3s;
+            transition: 0.2s ease;
         }
 
         .card:hover {
             transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
         }
 
         .card h3 {
@@ -280,27 +286,35 @@ $orders = $stmt->fetchAll();
         <!-- CARDS -->
         <div class="cards">
 
+        <a href="products.php">
             <div class="card">
                 <h3>Total Products</h3>
                 <p><?php echo $totalProducts; ?></p>
             </div>
+        </a>
 
+        <a href="orders.php">
             <div class="card">
                 <h3>Total Orders</h3>
                 <p><?php echo $totalOrders; ?></p>
             </div>
+        </a>
 
+        <a href="users.php">
             <div class="card">
                 <h3>Total Users</h3>
                 <p><?php echo $totalUsers; ?></p>
             </div>
+        </a>
 
+        <a href="revenue.php">
             <div class="card">
                 <h3>Total Revenue</h3>
                 <p>
                     RM <?php echo number_format($totalRevenue ?? 0, 2); ?>
                 </p>
             </div>
+        </a>
 
         </div>
 
