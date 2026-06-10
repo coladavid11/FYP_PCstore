@@ -562,7 +562,7 @@ function filterUrl(array $overrides): string
                             <div class="product-img-wrap">
                                 <img src="<?php echo htmlspecialchars($p['image']); ?>"
                                     alt="<?php echo htmlspecialchars($p['name']); ?>" loading="lazy"
-                                    onerror="this.src='assets/images/placeholder.jpg'">
+                                    onerror="this.src='../image/products/placeholder.jpg'">
                             </div>
 
                             <div class="product-body">
