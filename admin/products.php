@@ -192,16 +192,15 @@ function filterUrl(array $overrides): string
             align-items: center;
         }
 
-        .Back {
-            text-decoration: none;
-            font-weight: 500;
+        .btn-back {
             color: #d4af37;
-            font-size: 0.95rem;
-            transition: 0.3s;
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 500;
         }
 
-        .Back:hover {
-            opacity: 0.7;
+        .btn-back:hover {
+            opacity: 0.75;
         }
 
         .btn-add {
@@ -543,23 +542,49 @@ function filterUrl(array $overrides): string
 
         /* ── STATUS STYLING ── */
         .status-badge {
-            display: inline-block;
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 3px 8px;
-            border-radius: 3px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid transparent;
         }
 
+        /* Active Pill Layout */
         .status-active {
-            background: #e0f2fe;
-            color: #0369a1;
+            background-color: #e8f5e9;
+            color: #1b5e20;
+            border-color: #c8e6c9;
         }
 
+        .status-active::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #2e7d32;
+            border-radius: 50%;
+        }
+
+        /* Inactive Pill Layout */
         .status-inactive {
-            background: #f3f4f6;
-            color: #4b5563;
+            background-color: #f5f5f5;
+            color: #424242;
+            border-color: #e0e0e0;
         }
 
+        .status-inactive::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #757575;
+            border-radius: 50%;
+        }
+
+        /* ── STOCK STYLING ── */
         .stock-badge {
             display: inline-block;
             font-size: 0.75rem;
@@ -646,6 +671,7 @@ function filterUrl(array $overrides): string
         <a href="brands.php">🏷️ Brands</a>
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
+        <a href="shipping_rates.php">🚚 Shipping Rates</a>
         <a href="admins.php">⚙ Admin</a>
     </div>
 
@@ -654,7 +680,7 @@ function filterUrl(array $overrides): string
         <div class="topbar">
             <h1>Products</h1>
             <div class="topbar-links">
-                <a href="dashboard.php" class="Back"><i class="fa fa-arrow-left me-1"></i> Back</a>
+                <a href="dashboard.php" class="btn-back"><i class="fa fa-arrow-left"></i> Back</a>
                 <a href="add_products.php" class="btn-add"><i class="fa fa-plus"></i> Add Product</a>
             </div>
         </div>
@@ -809,7 +835,7 @@ function filterUrl(array $overrides): string
                     <th>Stock</th>
                     <th>Status</th>
                     <th>Created</th>
-                    <th style="width:15%;">Action</th>
+                    <th>Action</th>
                 </tr>
 
                 <?php if (!empty($products)): ?>

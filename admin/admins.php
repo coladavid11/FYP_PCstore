@@ -8,17 +8,20 @@ if (!isset($_SESSION['admin_login'])) {
 }
 
 if ($_SESSION['admin_role'] != 'superadmin') {
-    die("Access Denied");
+    $_SESSION['error'] = "Only Super Admin can access Admin Management.";
+    header("Location: dashboard.php");
+    exit;
 }
 
-$sql = "SELECT * FROM admin WHERE status = 1 ORDER BY admin_id DESC";
+// Fixed logic to retrieve both active and inactive administrators so they render correctly in management
+$sql = "SELECT * FROM admin ORDER BY admin_id DESC";
 $query = $dbh->prepare($sql);
 $query->execute();
 
 $admins = $query->fetchAll(PDO::FETCH_OBJ);
 
 /* =========================
-   DELETE ADMIN
+   DELETE / DEACTIVATE ADMIN
 ========================= */
 
 if (isset($_GET['delete'])) {
@@ -70,8 +73,8 @@ if (isset($_GET['delete'])) {
 
     <style>
         /* =========================
-           GENERAL RESET
-        ========================= */
+            GENERAL RESET
+         ========================= */
         * {
             margin: 0;
             padding: 0;
@@ -85,15 +88,16 @@ if (isset($_GET['delete'])) {
         }
 
         /* =========================
-   SIDEBAR
-========================= */
-
+           SIDEBAR
+        ========================= */
         .sidebar {
             width: 220px;
             height: 100vh;
             background: #000;
             padding: 20px;
             position: fixed;
+            left: 0;
+            top: 0;
         }
 
         .sidebar h2 {
@@ -124,8 +128,8 @@ if (isset($_GET['delete'])) {
         }
 
         /* =========================
-           MAIN CONTENT
-        ========================= */
+            MAIN CONTENT AREA
+         ========================= */
         .main {
             margin-left: 220px;
             width: calc(100% - 220px);
@@ -133,8 +137,8 @@ if (isset($_GET['delete'])) {
         }
 
         /* =========================
-           TOPBAR
-        ========================= */
+            TOPBAR CONTAINER
+         ========================= */
         .topbar {
             display: flex;
             justify-content: space-between;
@@ -154,7 +158,7 @@ if (isset($_GET['delete'])) {
 
         .topbar-links {
             display: flex;
-            gap: 15px;
+            gap: 25px;
             align-items: center;
         }
 
@@ -164,28 +168,19 @@ if (isset($_GET['delete'])) {
             transition: 0.3s;
             color: #d4af37;
             font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        /* =========================
-           TABLE BOX CONTAINER
-        ========================= */
-        .table-box {
-            background: #fff;
-            padding: 30px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            border-radius: 4px;
+        .Back:hover {
+            opacity: 0.8;
         }
 
-        .table-box h3 {
-            margin-bottom: 20px;
-            color: #111;
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-
-        /* Custom Button for Adding Categories */
         .btn-add {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             background: #000;
             color: #d4af37;
             text-decoration: none;
@@ -193,7 +188,6 @@ if (isset($_GET['delete'])) {
             border-radius: 4px;
             font-weight: 500;
             font-size: 0.9rem;
-            margin-bottom: 25px;
             border: 1px solid #d4af37;
             transition: 0.3s;
         }
@@ -203,7 +197,25 @@ if (isset($_GET['delete'])) {
             color: #000;
         }
 
-        /* Table Architecture */
+        /* =========================
+            TABLE DATA CONTAINER
+         ========================= */
+        .table-box {
+            background: #fff;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        .table-box h3 {
+            margin-bottom: 25px;
+            color: #111;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        /* Table Architecture & Rebalanced Spacing Layout */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -212,9 +224,10 @@ if (isset($_GET['delete'])) {
 
         table th,
         table td {
-            padding: 14px 12px;
+            padding: 16px 14px;
             border-bottom: 1px solid #eee;
             text-align: left;
+            vertical-align: middle;
         }
 
         table th {
@@ -233,15 +246,64 @@ if (isset($_GET['delete'])) {
 
         table tr:hover td {
             background-color: #fcfcfc;
-            /* Subtle hover highlight for rows */
         }
 
-        /* Inline Action Link Adjustments */
+        /* =========================
+           STATUS PILL BADGES
+        ========================= */
+        .badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Active Badge Layout (Green) */
+        .badge-status.active {
+            background-color: #e2f5ea;
+            color: #0b5931;
+            border: 1px solid #c3ebd4;
+        }
+
+        .badge-status.active::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #0b5931;
+            border-radius: 50%;
+        }
+
+        /* Inactive Badge Layout (Gray) */
+        .badge-status.inactive {
+            background-color: #f2f2f2;
+            color: #616161;
+            border: 1px solid #e0e0e0;
+        }
+
+        .badge-status.inactive::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #757575;
+            border-radius: 50%;
+        }
+
+        /* =========================
+           ACTION BUTTON LINKS
+        ========================= */
         .action-btn {
             text-decoration: none;
             font-weight: 500;
             font-size: 0.9rem;
             transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .action-btn.edit {
@@ -255,28 +317,21 @@ if (isset($_GET['delete'])) {
         .action-btn:hover {
             text-decoration: underline;
         }
-
-        .divider {
-            color: #ccc;
-            margin: 0 5px;
-        }
     </style>
 </head>
 
 <body>
 
     <div class="sidebar">
-
         <h2>Admin</h2>
-
         <a href="dashboard.php">🏠 Dashboard</a>
         <a href="products.php">📦 Products</a>
         <a href="categories.php">📂 Categories</a>
         <a href="brands.php">🏷️ Brands</a>
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
+        <a href="shipping_rates.php">🚚 Shipping Rates</a>
         <a href="admins.php" class="sidebar-active">⚙ Admin</a>
-
     </div>
 
     <div class="main">
@@ -284,8 +339,8 @@ if (isset($_GET['delete'])) {
         <div class="topbar">
             <h1>Admin Management</h1>
             <div class="topbar-links">
-                <a href="dashboard.php" class="Back"><i class="fa fa-arrow-left me-1"></i>Back</a>
-                <a href="add_admin.php" class="btn-add"><i class="fa fa-plus"></i> Add Admin</a>
+                <a href="dashboard.php" class="Back"><i class="fa-solid fa-arrow-left"></i>Back</a>
+                <a href="add_admin.php" class="btn-add"><i class="fa fa-plus"></i>Add Admin</a>
             </div>
         </div>
 
@@ -296,49 +351,41 @@ if (isset($_GET['delete'])) {
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 5%;">ID</th>
-                        <th style="width: 15%;">Full Name</th>
-                        <th style="width: 15%;">Email</th>
+                        <th style="width: 8%;">ID</th>
+                        <th style="width: 20%;">Full Name</th>
+                        <th style="width: 25%;">Email</th>
                         <th style="width: 15%;">Role</th>
-                        <th style="width: 10%;">Status</th>
+                        <th style="width: 14%;">Status</th>
                         <th style="width: 10%;">Registered</th>
-                        <th style="width: 10%;">Actions</th>
+                        <th style="width: 8%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (count($admins) > 0) { ?>
                         <?php foreach ($admins as $admin) { ?>
                             <tr>
-                                <td><?= $admin->admin_id ?></td>
+                                <td>#<?= $admin->admin_id ?></td>
                                 <td><?= htmlspecialchars($admin->fullname) ?></td>
                                 <td><?= htmlspecialchars($admin->email) ?></td>
                                 <td><?= htmlspecialchars($admin->role) ?></td>
-                                <td><?php if ($admin->status == 1) { ?>
-                                        <span style="color:green;font-weight:bold;">
-                                            Active
-                                        </span>
+                                <td>
+                                    <?php if ($admin->status == 1) { ?>
+                                        <span class="badge-status active">Active</span>
                                     <?php } else { ?>
-                                        <span style="color:red;font-weight:bold;">
-                                            Inactive
-                                        </span>
+                                        <span class="badge-status inactive">Inactive</span>
                                     <?php } ?>
                                 </td>
-                                <td><?= date('d/m/Y', strtotime($admin->created_at)) ?></td>
+                                <td><?= date('d M Y', strtotime($admin->created_at)) ?></td>
                                 <td>
                                     <a href="edit_admin.php?id=<?= $admin->admin_id ?>" class="action-btn edit">
-                                        <i class="fa fa-edit"></i> Edit
-                                    </a>
-                                    <span class="divider">|</span>
-                                    <a href="admins.php?delete=<?= $admin->admin_id ?>" class="action-btn delete"
-                                        onclick="return confirm('Are you sure you want to delete this admin?')">
-                                        <i class="fa fa-trash"></i> Delete
+                                        <i class="fa fa-edit"></i>Edit
                                     </a>
                                 </td>
                             </tr>
                         <?php } ?>
                     <?php } else { ?>
                         <tr>
-                            <td colspan="7" style="text-align: center; color: #888; padding: 25px;">No admins available.
+                            <td colspan="7" style="text-align: center; color: #888; padding: 35px;">No admins available.
                             </td>
                         </tr>
                     <?php } ?>

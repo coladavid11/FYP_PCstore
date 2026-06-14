@@ -278,6 +278,7 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
     <a href="brands.php">🏷️ Brands</a>
     <a href="orders.php">🛒 Orders</a>
     <a href="users.php">👥 Users</a>
+    <a href="shipping_rates.php">🚚 Shipping Rates</a>
     <a href="admin.php">⚙ Admin</a>
 </div>
 
