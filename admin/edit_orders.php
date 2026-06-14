@@ -14,11 +14,10 @@ if ($id <= 0) {
     exit;
 }
 
-/* ── FETCH ORDER + CUSTOMER ── */
+/* ── FETCH ORDER ── */
 $fetchQ = $dbh->prepare("
-    SELECT o.*, u.fullname, u.gmail, u.phone_num, u.address, u.gender
+    SELECT o.*
     FROM tblorders o
-    LEFT JOIN tbluser u ON u.user_id = o.user_id
     WHERE o.order_id = :id
 ");
 $fetchQ->bindParam(':id', $id, PDO::PARAM_INT);
@@ -41,6 +40,33 @@ $itemsQ = $dbh->prepare("
 $itemsQ->bindParam(':id', $id, PDO::PARAM_INT);
 $itemsQ->execute();
 $items = $itemsQ->fetchAll(PDO::FETCH_OBJ);
+
+/* ── FETCH RECEIVER / DELIVERY ADDRESS ── */
+$addrQ = $dbh->prepare("
+    SELECT a.*, s.state_name
+    FROM tbl_order_address a
+    LEFT JOIN tblstate s ON s.state_id = a.state_id
+    WHERE a.order_id = :id
+    LIMIT 1
+");
+$addrQ->bindParam(':id', $id, PDO::PARAM_INT);
+$addrQ->execute();
+$addr = $addrQ->fetch(PDO::FETCH_OBJ);
+
+/* ── FETCH PC BUILD (match by user + total_amount + status ordered) ── */
+$buildQ = $dbh->prepare("
+    SELECT *
+    FROM tbl_pc_build
+    WHERE user_id = :uid
+      AND final_price = :amt
+      AND status = 'ordered'
+    ORDER BY created_at DESC
+    LIMIT 1
+");
+$buildQ->bindParam(':uid', $order->user_id, PDO::PARAM_INT);
+$buildQ->bindParam(':amt', $order->total_amount);
+$buildQ->execute();
+$pcBuild = $buildQ->fetch(PDO::FETCH_OBJ);
 
 $success       = false;
 $statusError   = false;
@@ -169,6 +195,13 @@ body { display:flex; background:#f5f5f5; }
 .totals-line.grand { font-size:0.95rem; font-weight:700; color:#222; margin-top:8px; padding-top:8px; border-top:1px solid #eee; }
 .totals-line span:last-child { color:#333; }
 .totals-line.grand span:last-child { color:#d4af37; font-size:1rem; }
+
+/* FREE / deduct tag in totals */
+.totals-tag {
+    display:inline-block; padding:1px 8px; border-radius:20px;
+    font-size:0.72rem; font-weight:700; letter-spacing:0.3px;
+}
+.totals-tag.green { background:#d4edda; color:#155724; border:1px solid rgba(40,167,69,0.2); }
 
 /* ── READ-ONLY CUSTOMER INFO ── */
 .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -373,16 +406,51 @@ body { display:flex; background:#f5f5f5; }
                             <span>Subtotal</span>
                             <span>RM <?php echo number_format($order->total_amount, 2); ?></span>
                         </div>
+
+                        <?php if ($pcBuild): ?>
+
+                        <?php if ($pcBuild->discount_pct > 0): ?>
+                        <div class="totals-line" style="color:#27ae60;">
+                            <span>
+                                <i class="fa fa-tag" style="font-size:0.75rem;margin-right:4px;"></i>
+                                PC Build Discount (<?php echo $pcBuild->discount_pct; ?>% off)
+                            </span>
+                            <span>− RM <?php echo number_format($pcBuild->discount_amt, 2); ?></span>
+                        </div>
+                        <?php endif; ?>
+
+                        <div class="totals-line" style="color:<?php echo $pcBuild->assembly_service ? '#27ae60' : '#e67e22'; ?>;">
+                            <span>
+                                <i class="fa <?php echo $pcBuild->assembly_service ? 'fa-screwdriver-wrench' : 'fa-box-open'; ?>"
+                                   style="font-size:0.75rem;margin-right:4px;"></i>
+                                Assembly Service
+                            </span>
+                            <span>
+                                <?php if ($pcBuild->assembly_service): ?>
+                                    <span class="totals-tag green">FREE</span>
+                                <?php else: ?>
+                                    − RM 25.00
+                                <?php endif; ?>
+                            </span>
+                        </div>
+
+                        <?php endif; /* end $pcBuild */ ?>
+
                         <div class="totals-line">
-                            <span>Shipping Fee</span>
+                            <span>
+                                <i class="fa fa-truck" style="font-size:0.75rem;margin-right:4px;color:#aaa;"></i>
+                                Shipping Fee
+                            </span>
                             <span>RM <?php echo number_format($order->shipping_fee, 2); ?></span>
                         </div>
+
                         <?php if ($order->service_fee > 0): ?>
                         <div class="totals-line">
                             <span>Service Fee</span>
                             <span>RM <?php echo number_format($order->service_fee, 2); ?></span>
                         </div>
                         <?php endif; ?>
+
                         <div class="totals-line grand">
                             <span>Grand Total</span>
                             <span>RM <?php echo number_format($order->grand_total, 2); ?></span>
@@ -391,38 +459,77 @@ body { display:flex; background:#f5f5f5; }
                 </div>
             </div>
 
-            <!-- CUSTOMER INFORMATION (read-only) -->
+            <!-- RECEIVER INFORMATION (read-only) -->
             <div class="card">
                 <div class="card-header">
-                    <i class="fa fa-user"></i>
-                    <h2>Customer Information</h2>
+                    <i class="fa fa-location-dot"></i>
+                    <h2>Receiver Information</h2>
                     <span class="badge-pill" style="display:flex;align-items:center;gap:4px;">
                         <i class="fa fa-lock" style="font-size:0.65rem;"></i> Read-only
                     </span>
                 </div>
                 <div class="card-body">
+
+                <?php if ($addr): ?>
                     <div class="info-grid">
                         <div class="info-item">
-                            <label>Full Name</label>
-                            <div class="info-value"><?php echo htmlspecialchars($order->fullname ?? '—'); ?></div>
+                            <label>Receiver Name</label>
+                            <div class="info-value"><?php echo htmlspecialchars($addr->receiver_name); ?></div>
                         </div>
                         <div class="info-item">
-                            <label>Gender</label>
-                            <div class="info-value"><?php echo htmlspecialchars($order->gender ?? '—'); ?></div>
-                        </div>
-                        <div class="info-item">
-                            <label>Email</label>
-                            <div class="info-value"><?php echo htmlspecialchars($order->gmail ?? '—'); ?></div>
-                        </div>
-                        <div class="info-item">
-                            <label>Phone</label>
-                            <div class="info-value"><?php echo htmlspecialchars($order->phone_num ?? '—'); ?></div>
+                            <label>Phone Number</label>
+                            <div class="info-value"><?php echo htmlspecialchars($addr->phone); ?></div>
                         </div>
                         <div class="info-item full">
-                            <label>Delivery Address</label>
-                            <div class="info-value"><?php echo htmlspecialchars($order->address ?? '—'); ?></div>
+                            <label>Address Line 1</label>
+                            <div class="info-value"><?php echo htmlspecialchars($addr->addr_line1); ?></div>
+                        </div>
+                        <?php if (!empty($addr->addr_line2)): ?>
+                        <div class="info-item full">
+                            <label>Address Line 2</label>
+                            <div class="info-value"><?php echo htmlspecialchars($addr->addr_line2); ?></div>
+                        </div>
+                        <?php endif; ?>
+                        <div class="info-item">
+                            <label>Postcode</label>
+                            <div class="info-value"><?php echo htmlspecialchars($addr->postcode); ?></div>
+                        </div>
+                        <div class="info-item">
+                            <label>City</label>
+                            <div class="info-value"><?php echo htmlspecialchars($addr->city); ?></div>
+                        </div>
+                        <div class="info-item full">
+                            <label>State</label>
+                            <div class="info-value"><?php echo htmlspecialchars($addr->state_name ?? '—'); ?></div>
                         </div>
                     </div>
+
+                    <!-- FULL DELIVERY ADDRESS (formatted) -->
+                    <div style="margin-top:18px; padding-top:16px; border-top:1px solid #f0f0f0;">
+                        <label style="display:block;font-size:0.72rem;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">
+                            <i class="fa fa-map-pin" style="color:#d4af37;margin-right:4px;"></i>
+                            Full Delivery Address
+                        </label>
+                        <div class="info-value" style="line-height:1.7; background:#f9f9f9;">
+                            <strong><?php echo htmlspecialchars($addr->receiver_name); ?></strong><br>
+                            <?php echo htmlspecialchars($addr->addr_line1); ?><br>
+                            <?php if (!empty($addr->addr_line2)) echo htmlspecialchars($addr->addr_line2) . '<br>'; ?>
+                            <?php echo htmlspecialchars($addr->postcode) . ' ' . htmlspecialchars($addr->city); ?><br>
+                            <?php echo htmlspecialchars($addr->state_name ?? ''); ?><br>
+                            <span style="color:#888;font-size:0.82rem;">
+                                <i class="fa fa-phone" style="font-size:0.7rem;margin-right:3px;"></i>
+                                <?php echo htmlspecialchars($addr->phone); ?>
+                            </span>
+                        </div>
+                    </div>
+
+                <?php else: ?>
+                    <div style="text-align:center;padding:30px;color:#bbb;">
+                        <i class="fa fa-map-location-dot" style="font-size:2rem;display:block;margin-bottom:10px;"></i>
+                        <p style="font-size:0.85rem;">No delivery address recorded for this order.</p>
+                    </div>
+                <?php endif; ?>
+
                 </div>
             </div>
 
