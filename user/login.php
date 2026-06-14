@@ -155,14 +155,18 @@ if (isset($_POST['login'])) {
                 <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
                 <button type="submit" name="login" class="btn-login">Sign In</button>
             </form>
+
+            <div class="text-center mt-3">
+                <a href="forgot_password.php" style="color:#d4af37;">Forgot Password?</a>
+            </div>
             <div>
                 <p class="text-center mt-3">Don't have an account? <a href="register.php"
-                        style="color:#d4af37;">Register here</a></p>
+                style="color:#d4af37;">Register here</a></p>
             </div>
         </div>
     </div>
 
-    <?php include('includes/footer.php'); ?>
+    <?php include('includes/footer.php');?>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 

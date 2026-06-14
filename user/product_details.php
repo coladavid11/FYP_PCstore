@@ -670,6 +670,7 @@ function addToCart(pid) {
         btn.innerHTML = '<i class="fa fa-cart-plus me-2"></i> Add to Cart';
 
         if (data.status === 'success') {
+            updateCartBadge(null);
             Swal.fire({
                 icon: 'success',
                 title: 'Added to Cart!',
@@ -680,7 +681,9 @@ function addToCart(pid) {
                 timer: 2000,
                 timerProgressBar: true,
                 showConfirmButton: false
+   
             });
+            
 
         } else if (data.status === 'login_required') {
             Swal.fire({

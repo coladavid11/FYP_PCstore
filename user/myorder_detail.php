@@ -59,6 +59,57 @@ function paymentStatusConfig(string $status): array
     };
 }
 
+
+/* ── FETCH DELIVERY ADDRESS ── */
+$addrStmt = $dbh->prepare("
+    SELECT oa.*, s.state_name
+    FROM tbl_order_address oa
+    LEFT JOIN tblstate s ON s.state_id = oa.state_id
+    WHERE oa.order_id = ?
+");
+$addrStmt->execute([$order_id]);
+$deliveryAddr = $addrStmt->fetch(PDO::FETCH_ASSOC);
+
+/* ── FETCH PC BUILD linked to this order ── */
+// Find a build that has items matching this order's products
+$buildData     = null;
+$originalSubtotal = 0.00;
+$buildDiscountAmt = 0.00;
+
+// Compute original subtotal from DB prices
+foreach ($items as $item) {
+    $pStmt = $dbh->prepare("SELECT price FROM products WHERE product_id = ?");
+    $pStmt->execute([$item['product_id']]);
+    $pRow  = $pStmt->fetch(PDO::FETCH_ASSOC);
+    $dbPrice = $pRow ? floatval($pRow['price']) : floatval($item['product_price']);
+    $originalSubtotal += $dbPrice * $item['quantity'];
+}
+
+// Build discount = original - total_amount (what was actually charged for items)
+$buildDiscountAmt = max(0, round($originalSubtotal - floatval($order['total_amount']), 2));
+
+// Fetch the PC build record for this user that is closest to this order date
+// (match by user_id and created_at proximity — best we can do without a direct FK)
+$bStmt = $dbh->prepare("
+    SELECT b.build_id, b.assembly_service, b.assembly_fee,
+           b.discount_pct, b.discount_amt, b.subtotal AS build_subtotal
+    FROM tbl_pc_build b
+    WHERE b.user_id = ?
+      AND b.status  = 'ordered'
+    ORDER BY ABS(TIMESTAMPDIFF(SECOND, b.created_at, ?)) ASC
+    LIMIT 1
+");
+$bStmt->execute([$user_id, $order['created_at']]);
+$buildData = $bStmt->fetch(PDO::FETCH_ASSOC);
+
+// Assembly info
+$assemblyService = true;  // default: assembled (free)
+$assemblyFeeAmt  = 0.00;
+if ($buildData) {
+    $assemblyService = (bool)$buildData['assembly_service'];
+    $assemblyFeeAmt  = floatval($buildData['assembly_fee']); // 0.00 or -25.00
+}
+
 $statusCfg = statusConfig($order['order_status']);
 $paymentCfg = paymentStatusConfig($order['payment_status'] ?? 'pending');
 $isCancelled = strtolower($order['order_status']) === 'cancelled';
@@ -300,21 +351,72 @@ $invoiceData = json_encode([
         .summary-row {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            align-items: flex-start;
+            padding: 9px 0;
             border-bottom: 1px solid #1a1a1a;
-            font-size: 0.88rem;
+            font-size: 0.85rem;
             color: #888;
+            gap: 8px;
         }
-
-        .summary-row:last-child {
-            border-bottom: none;
-        }
-
+        .summary-row:last-child { border-bottom: none; }
         .summary-row.grand {
-            font-size: 1rem;
+            font-size: 1.05rem;
             font-weight: 700;
             color: #d4af37;
             padding-top: 14px;
+            border-top: 1px solid #2a2a2a;
+            border-bottom: none;
+            margin-top: 4px;
+        }
+        .sr-label { flex: 1; line-height: 1.4; }
+        .sr-label small { display: block; font-size: 0.7rem; color: #555; margin-top: 1px; }
+        .sr-val  { white-space: nowrap; text-align: right; font-weight: 500; color: #ccc; }
+        .sr-val.green  { color: #4caf50; font-weight: 600; }
+        .sr-val.red    { color: #ff6b6b; font-weight: 600; }
+        .sr-val.gold   { color: #d4af37; font-weight: 600; }
+        .sr-val.strike { text-decoration: line-through; color: #555; font-size: 0.78rem; font-weight: 400; }
+        .sr-val.muted  { color: #555; font-style: italic; font-size: 0.76rem; font-weight: 400; }
+
+        /* Assembly service display card */
+        .assembly-info-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #0f0f0f;
+            border: 1px solid #1e1e1e;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+        .assembly-info-card.assembled {
+            border-color: #4caf5033;
+            background: rgba(76,175,80,0.04);
+        }
+        .assembly-info-card.unassembled {
+            border-color: #ff6b6b33;
+            background: rgba(255,107,107,0.04);
+        }
+        .assembly-icon {
+            width: 42px; height: 42px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        .assembly-icon.assembled  { background: rgba(76,175,80,0.12); color: #4caf50; }
+        .assembly-icon.unassembled{ background: rgba(255,107,107,0.12); color: #ff6b6b; }
+        .assembly-info-text { flex: 1; }
+        .assembly-info-title {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+        .assembly-info-desc { font-size: 0.75rem; color: #666; line-height: 1.4; }
+        .assembly-fee-badge {
+            font-size: 0.8rem;
+            font-weight: 700;
+            white-space: nowrap;
         }
 
         /* ── INFO GRID ── */
@@ -662,18 +764,87 @@ $invoiceData = json_encode([
                 <div class="panel">
                     <div class="panel-title"><i class="fa fa-receipt"></i> Order Summary</div>
 
-                    <div class="summary-row">
-                        <span>Subtotal</span>
-                        <span>RM <?php echo number_format($order['total_amount'], 2); ?></span>
+                    <!-- Assembly Service option display -->
+                    <?php if ($buildData): ?>
+                    <div class="assembly-info-card <?php echo $assemblyService ? 'assembled' : 'unassembled'; ?>">
+                        <div class="assembly-icon <?php echo $assemblyService ? 'assembled' : 'unassembled'; ?>">
+                            <i class="fa <?php echo $assemblyService ? 'fa-screwdriver-wrench' : 'fa-box-open'; ?>"></i>
+                        </div>
+                        <div class="assembly-info-text">
+                            <div class="assembly-info-title">
+                                <?php echo $assemblyService ? 'Assembly &amp; Delivery' : 'Separate Parts Delivery'; ?>
+                            </div>
+                            <div class="assembly-info-desc">
+                                <?php if ($assemblyService): ?>
+                                    My PC Store will build &amp; test your PC before delivery.
+                                <?php else: ?>
+                                    Parts delivered separately, unassembled.
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="assembly-fee-badge <?php echo $assemblyService ? 'text-success' : 'text-danger'; ?>">
+                            <?php echo $assemblyService ? 'FREE' : '− RM 25.00'; ?>
+                        </div>
                     </div>
+                    <?php endif; ?>
+
+                    <!-- Original Subtotal -->
                     <div class="summary-row">
-                        <span>Shipping Fee</span>
-                        <span>RM <?php echo number_format($order['shipping_fee'], 2); ?></span>
+                        <span class="sr-label">Original Subtotal</span>
+                        <span class="sr-val <?php echo $buildDiscountAmt > 0 ? 'strike' : ''; ?>">
+                            RM <?php echo number_format($originalSubtotal > 0 ? $originalSubtotal : $order['total_amount'], 2); ?>
+                        </span>
                     </div>
+
+                    <!-- PC Build Discount -->
+                    <?php if ($buildDiscountAmt > 0): ?>
                     <div class="summary-row">
-                        <span>Service Fee</span>
-                        <span>RM <?php echo number_format($order['service_fee'], 2); ?></span>
+                        <span class="sr-label">
+                            <i class="fa fa-tag me-1" style="color:#4caf50;font-size:0.72rem;"></i>
+                            PC Build Discount
+                            <?php if ($buildData && $buildData['discount_pct'] > 0): ?>
+                            <small><?php echo $buildData['discount_pct']; ?>% off</small>
+                            <?php endif; ?>
+                        </span>
+                        <span class="sr-val green">− RM <?php echo number_format($buildDiscountAmt, 2); ?></span>
                     </div>
+
+                    <!-- Subtotal after discount -->
+                    <div class="summary-row" style="border-top:1px solid #161616;padding-top:9px;margin-top:2px;">
+                        <span class="sr-label">Subtotal after Discount</span>
+                        <span class="sr-val">RM <?php echo number_format($order['total_amount'], 2); ?></span>
+                    </div>
+                    <?php else: ?>
+                    <!-- No discount — show plain subtotal -->
+                    <div class="summary-row">
+                        <span class="sr-label">Subtotal</span>
+                        <span class="sr-val">RM <?php echo number_format($order['total_amount'], 2); ?></span>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Assembly Service Fee -->
+                    <?php if ($buildData): ?>
+                    <div class="summary-row">
+                        <span class="sr-label">
+                            <i class="fa fa-screwdriver-wrench me-1"
+                               style="color:<?php echo $assemblyFeeAmt < 0 ? '#ff6b6b' : '#4caf50'; ?>;font-size:0.72rem;"></i>
+                            Assembly Service
+                        </span>
+                        <?php if ($assemblyFeeAmt < 0): ?>
+                            <span class="sr-val red">− RM <?php echo number_format(abs($assemblyFeeAmt), 2); ?></span>
+                        <?php else: ?>
+                            <span class="sr-val green">FREE</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Shipping Fee -->
+                    <div class="summary-row">
+                        <span class="sr-label">Shipping Fee</span>
+                        <span class="sr-val gold">RM <?php echo number_format($order['shipping_fee'], 2); ?></span>
+                    </div>
+
+                    <!-- Grand Total -->
                     <div class="summary-row grand">
                         <span>Grand Total</span>
                         <span>RM <?php echo number_format($order['grand_total'], 2); ?></span>
@@ -745,6 +916,35 @@ $invoiceData = json_encode([
                             </div>
                         </div>
                     </div>
+                </div>
+
+
+                <!-- ═══ DELIVERY ADDRESS ═══ -->
+                <div class="panel">
+                    <div class="panel-title"><i class="fa fa-location-dot"></i> Delivery Address</div>
+                    <?php if ($deliveryAddr): ?>
+                    <div style="font-size:0.85rem;color:#ccc;line-height:1.8;">
+                        <div style="font-weight:700;color:#fff;margin-bottom:2px;">
+                            <?php echo htmlspecialchars($deliveryAddr['receiver_name']); ?>
+                        </div>
+                        <div style="color:#d4af37;font-size:0.8rem;margin-bottom:6px;">
+                            <?php echo htmlspecialchars($deliveryAddr['phone']); ?>
+                        </div>
+                        <div style="color:#aaa;">
+                            <?php
+                            $addrParts = array_filter([
+                                $deliveryAddr['addr_line1'],
+                                $deliveryAddr['addr_line2'],
+                                $deliveryAddr['postcode'] . ' ' . $deliveryAddr['city'],
+                                $deliveryAddr['state_name'] ?? ''
+                            ]);
+                            echo htmlspecialchars(implode(', ', $addrParts));
+                            ?>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <div style="font-size:0.82rem;color:#555;">No delivery address recorded.</div>
+                    <?php endif; ?>
                 </div>
 
             </div><!-- end right col -->
@@ -850,26 +1050,47 @@ $invoiceData = json_encode([
 
                     <!-- TOTALS -->
                     <div style="display:flex;justify-content:flex-end;">
-                        <div style="width:260px;">
-                            <div
-                                style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:0.82rem;color:#666;">
-                                <span>Subtotal</span><span>RM
-                                    <?php echo number_format($order['total_amount'], 2); ?></span>
+                        <div style="width:290px;">
+                            <!-- Original subtotal -->
+                            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:0.82rem;color:#666;">
+                                <span>Original Subtotal</span>
+                                <span <?php echo $buildDiscountAmt > 0 ? 'style="text-decoration:line-through;color:#aaa;"' : ''; ?>>
+                                    RM <?php echo number_format($originalSubtotal > 0 ? $originalSubtotal : $order['total_amount'], 2); ?>
+                                </span>
                             </div>
-                            <div
-                                style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:0.82rem;color:#666;">
-                                <span>Shipping Fee</span><span>RM
-                                    <?php echo number_format($order['shipping_fee'], 2); ?></span>
+                            <?php if ($buildDiscountAmt > 0): ?>
+                            <!-- PC Build Discount -->
+                            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:0.82rem;color:#2e7d32;">
+                                <span>PC Build Discount<?php echo $buildData && $buildData['discount_pct'] > 0 ? ' (' . $buildData['discount_pct'] . '%)' : ''; ?></span>
+                                <span>− RM <?php echo number_format($buildDiscountAmt, 2); ?></span>
                             </div>
-                            <div
-                                style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:0.82rem;color:#666;">
-                                <span>Service Fee</span><span>RM
-                                    <?php echo number_format($order['service_fee'], 2); ?></span>
+                            <!-- Subtotal after discount -->
+                            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:0.82rem;color:#666;">
+                                <span>Subtotal after Discount</span>
+                                <span>RM <?php echo number_format($order['total_amount'], 2); ?></span>
                             </div>
-                            <div
-                                style="display:flex;justify-content:space-between;padding:10px 0 0;font-size:1rem;font-weight:800;color:#b8860b;">
-                                <span>GRAND TOTAL</span><span>RM
-                                    <?php echo number_format($order['grand_total'], 2); ?></span>
+                            <?php else: ?>
+                            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:0.82rem;color:#666;">
+                                <span>Subtotal</span>
+                                <span>RM <?php echo number_format($order['total_amount'], 2); ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <!-- Assembly Service -->
+                            <?php if ($buildData): ?>
+                            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:0.82rem;<?php echo $assemblyFeeAmt < 0 ? 'color:#c62828;' : 'color:#2e7d32;'; ?>">
+                                <span>Assembly Service</span>
+                                <span><?php echo $assemblyFeeAmt < 0 ? '− RM ' . number_format(abs($assemblyFeeAmt), 2) : 'FREE'; ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <!-- Shipping -->
+                            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:0.82rem;color:#666;">
+                                <span>Shipping Fee</span>
+                                <span>RM <?php echo number_format($order['shipping_fee'], 2); ?></span>
+                            </div>
+                            <!-- Grand Total -->
+                            <div style="display:flex;justify-content:space-between;padding:10px 0 0;font-size:1rem;font-weight:800;color:#b8860b;">
+                                <span>GRAND TOTAL</span>
+                                <span>RM <?php echo number_format($order['grand_total'], 2); ?></span>
                             </div>
                         </div>
                     </div>

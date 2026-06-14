@@ -3,86 +3,167 @@ session_start();
 include('includes/config.php');
 
 $isLoggedIn = isset($_SESSION['login']);
-$user_id = $_SESSION['user_id'] ?? null;
+$user_id    = $_SESSION['user_id'] ?? null;
 
-// ── Fetch products per category ──
+// ── Discount tiers ────────────────────────────────────────────
+function getDiscount(float $total): array
+{
+    if ($total >= 5000) return ['pct' => 10, 'label' => '10% off'];
+    if ($total >= 3000) return ['pct' => 5,  'label' => '5% off'];
+    return ['pct' => 0, 'label' => 'No discount'];
+}
+
+// ── Required parts (9 mandatory) ─────────────────────────────
+$REQUIRED_KEYS = ['CPU','Motherboard','RAM','Storage','GPU','PSU','Case','CaseFan','Cooler'];
+
+// ── Part definitions ──────────────────────────────────────────
+$parts = [
+    'CPU'         => ['cat_id' => 6,  'icon' => 'fa-microchip',       'label' => 'Processor (CPU)',  'required' => true],
+    'Motherboard' => ['cat_id' => 1,  'icon' => 'fa-server',          'label' => 'Motherboard',      'required' => true],
+    'RAM'         => ['cat_id' => 7,  'icon' => 'fa-memory',          'label' => 'RAM',              'required' => true],
+    'Storage'     => ['cat_id' => 8,  'icon' => 'fa-hard-drive',      'label' => 'Storage',          'required' => true],
+    'GPU'         => ['cat_id' => 3,  'icon' => 'fa-display',         'label' => 'Graphics Card',    'required' => true],
+    'PSU'         => ['cat_id' => 9,  'icon' => 'fa-bolt',            'label' => 'Power Supply',     'required' => true],
+    'Case'        => ['cat_id' => 11, 'icon' => 'fa-box',             'label' => 'PC Case',          'required' => true],
+    'CaseFan'     => ['cat_id' => 12, 'icon' => 'fa-fan',             'label' => 'Case Fan',         'required' => true],
+    'Cooler'      => ['cat_id' => 10, 'icon' => 'fa-wind',            'label' => 'CPU Cooler',       'required' => true],
+    'Monitor'     => ['cat_id' => 13, 'icon' => 'fa-desktop',         'label' => 'Monitor',          'required' => false],
+    'Keyboard'    => ['cat_id' => 14, 'icon' => 'fa-keyboard',        'label' => 'Keyboard',         'required' => false],
+    'Mouse'       => ['cat_id' => 15, 'icon' => 'fa-computer-mouse',  'label' => 'Mouse',            'required' => false],
+];
+
+// ── Fetch products per category ───────────────────────────────
 function getPartsByCategory($dbh, $category_id)
 {
     $stmt = $dbh->prepare("
-        SELECT p.product_id, p.name, p.price, p.image, p.stock,
-               c.category_name, c.category_image
+        SELECT p.product_id, p.name, p.price, p.image, p.stock
         FROM products p
-        JOIN categories c ON p.category_id = c.category_id
-        WHERE p.category_id = ? AND p.stock > 0
+        WHERE p.category_id = ? AND p.stock > 0 AND p.status = 'Active'
         ORDER BY p.price ASC
     ");
     $stmt->execute([$category_id]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Category IDs from your DB (based on screenshot)
-$parts = [
-    'CPU' => ['cat_id' => 6, 'icon' => 'fa-microchip', 'label' => 'Processor (CPU)'],
-    'Motherboard' => ['cat_id' => 1, 'icon' => 'fa-server', 'label' => 'Motherboard'],
-    'RAM' => ['cat_id' => 7, 'icon' => 'fa-memory', 'label' => 'RAM'],
-    'Storage' => ['cat_id' => 8, 'icon' => 'fa-hard-drive', 'label' => 'Storage'],
-    'GPU' => ['cat_id' => 3, 'icon' => 'fa-display', 'label' => 'Graphics Card'],
-    'Monitor' => ['cat_id' => 13, 'icon' => 'fa-desktop', 'label' => 'Monitor'],
-    'PSU' => ['cat_id' => 9, 'icon' => 'fa-bolt', 'label' => 'Power Supply'],
-    'Case' => ['cat_id' => 11, 'icon' => 'fa-box', 'label' => 'PC Case'],
-    'Keyboard' => ['cat_id' => 14, 'icon' => 'fa-keyboard', 'label' => 'Keyboard'],
-    'Mouse' => ['cat_id' => 15, 'icon' => 'fa-computer-mouse', 'label' => 'Mouse'],
-    'CaseFan' => ['cat_id' => 12, 'icon' => 'fa-fan', 'label' => 'Case Fan'],
-    'Cooler' => ['cat_id' => 10, 'icon' => 'fa-wind', 'label' => 'Cooler'],
-];
-
-// Fetch all products for each part
 $partProducts = [];
 foreach ($parts as $key => $info) {
     $partProducts[$key] = getPartsByCategory($dbh, $info['cat_id']);
 }
 
-// ── HANDLE ADD ALL TO CART ──
+// ── Handle Add Build to Cart ──────────────────────────────────
 $addResult = '';
 if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
-    $selectedIds = json_decode($_POST['selected_product_ids'] ?? '[]', true);
-    $addedCount = 0;
 
-    foreach ($selectedIds as $pid) {
-        $pid = intval($pid);
-        if ($pid <= 0)
-            continue;
+    $selectedIds  = json_decode($_POST['selected_product_ids'] ?? '[]', true);
+    $buildSubtotal= floatval($_POST['build_subtotal']    ?? 0);
+    $discountPct  = intval($_POST['discount_pct']        ?? 0);
+    $discountAmt  = floatval($_POST['discount_amt']      ?? 0);
+    $finalPrice   = floatval($_POST['final_price']       ?? 0);
+    $missingParts    = json_decode($_POST['missing_parts']  ?? '[]', true);
+    $assemblyService = isset($_POST['assembly_service']) && $_POST['assembly_service'] === '1';
+    $assemblyFee     = $assemblyService ? 0.00 : -25.00; // Free if assembled, -25 if not
 
-        // Fetch product
-        $pStmt = $dbh->prepare("SELECT * FROM products WHERE product_id = ? AND stock > 0");
-        $pStmt->execute([$pid]);
-        $prod = $pStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$prod)
-            continue;
+    if (!empty($missingParts)) {
+        $addResult = 'missing';
+        $missingList = implode(', ', $missingParts);
+    } else {
+        try {
+            $dbh->beginTransaction();
 
-        // Check existing cart
-        $cStmt = $dbh->prepare("SELECT cart_id, quantity FROM tblcart WHERE user_id = ? AND product_id = ? AND status = 'active'");
-        $cStmt->execute([$user_id, $pid]);
-        $existing = $cStmt->fetch(PDO::FETCH_ASSOC);
+            // 1. Save build record
+            // Adjust final price: no assembly = deduct RM25
+            $assemblyFeeAdj = $assemblyService ? 0.00 : -25.00;
+            $adjustedFinal  = max(0, $finalPrice + $assemblyFeeAdj);
 
-        if ($existing) {
-            $newQty = $existing['quantity'] + 1;
-            if ($newQty <= $prod['stock']) {
-                $dbh->prepare("UPDATE tblcart SET quantity=?, subtotal=product_price*? WHERE cart_id=?")
-                    ->execute([$newQty, $newQty, $existing['cart_id']]);
+            $bStmt = $dbh->prepare("
+                INSERT INTO tbl_pc_build
+                    (user_id, subtotal, discount_pct, discount_amt, final_price,
+                     assembly_service, assembly_fee, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')
+            ");
+            $bStmt->execute([
+                $user_id, $buildSubtotal, $discountPct, $discountAmt, $adjustedFinal,
+                $assemblyService ? 1 : 0,
+                $assemblyService ? 0.00 : -25.00,
+            ]);
+            $build_id = $dbh->lastInsertId();
+
+            // Discount multiplier for per-item final price
+            $multiplier = 1 - ($discountPct / 100);
+            $addedCount = 0;
+
+            foreach ($selectedIds as $entry) {
+                $pid      = intval($entry['id']);
+                $partKey  = $entry['key'];
+                if ($pid <= 0) continue;
+
+                // Fetch product
+                $pStmt = $dbh->prepare("SELECT * FROM products WHERE product_id = ? AND stock > 0");
+                $pStmt->execute([$pid]);
+                $prod = $pStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$prod) continue;
+
+                $unitPrice  = floatval($prod['price']);
+                $itemFinal  = round($unitPrice * $multiplier, 2);
+
+                // 2. Save build item
+                $biStmt = $dbh->prepare("
+                    INSERT INTO tbl_pc_build_item
+                        (build_id, part_key, product_id, product_name, unit_price, final_price)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $biStmt->execute([$build_id, $partKey, $pid, $prod['name'], $unitPrice, $itemFinal]);
+
+                // 3. Add to cart at discounted price
+                $cStmt = $dbh->prepare("
+                    SELECT cart_id, quantity FROM tblcart
+                    WHERE user_id = ? AND product_id = ? AND status = 'active'
+                ");
+                $cStmt->execute([$user_id, $pid]);
+                $existing = $cStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($existing) {
+                    $newQty = $existing['quantity'] + 1;
+                    if ($newQty <= $prod['stock']) {
+                        $dbh->prepare("
+                            UPDATE tblcart
+                            SET quantity = ?, subtotal = ? * ?, product_price = ?
+                            WHERE cart_id = ?
+                        ")->execute([$newQty, $itemFinal, $newQty, $itemFinal, $existing['cart_id']]);
+                    }
+                } else {
+                    $dbh->prepare("
+                        INSERT INTO tblcart
+                            (user_id, product_id, product_name, product_image,
+                             product_price, quantity, subtotal, created_at, updated_at, status)
+                        VALUES (?, ?, ?, ?, ?, 1, ?, NOW(), NOW(), 'active')
+                    ")->execute([
+                        $user_id, $pid, $prod['name'], $prod['image'],
+                        $itemFinal, $itemFinal
+                    ]);
+                }
+                $addedCount++;
             }
-        } else {
-            $dbh->prepare("INSERT INTO tblcart (user_id,product_id,product_name,product_image,product_price,quantity,subtotal,created_at,updated_at,status) VALUES (?,?,?,?,?,1,?,NOW(),NOW(),'active')")
-                ->execute([$user_id, $pid, $prod['name'], $prod['image'], $prod['price'], $prod['price']]);
+
+            // Mark build as ordered
+            $dbh->prepare("UPDATE tbl_pc_build SET status='ordered' WHERE build_id=?")
+                ->execute([$build_id]);
+
+            $dbh->commit();
+            $addResult       = $addedCount > 0 ? 'success' : 'empty';
+            $addedCountFinal = $addedCount;
+            $assemblyServiceFinal = $assemblyService;
+
+        } catch (Exception $e) {
+            $dbh->rollBack();
+            $addResult  = 'error';
+            $addError   = $e->getMessage();
         }
-        $addedCount++;
     }
-    $addResult = $addedCount > 0 ? 'success' : 'empty';
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -90,45 +171,36 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500;600&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="newstyle.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* ─── LAYOUT ─── */
+        /* ── LAYOUT ──────────────────────────────────────── */
         .builder-wrap {
             display: flex;
             gap: 28px;
             align-items: flex-start;
         }
+        .builder-parts   { flex: 1; min-width: 0; }
+        .builder-summary { width: 340px; flex-shrink: 0; position: sticky; top: 100px; }
 
-        .builder-parts {
-            flex: 1;
-            min-width: 0;
+        @media (max-width: 991px) {
+            .builder-wrap    { flex-direction: column; }
+            .builder-summary { width: 100%; position: static; }
         }
 
-        .builder-summary {
-            width: 320px;
-            flex-shrink: 0;
-            position: sticky;
-            top: 100px;
-        }
-
-        /* ─── PART ROW ─── */
+        /* ── PART ROW ────────────────────────────────────── */
         .part-row {
             background: #121212;
             border: 1px solid #2a2a2a;
             border-radius: 12px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             overflow: hidden;
-            transition: border-color 0.25s;
+            transition: border-color .25s;
         }
-
-        .part-row.selected {
-            border-color: #d4af37;
-        }
+        .part-row.selected   { border-color: #d4af37; }
+        .part-row.required-missing { border-color: #dc354588; }
 
         .part-header {
             display: flex;
@@ -137,244 +209,447 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
             padding: 14px 18px;
             cursor: pointer;
             user-select: none;
-            transition: background 0.2s;
+            transition: background .2s;
         }
-
-        .part-header:hover {
-            background: #1a1a1a;
-        }
+        .part-header:hover { background: #1a1a1a; }
 
         .part-icon {
-            width: 40px;
-            height: 40px;
+            width: 38px; height: 38px;
             background: #1a1a1a;
             border: 1px solid #2a2a2a;
             border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             color: #d4af37;
-            font-size: 1rem;
+            font-size: 0.95rem;
             flex-shrink: 0;
         }
 
         .part-label {
             flex: 1;
-            font-size: 0.85rem;
+            font-size: 0.83rem;
             font-weight: 600;
-            letter-spacing: 1.2px;
+            letter-spacing: 1px;
             text-transform: uppercase;
             color: #aaa;
         }
 
-        .part-selected-name {
-            font-size: 0.82rem;
+        .required-badge {
+            font-size: 0.62rem;
+            background: rgba(212,175,55,0.15);
             color: #d4af37;
-            font-weight: 500;
-            max-width: 200px;
+            border: 1px solid #d4af3744;
+            border-radius: 4px;
+            padding: 2px 6px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .optional-badge {
+            font-size: 0.62rem;
+            background: rgba(100,100,100,0.12);
+            color: #555;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            padding: 2px 6px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .part-selected-name {
+            font-size: 0.78rem;
+            color: #555;
+            max-width: 180px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        .part-selected-name.chosen { color: #d4af37; }
 
         .part-selected-price {
-            font-size: 0.82rem;
+            font-size: 0.78rem;
             color: #d4af37;
             font-weight: 700;
-            margin-left: 10px;
             white-space: nowrap;
+            margin-left: 6px;
         }
 
         .part-chevron {
             color: #555;
-            font-size: 0.8rem;
-            transition: transform 0.25s;
-            margin-left: 10px;
+            font-size: 0.75rem;
+            transition: transform .25s;
+            margin-left: 6px;
+            flex-shrink: 0;
         }
+        .part-row.open .part-chevron { transform: rotate(180deg); }
 
-        .part-row.open .part-chevron {
-            transform: rotate(180deg);
-        }
-
-        /* ─── DROPDOWN PANEL ─── */
+        /* ── DROPDOWN PANEL ──────────────────────────────── */
         .part-panel {
             display: none;
-            border-top: 1px solid #2a2a2a;
+            border-top: 1px solid #1e1e1e;
             padding: 14px;
             background: #0f0f0f;
         }
-
-        .part-row.open .part-panel {
-            display: block;
-        }
+        .part-row.open .part-panel { display: block; }
 
         .parts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 10px;
         }
 
-        /* None option */
         .part-option {
             background: #181818;
             border: 1px solid #2a2a2a;
             border-radius: 10px;
             padding: 10px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all .2s;
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
             gap: 6px;
         }
-
-        .part-option:hover {
-            border-color: #555;
-            background: #1e1e1e;
-        }
-
+        .part-option:hover { border-color: #555; background: #1e1e1e; }
         .part-option.active {
             border-color: #d4af37;
-            background: rgba(212, 175, 55, 0.07);
+            background: rgba(212,175,55,0.07);
         }
-
         .part-option img {
-            width: 100%;
-            height: 90px;
+            width: 100%; height: 86px;
             object-fit: cover;
             border-radius: 6px;
             background: #1a1a1a;
         }
-
         .part-option .none-icon {
-            width: 100%;
-            height: 90px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 100%; height: 86px;
+            display: flex; align-items: center; justify-content: center;
             background: #1a1a1a;
             border-radius: 6px;
-            color: #444;
-            font-size: 1.8rem;
+            color: #333; font-size: 1.6rem;
         }
-
         .part-option .opt-name {
-            font-size: 0.75rem;
+            font-size: 0.73rem;
             color: #ccc;
             line-height: 1.3;
             font-weight: 500;
         }
-
         .part-option .opt-price {
-            font-size: 0.78rem;
+            font-size: 0.76rem;
             color: #d4af37;
             font-weight: 700;
         }
+        .part-option .opt-price.none { color: #444; font-weight: 400; }
 
-        .part-option .opt-price.none {
-            color: #555;
-            font-weight: 400;
-        }
-
-        /* ─── SUMMARY PANEL ─── */
+        /* ── SUMMARY PANEL ───────────────────────────────── */
         .summary-card {
-            background: #121212;
-            border: 1px solid #2a2a2a;
-            border-radius: 14px;
-            padding: 22px 20px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 16px;
+            overflow: hidden;
         }
 
-        .summary-title {
+        .summary-head {
+            padding: 18px 20px 14px;
+            border-bottom: 1px solid #1c1c1c;
+        }
+
+        .summary-head-title {
             font-family: 'Playfair Display', serif;
-            font-size: 1.3rem;
+            font-size: 1.15rem;
             color: #fff;
-            margin-bottom: 16px;
+            margin-bottom: 2px;
         }
 
-        .summary-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 9px 0;
-            border-bottom: 1px solid #1e1e1e;
-            gap: 8px;
-        }
-
-        .summary-item:last-of-type {
-            border-bottom: none;
-        }
-
-        .summary-part-label {
+        .summary-head-sub {
             font-size: 0.72rem;
             color: #555;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            white-space: nowrap;
+            letter-spacing: 1px;
         }
 
-        .summary-part-name {
-            font-size: 0.78rem;
-            color: #aaa;
-            flex: 1;
-            text-align: right;
+        /* Required parts progress bar */
+        .req-progress-wrap {
+            padding: 12px 20px;
+            border-bottom: 1px solid #1c1c1c;
+        }
+
+        .req-progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .req-progress-bar-bg {
+            height: 4px;
+            background: #1e1e1e;
+            border-radius: 2px;
             overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 130px;
-            margin-left: 6px;
         }
 
-        .summary-part-price {
-            font-size: 0.82rem;
+        .req-progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #d4af37, #f0cc55);
+            border-radius: 2px;
+            transition: width .4s ease;
+        }
+
+        .req-parts-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 10px 20px 14px;
+            border-bottom: 1px solid #1c1c1c;
+        }
+
+        .req-chip {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 20px;
+            border: 1px solid #2a2a2a;
+            color: #555;
+            background: #0f0f0f;
+            white-space: nowrap;
+            transition: all .2s;
+        }
+        .req-chip.done {
+            border-color: #d4af3766;
             color: #d4af37;
-            font-weight: 700;
-            white-space: nowrap;
-            margin-left: 8px;
+            background: rgba(212,175,55,0.06);
         }
 
-        .summary-total-row {
+        /* Items list */
+        .summary-items {
+            padding: 10px 20px;
+            border-bottom: 1px solid #1c1c1c;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+        .summary-items::-webkit-scrollbar { width: 3px; }
+        .summary-items::-webkit-scrollbar-thumb { background: #2a2a2a; }
+
+        .sum-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .sum-item-left { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+        .sum-item-key  { font-size: 0.65rem; color: #555; text-transform: uppercase; letter-spacing: .5px; }
+        .sum-item-name {
+            font-size: 0.76rem; color: #aaa;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .sum-item-price { font-size: 0.78rem; font-weight: 700; color: #d4af37; white-space: nowrap; }
+        .sum-item-empty .sum-item-name { color: #333; font-style: italic; }
+
+        /* Discount tier badges */
+        .discount-tiers {
+            display: flex;
+            gap: 6px;
+            padding: 12px 20px;
+            border-bottom: 1px solid #1c1c1c;
+        }
+        .tier-badge {
+            flex: 1;
+            text-align: center;
+            padding: 6px 4px;
+            border-radius: 8px;
+            font-size: 0.68rem;
+            border: 1px solid #2a2a2a;
+            background: #0f0f0f;
+            color: #444;
+            transition: all .3s;
+        }
+        .tier-badge .tier-pct   { font-size: 0.95rem; font-weight: 800; display: block; margin-bottom: 2px; }
+        .tier-badge .tier-range { font-size: 0.6rem; }
+        .tier-badge.tier-active {
+            border-color: #d4af37;
+            background: rgba(212,175,55,0.1);
+            color: #d4af37;
+        }
+        .tier-badge.tier-next   { border-color: #3a3a2a; color: #666; }
+
+        /* Totals */
+        .summary-totals { padding: 14px 20px 6px; }
+
+        .tot-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 16px;
-            padding-top: 14px;
-            border-top: 1px solid #2a2a2a;
+            font-size: 0.82rem;
+            color: #666;
+            margin-bottom: 8px;
         }
+        .tot-row.discount-row { color: #4caf50; }
+        .tot-row.discount-row span:last-child { font-weight: 600; }
 
-        .summary-total-label {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #fff;
+        .tot-divider { height: 1px; background: #1c1c1c; margin: 10px 0; }
+
+        .tot-grand {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
         }
-
-        .summary-total-price {
-            font-size: 1.4rem;
-            font-weight: 700;
+        .tot-grand-label { font-size: 0.9rem; font-weight: 700; color: #fff; }
+        .tot-grand-amount {
+            font-size: 1.5rem;
+            font-weight: 800;
             color: #d4af37;
             font-family: 'Playfair Display', serif;
         }
-
-        .parts-count {
-            font-size: 0.75rem;
+        .tot-grand-original {
+            font-size: 0.78rem;
             color: #555;
-            margin-top: 4px;
+            text-decoration: line-through;
+            text-align: right;
+            margin-top: -4px;
         }
 
-        /* ─── PAGE HERO ─── */
+        /* CTA */
+        .summary-cta { padding: 0 16px 16px; }
+
+        .btn-build {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #d4af37, #b8942a);
+            color: #000;
+            font-weight: 700;
+            font-size: 0.9rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: opacity .2s, transform .15s;
+            text-decoration: none;
+        }
+        .btn-build:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); color: #000; }
+        .btn-build:disabled { opacity: .3; cursor: not-allowed; }
+
+        .missing-hint {
+            font-size: 0.7rem;
+            color: #dc3545;
+            text-align: center;
+            margin-top: 8px;
+            min-height: 16px;
+        }
+
+        /* ── ASSEMBLY TOGGLE ─────────────────────────────── */
+        .assembly-toggle {
+            margin: 0 16px 14px;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: border-color .25s;
+        }
+        .assembly-toggle.active { border-color: #d4af3766; }
+
+        .assembly-label {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            background: #0f0f0f;
+            transition: background .2s;
+            user-select: none;
+        }
+        .assembly-label:hover { background: #141414; }
+
+        .assembly-checkbox-wrap {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* Custom gold checkbox */
+        .assembly-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px; height: 20px;
+            border: 2px solid #3a3a3a;
+            border-radius: 5px;
+            background: #1a1a1a;
+            cursor: pointer;
+            position: relative;
+            transition: all .2s;
+            display: block;
+        }
+        .assembly-checkbox:checked {
+            background: #d4af37;
+            border-color: #d4af37;
+        }
+        .assembly-checkbox:checked::after {
+            content: '';
+            position: absolute;
+            left: 5px; top: 2px;
+            width: 6px; height: 10px;
+            border: 2px solid #000;
+            border-top: none; border-left: none;
+            transform: rotate(45deg);
+        }
+
+        .assembly-text { flex: 1; }
+        .assembly-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .assembly-free-badge {
+            font-size: 0.62rem;
+            background: rgba(76,175,80,0.15);
+            color: #4caf50;
+            border: 1px solid #4caf5044;
+            border-radius: 4px;
+            padding: 2px 7px;
+            font-weight: 700;
+            letter-spacing: .5px;
+        }
+        .assembly-desc {
+            font-size: 0.75rem;
+            color: #666;
+            line-height: 1.5;
+        }
+        .assembly-desc strong { color: #d4af37; }
+
+        .assembly-fee-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: #0a0a0a;
+            border-top: 1px solid #1a1a1a;
+            font-size: 0.78rem;
+        }
+        .assembly-fee-label { color: #666; }
+        .assembly-fee-value { font-weight: 700; }
+        .assembly-fee-value.free  { color: #4caf50; }
+        .assembly-fee-value.deduct { color: #ff6b6b; }
+
+        /* ── PAGE HERO ───────────────────────────────────── */
         .page-hero {
             padding: 60px 0 40px;
             text-align: center;
         }
-
         .page-hero h1 {
             font-family: 'Playfair Display', serif;
             font-size: 2.8rem;
-            font-weight: 700;
             color: #fff;
             margin-bottom: 8px;
         }
-
         .page-hero p {
             color: #666;
             letter-spacing: 2px;
@@ -382,284 +657,586 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
             font-size: 0.85rem;
         }
 
-        /* ─── RESPONSIVE ─── */
-        @media (max-width: 991px) {
-            .builder-wrap {
-                flex-direction: column;
-            }
-
-            .builder-summary {
-                width: 100%;
-                position: static;
-            }
+        /* Section divider between required and optional */
+        .parts-section-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #444;
+            padding: 10px 0 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .parts-section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #1e1e1e;
         }
     </style>
 </head>
-
 <body>
 
-    <?php include('includes/header.php'); ?>
+<?php include('includes/header.php'); ?>
 
-    <!-- PAGE HERO -->
-    <section class="page-hero">
-        <div class="container">
-            <h1>PC Builder</h1>
-            <p>Customize your dream machine</p>
-            <div class="accent-line mx-auto mt-3"></div>
-        </div>
-    </section>
+<section class="page-hero">
+    <div class="container">
+        <h1>PC Builder</h1>
+        <p>Customize your dream machine</p>
+        <div class="accent-line mx-auto mt-3"></div>
+    </div>
+</section>
 
-    <div class="container pb-5">
-        <div class="builder-wrap">
+<div class="container pb-5">
+<div class="builder-wrap">
 
-            <!-- ══════════════════════════════ -->
-            <!-- LEFT: PART SELECTOR           -->
-            <!-- ══════════════════════════════ -->
-            <div class="builder-parts">
+    <!-- ══ LEFT: PART SELECTOR ══════════════════════════════ -->
+    <div class="builder-parts">
 
-                <?php foreach ($parts as $key => $info):
-                    $products = $partProducts[$key];
-                    ?>
-                    <div class="part-row" id="row-<?php echo $key; ?>">
+        <div class="parts-section-label">Required Components</div>
 
-                        <!-- Header (click to expand) -->
-                        <div class="part-header" data-key="<?php echo $key; ?>">
-                            <div class="part-icon">
-                                <i class="fa <?php echo $info['icon']; ?>"></i>
-                            </div>
-                            <span class="part-label"><?php echo $info['label']; ?></span>
-                            <span class="part-selected-name" id="sel-name-<?php echo $key; ?>">— None selected</span>
-                            <span class="part-selected-price" id="sel-price-<?php echo $key; ?>"
-                                style="display:none;"></span>
-                            <i class="fa fa-chevron-down part-chevron"></i>
-                        </div>
-
-                        <!-- Dropdown panel -->
-                        <div class="part-panel">
-                            <div class="parts-grid">
-
-                                <!-- NONE option -->
-                                <div class="part-option active" id="opt-<?php echo $key; ?>-none"
-                                    data-key="<?php echo $key; ?>" data-id="0" data-name="None" data-price="0">
-                                    <div class="none-icon"><i class="fa fa-ban"></i></div>
-                                    <div class="opt-name">None</div>
-                                    <div class="opt-price none">RM 0.00</div>
-                                </div>
-
-                                <?php if (empty($products)): ?>
-                                    <div style="color:#555; font-size:0.8rem; padding:10px; grid-column:1/-1;">
-                                        No products available in this category.
-                                    </div>
-                                <?php else: ?>
-                                    <?php foreach ($products as $p): ?>
-                                        <div class="part-option" id="opt-<?php echo $key; ?>-<?php echo $p['product_id']; ?>"
-                                            data-key="<?php echo $key; ?>" data-id="<?php echo $p['product_id']; ?>"
-                                            data-name="<?php echo htmlspecialchars($p['name'], ENT_QUOTES); ?>"
-                                            data-price="<?php echo $p['price']; ?>">
-                                            <img src="<?php echo htmlspecialchars($p['image']); ?>"
-                                                alt="<?php echo htmlspecialchars($p['name']); ?>"
-                                                onerror="this.src='assets/images/placeholder.jpg'">
-                                            <div class="opt-name"><?php echo htmlspecialchars($p['name']); ?></div>
-                                            <div class="opt-price">RM <?php echo number_format($p['price'], 2); ?></div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-
-                            </div>
-                        </div>
-
-                    </div>
-                <?php endforeach; ?>
-
+        <?php foreach ($parts as $key => $info):
+            if (!$info['required']) continue;
+            $products = $partProducts[$key];
+        ?>
+        <div class="part-row" id="row-<?php echo $key; ?>">
+            <div class="part-header" data-key="<?php echo $key; ?>">
+                <div class="part-icon"><i class="fa <?php echo $info['icon']; ?>"></i></div>
+                <span class="part-label"><?php echo $info['label']; ?></span>
+                <span class="required-badge">Required</span>
+                <span class="part-selected-name" id="sel-name-<?php echo $key; ?>">— Not selected</span>
+                <span class="part-selected-price" id="sel-price-<?php echo $key; ?>" style="display:none;"></span>
+                <i class="fa fa-chevron-down part-chevron"></i>
             </div>
-
-            <!-- ══════════════════════════════ -->
-            <!-- RIGHT: SUMMARY PANEL          -->
-            <!-- ══════════════════════════════ -->
-            <div class="builder-summary">
-                <div class="summary-card">
-
-                    <div class="summary-title">Build Summary</div>
-
-                    <?php foreach ($parts as $key => $info): ?>
-                        <div class="summary-item" id="summary-<?php echo $key; ?>">
-                            <span class="summary-part-label"><?php echo $info['label']; ?></span>
-                            <span class="summary-part-name" id="sum-name-<?php echo $key; ?>">—</span>
-                            <span class="summary-part-price" id="sum-price-<?php echo $key; ?>"
-                                style="display:none;"></span>
-                        </div>
-                    <?php endforeach; ?>
-
-                    <div class="summary-total-row">
-                        <div>
-                            <div class="summary-total-label">Total</div>
-                            <div class="parts-count" id="parts-count">0 parts selected</div>
-                        </div>
-                        <div class="summary-total-price" id="summary-grand-total">RM 0.00</div>
+            <div class="part-panel">
+                <div class="parts-grid">
+                    <?php foreach ($products as $p): ?>
+                    <div class="part-option"
+                         id="opt-<?php echo $key; ?>-<?php echo $p['product_id']; ?>"
+                         data-key="<?php echo $key; ?>"
+                         data-id="<?php echo $p['product_id']; ?>"
+                         data-name="<?php echo htmlspecialchars($p['name'], ENT_QUOTES); ?>"
+                         data-price="<?php echo $p['price']; ?>">
+                        <img src="<?php echo htmlspecialchars($p['image']); ?>"
+                             alt="<?php echo htmlspecialchars($p['name']); ?>"
+                             onerror="this.src='assets/images/placeholder.jpg'">
+                        <div class="opt-name"><?php echo htmlspecialchars($p['name']); ?></div>
+                        <div class="opt-price">RM <?php echo number_format($p['price'], 2); ?></div>
                     </div>
-
-                    <!-- Add to Cart button -->
-                    <form method="POST" id="buildForm" class="mt-3">
-                        <input type="hidden" name="add_build_to_cart" value="1">
-                        <input type="hidden" name="selected_product_ids" id="selectedIdsInput" value="[]">
-
-                        <?php if (!$isLoggedIn): ?>
-                            <a href="login.php" class="btn-gold d-block text-center text-decoration-none">
-                                Login to Add to Cart
-                            </a>
-                        <?php else: ?>
-                            <button type="button" class="btn-gold" id="addBuildBtn" onclick="submitBuild()" disabled>
-                                <i class="fa fa-cart-plus me-2"></i>Add Build to Cart
-                            </button>
-                        <?php endif; ?>
-                    </form>
-
+                    <?php endforeach; ?>
+                    <?php if (empty($products)): ?>
+                    <div style="color:#555;font-size:0.8rem;padding:10px;grid-column:1/-1;">
+                        No products available.
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
-
         </div>
+        <?php endforeach; ?>
+
+        <div class="parts-section-label" style="margin-top:8px;">Optional Add-ons</div>
+
+        <?php foreach ($parts as $key => $info):
+            if ($info['required']) continue;
+            $products = $partProducts[$key];
+        ?>
+        <div class="part-row" id="row-<?php echo $key; ?>">
+            <div class="part-header" data-key="<?php echo $key; ?>">
+                <div class="part-icon"><i class="fa <?php echo $info['icon']; ?>"></i></div>
+                <span class="part-label"><?php echo $info['label']; ?></span>
+                <span class="optional-badge">Optional</span>
+                <span class="part-selected-name" id="sel-name-<?php echo $key; ?>">— None</span>
+                <span class="part-selected-price" id="sel-price-<?php echo $key; ?>" style="display:none;"></span>
+                <i class="fa fa-chevron-down part-chevron"></i>
+            </div>
+            <div class="part-panel">
+                <div class="parts-grid">
+                    <!-- None option for optional parts -->
+                    <div class="part-option active"
+                         data-key="<?php echo $key; ?>" data-id="0" data-name="None" data-price="0">
+                        <div class="none-icon"><i class="fa fa-ban"></i></div>
+                        <div class="opt-name">None</div>
+                        <div class="opt-price none">RM 0.00</div>
+                    </div>
+                    <?php foreach ($products as $p): ?>
+                    <div class="part-option"
+                         id="opt-<?php echo $key; ?>-<?php echo $p['product_id']; ?>"
+                         data-key="<?php echo $key; ?>"
+                         data-id="<?php echo $p['product_id']; ?>"
+                         data-name="<?php echo htmlspecialchars($p['name'], ENT_QUOTES); ?>"
+                         data-price="<?php echo $p['price']; ?>">
+                        <img src="<?php echo htmlspecialchars($p['image']); ?>"
+                             alt="<?php echo htmlspecialchars($p['name']); ?>"
+                             onerror="this.src='assets/images/placeholder.jpg'">
+                        <div class="opt-name"><?php echo htmlspecialchars($p['name']); ?></div>
+                        <div class="opt-price">RM <?php echo number_format($p['price'], 2); ?></div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+
+    </div><!-- /builder-parts -->
+
+    <!-- ══ RIGHT: SUMMARY PANEL ═════════════════════════════ -->
+    <div class="builder-summary">
+    <div class="summary-card">
+
+        <!-- Head -->
+        <div class="summary-head">
+            <div class="summary-head-title">Build Summary</div>
+            <div class="summary-head-sub">Configure your perfect PC</div>
+        </div>
+
+        <!-- Required parts progress -->
+        <div class="req-progress-wrap">
+            <div class="req-progress-label">
+                <span>Required components</span>
+                <span id="req-count">0 / <?php echo count($REQUIRED_KEYS); ?></span>
+            </div>
+            <div class="req-progress-bar-bg">
+                <div class="req-progress-bar-fill" id="req-bar" style="width:0%"></div>
+            </div>
+        </div>
+
+        <!-- Required parts chips -->
+        <div class="req-parts-chips">
+            <?php foreach ($REQUIRED_KEYS as $rk): ?>
+            <span class="req-chip" id="chip-<?php echo $rk; ?>">
+                <?php echo $parts[$rk]['label']; ?>
+            </span>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Item list -->
+        <div class="summary-items" id="summaryItems">
+            <?php foreach ($parts as $key => $info): ?>
+            <div class="sum-item sum-item-empty" id="sum-row-<?php echo $key; ?>">
+                <div class="sum-item-left">
+                    <span class="sum-item-key"><?php echo $info['label']; ?></span>
+                    <span class="sum-item-name" id="sum-name-<?php echo $key; ?>">
+                        <?php echo $info['required'] ? 'Not selected' : 'None'; ?>
+                    </span>
+                </div>
+                <span class="sum-item-price" id="sum-price-<?php echo $key; ?>" style="display:none;"></span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Discount tier badges -->
+        <div class="discount-tiers">
+            <div class="tier-badge" id="tier-0">
+                <span class="tier-pct">0%</span>
+                <span class="tier-range">Below RM 3,000</span>
+            </div>
+            <div class="tier-badge" id="tier-5">
+                <span class="tier-pct">5% off</span>
+                <span class="tier-range">RM 3,000 – 4,999</span>
+            </div>
+            <div class="tier-badge" id="tier-10">
+                <span class="tier-pct">10% off</span>
+                <span class="tier-range">RM 5,000+</span>
+            </div>
+        </div>
+
+        <!-- Totals -->
+        <div class="summary-totals">
+            <div class="tot-row">
+                <span>Subtotal</span>
+                <span id="tot-subtotal">RM 0.00</span>
+            </div>
+            <div class="tot-row discount-row" id="discount-row" style="display:none;">
+                <span id="discount-label">Discount (0%)</span>
+                <span id="tot-discount">− RM 0.00</span>
+            </div>
+            <div class="tot-row" id="assembly-fee-tot-row" style="display:none;">
+                <span style="color:#ff6b6b;"><i class="fa fa-minus-circle me-1"></i>No Assembly</span>
+                <span style="color:#ff6b6b;font-weight:600;">− RM 25.00</span>
+            </div>
+            <div class="tot-divider"></div>
+            <div class="tot-grand">
+                <div>
+                    <div class="tot-grand-label">Total</div>
+                </div>
+                <div>
+                    <div class="tot-grand-amount" id="tot-final">RM 0.00</div>
+                    <div class="tot-grand-original" id="tot-original" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assembly Service Toggle -->
+        <div class="assembly-toggle active" id="assemblyToggleWrap">
+            <label class="assembly-label" for="assemblyChk">
+                <div class="assembly-checkbox-wrap">
+                    <input type="checkbox" id="assemblyChk" checked
+                           onchange="toggleAssembly(this.checked)">
+                </div>
+                <div class="assembly-text">
+                    <div class="assembly-title">
+                        <i class="fa fa-screwdriver-wrench" style="color:#d4af37;"></i>
+                        Assembly Service
+                        <span class="assembly-free-badge">FREE</span>
+                    </div>
+                    <div class="assembly-desc">
+                        My PC Store will <strong>build &amp; test</strong> your PC
+                        and deliver it fully assembled to your address.<br>
+                        <span style="color:#555;">Uncheck if you prefer separate, unassembled parts.</span>
+                    </div>
+                </div>
+            </label>
+            <div class="assembly-fee-row">
+                <span class="assembly-fee-label" id="assemblyFeeLabel">
+                    <i class="fa fa-circle-check me-1" style="color:#4caf50;"></i>
+                    Assembled &amp; delivered to your door
+                </span>
+                <span class="assembly-fee-value free" id="assemblyFeeValue">FREE</span>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="summary-cta">
+            <form method="POST" id="buildForm">
+                <input type="hidden" name="add_build_to_cart"    value="1">
+                <input type="hidden" name="selected_product_ids" id="selectedIdsInput" value="[]">
+                <input type="hidden" name="build_subtotal"        id="inputSubtotal"   value="0">
+                <input type="hidden" name="discount_pct"          id="inputDiscPct"    value="0">
+                <input type="hidden" name="discount_amt"          id="inputDiscAmt"    value="0">
+                <input type="hidden" name="final_price"           id="inputFinal"      value="0">
+                <input type="hidden" name="missing_parts"         id="inputMissing"    value="[]">
+                <input type="hidden" name="assembly_service"      id="inputAssembly"   value="1">
+
+                <?php if (!$isLoggedIn): ?>
+                    <a href="login.php" class="btn-build">Login to Add Build to Cart</a>
+                <?php else: ?>
+                    <button type="button" class="btn-build" id="addBuildBtn"
+                            onclick="submitBuild()" disabled>
+                        <i class="fa fa-cart-plus"></i> Add Build to Cart
+                    </button>
+                <?php endif; ?>
+            </form>
+            <div class="missing-hint" id="missingHint"></div>
+        </div>
+
     </div>
+    </div><!-- /builder-summary -->
 
-    <?php include('includes/footer.php'); ?>
+</div>
+</div>
 
-    <script>
-        const build = {};
-        const partKeys = <?php echo json_encode(array_keys($parts)); ?>;
+<?php include('includes/footer.php'); ?>
 
-        function formatRM(val) {
-            return 'RM ' + parseFloat(val).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+<script>
+const REQUIRED_KEYS = <?php echo json_encode($REQUIRED_KEYS); ?>;
+const ALL_KEYS      = <?php echo json_encode(array_keys($parts)); ?>;
+const PART_LABELS   = <?php echo json_encode(array_combine(array_keys($parts), array_column($parts, 'label'))); ?>;
+
+// State: key → {id, name, price}
+const build = {};
+
+function fmt(val) {
+    return 'RM ' + parseFloat(val).toLocaleString('en-MY', {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+}
+
+function getDiscount(total) {
+    if (total >= 5000) return { pct: 10, label: '10%' };
+    if (total >= 3000) return { pct: 5,  label: '5%'  };
+    return { pct: 0, label: '0%' };
+}
+
+// ── Select a part ──────────────────────────────────────────────
+function selectPart(key, id, name, price) {
+    // Deactivate all options in group
+    document.querySelectorAll(`.part-option[data-key="${key}"]`)
+        .forEach(el => el.classList.remove('active'));
+
+    // Activate chosen
+    const optEl = id == 0
+        ? document.querySelector(`.part-option[data-key="${key}"][data-id="0"]`)
+        : document.getElementById(`opt-${key}-${id}`);
+    if (optEl) optEl.classList.add('active');
+
+    const row = document.getElementById(`row-${key}`);
+
+    if (id == 0) {
+        delete build[key];
+        document.getElementById(`sel-name-${key}`).textContent  = REQUIRED_KEYS.includes(key) ? '— Not selected' : '— None';
+        document.getElementById(`sel-name-${key}`).classList.remove('chosen');
+        document.getElementById(`sel-price-${key}`).style.display = 'none';
+        row.classList.remove('selected');
+    } else {
+        build[key] = { id: parseInt(id), name, price: parseFloat(price) };
+        const nameEl = document.getElementById(`sel-name-${key}`);
+        nameEl.textContent = name;
+        nameEl.classList.add('chosen');
+        document.getElementById(`sel-price-${key}`).textContent    = fmt(price);
+        document.getElementById(`sel-price-${key}`).style.display  = '';
+        row.classList.add('selected');
+        row.classList.remove('open'); // auto-close after selecting
+    }
+
+    updateSummary();
+}
+
+// ── Update all summary UI ──────────────────────────────────────
+function updateSummary() {
+    let subtotal   = 0;
+    let reqDone    = 0;
+
+    ALL_KEYS.forEach(key => {
+        const row   = document.getElementById(`sum-row-${key}`);
+        const nameEl = document.getElementById(`sum-name-${key}`);
+        const priceEl = document.getElementById(`sum-price-${key}`);
+
+        if (build[key]) {
+            nameEl.textContent     = build[key].name;
+            priceEl.textContent    = fmt(build[key].price);
+            priceEl.style.display  = '';
+            row.classList.remove('sum-item-empty');
+            subtotal += build[key].price;
+        } else {
+            nameEl.textContent    = REQUIRED_KEYS.includes(key) ? 'Not selected' : 'None';
+            priceEl.style.display = 'none';
+            row.classList.add('sum-item-empty');
         }
 
-        function selectPart(key, id, name, price) {
-            // Deactivate all options in this group
-            document.querySelectorAll('.part-option[data-key="' + key + '"]').forEach(el => {
-                el.classList.remove('active');
-            });
-
-            // Activate chosen
-            const optId = id == 0 ? 'opt-' + key + '-none' : 'opt-' + key + '-' + id;
-            const chosen = document.getElementById(optId);
-            if (chosen) chosen.classList.add('active');
-
-            // Update state
-            if (id == 0) {
-                delete build[key];
-            } else {
-                build[key] = { id: id, name: name, price: parseFloat(price) };
-            }
-
-            // Update row header
-            const selName = document.getElementById('sel-name-' + key);
-            const selPrice = document.getElementById('sel-price-' + key);
-            const row = document.getElementById('row-' + key);
-
-            if (id == 0) {
-                selName.textContent = '— None selected';
-                selName.style.color = '#555';
-                selPrice.style.display = 'none';
-                row.classList.remove('selected');
-            } else {
-                selName.textContent = name;
-                selName.style.color = '#d4af37';
-                selPrice.textContent = formatRM(price);
-                selPrice.style.display = '';
-                row.classList.add('selected');
-                row.classList.remove('open'); // auto-close
-            }
-
-            updateSummary();
+        if (REQUIRED_KEYS.includes(key) && build[key]) {
+            reqDone++;
+            document.getElementById(`chip-${key}`)?.classList.add('done');
+        } else if (REQUIRED_KEYS.includes(key)) {
+            document.getElementById(`chip-${key}`)?.classList.remove('done');
         }
+    });
 
-        function updateSummary() {
-            let total = 0, count = 0;
+    // Progress bar
+    const total = REQUIRED_KEYS.length;
+    document.getElementById('req-count').textContent = `${reqDone} / ${total}`;
+    document.getElementById('req-bar').style.width   = `${(reqDone / total) * 100}%`;
 
-            partKeys.forEach(function (key) {
-                const sumName = document.getElementById('sum-name-' + key);
-                const sumPrice = document.getElementById('sum-price-' + key);
+    // Discount
+    const disc       = getDiscount(subtotal);
+    const discAmt    = parseFloat((subtotal * disc.pct / 100).toFixed(2));
+    const finalPrice = parseFloat((subtotal - discAmt).toFixed(2));
 
-                if (build[key]) {
-                    sumName.textContent = build[key].name;
-                    sumName.style.color = '#ccc';
-                    sumPrice.textContent = formatRM(build[key].price);
-                    sumPrice.style.display = '';
-                    total += build[key].price;
-                    count++;
-                } else {
-                    sumName.textContent = '—';
-                    sumName.style.color = '#444';
-                    sumPrice.style.display = 'none';
-                }
-            });
+    // Tier badges
+    ['0','5','10'].forEach(t => document.getElementById(`tier-${t}`).classList.remove('tier-active','tier-next'));
+    if (disc.pct === 0 && subtotal > 0)   { document.getElementById('tier-0').classList.add('tier-active'); document.getElementById('tier-5').classList.add('tier-next'); }
+    else if (disc.pct === 5)  { document.getElementById('tier-5').classList.add('tier-active'); document.getElementById('tier-10').classList.add('tier-next'); }
+    else if (disc.pct === 10) { document.getElementById('tier-10').classList.add('tier-active'); }
+    else                      { document.getElementById('tier-0').classList.add('tier-active'); }
 
-            document.getElementById('summary-grand-total').textContent = formatRM(total);
-            document.getElementById('parts-count').textContent = count + ' part' + (count !== 1 ? 's' : '') + ' selected';
+    // Totals display
+    document.getElementById('tot-subtotal').textContent = fmt(subtotal);
 
-            const btn = document.getElementById('addBuildBtn');
-            if (btn) btn.disabled = count === 0;
+    if (disc.pct > 0) {
+        document.getElementById('discount-row').style.display   = '';
+        document.getElementById('discount-label').textContent   = `Discount (${disc.label})`;
+        document.getElementById('tot-discount').textContent     = `− ${fmt(discAmt)}`;
+        document.getElementById('tot-original').style.display   = '';
+        document.getElementById('tot-original').textContent     = fmt(subtotal);
+    } else {
+        document.getElementById('discount-row').style.display   = 'none';
+        document.getElementById('tot-original').style.display   = 'none';
+    }
+
+    // Assembly adjustment
+    const assemblyDeduct  = assemblySelected ? 0 : 25;
+    const displayedTotal  = Math.max(0, finalPrice - assemblyDeduct);
+
+    document.getElementById('tot-final').textContent = fmt(displayedTotal);
+
+    // Hidden form inputs
+    document.getElementById('inputSubtotal').value = subtotal.toFixed(2);
+    document.getElementById('inputDiscPct').value  = disc.pct;
+    document.getElementById('inputDiscAmt').value  = discAmt.toFixed(2);
+    document.getElementById('inputFinal').value    = finalPrice.toFixed(2); // base (before assembly adj, PHP handles)
+
+    // Missing required parts
+    const missing = REQUIRED_KEYS.filter(k => !build[k]);
+    document.getElementById('inputMissing').value = JSON.stringify(
+        missing.map(k => PART_LABELS[k] || k)
+    );
+
+    // Missing hint
+    const hint = document.getElementById('missingHint');
+    if (missing.length > 0 && subtotal > 0) {
+        hint.textContent = `Missing: ${missing.join(', ')}`;
+    } else {
+        hint.textContent = '';
+    }
+
+    // Highlight missing rows
+    ALL_KEYS.forEach(key => {
+        const row = document.getElementById(`row-${key}`);
+        if (REQUIRED_KEYS.includes(key) && !build[key] && subtotal > 0) {
+            row.classList.add('required-missing');
+        } else {
+            row.classList.remove('required-missing');
         }
+    });
 
-        function submitBuild() {
-            const ids = Object.values(build).map(b => b.id);
-            if (ids.length === 0) {
-                Swal.fire({ icon: 'warning', title: 'No Parts Selected', text: 'Please select at least one part.', background: '#1a1a1a', color: '#fff', confirmButtonColor: '#d4af37' });
-                return;
-            }
-            document.getElementById('selectedIdsInput').value = JSON.stringify(ids);
-            Swal.fire({
-                icon: 'question', title: 'Add Build to Cart?',
-                html: ids.length + ' part(s) will be added to your cart.',
-                background: '#1a1a1a', color: '#fff', confirmButtonColor: '#d4af37',
-                cancelButtonColor: '#333', showCancelButton: true,
-                confirmButtonText: 'Yes, Add All', cancelButtonText: 'Cancel'
-            }).then(result => { if (result.isConfirmed) document.getElementById('buildForm').submit(); });
-        }
+    // Enable/disable button
+    const btn = document.getElementById('addBuildBtn');
+    if (btn) btn.disabled = (missing.length > 0 || subtotal === 0);
 
-        // ── Event delegation: part-option clicks ──
-        document.addEventListener('click', function (e) {
-            const opt = e.target.closest('.part-option');
-            if (opt) {
-                const key = opt.dataset.key;
-                const id = opt.dataset.id;
-                const name = opt.dataset.name;
-                const price = opt.dataset.price;
-                selectPart(key, id, name, price);
-                return;
-            }
+    // Build ids for form
+    const ids = Object.entries(build).map(([k, v]) => ({ key: k, id: v.id }));
+    document.getElementById('selectedIdsInput').value = JSON.stringify(ids);
+}
 
-            // part-header toggle
-            const header = e.target.closest('.part-header');
-            if (header) {
-                const key = header.dataset.key;
-                const row = document.getElementById('row-' + key);
-                if (row) row.classList.toggle('open');
-            }
+// ── Assembly service toggle ───────────────────────────────────
+let assemblySelected = true;  // default: checked
+
+function toggleAssembly(checked) {
+    assemblySelected = checked;
+    const wrap      = document.getElementById('assemblyToggleWrap');
+    const label     = document.getElementById('assemblyFeeLabel');
+    const value     = document.getElementById('assemblyFeeValue');
+    const feeRow    = document.getElementById('assembly-fee-tot-row');
+    const hiddenIn  = document.getElementById('inputAssembly');
+
+    wrap.classList.toggle('active', checked);
+    hiddenIn.value = checked ? '1' : '0';
+
+    if (checked) {
+        label.innerHTML = '<i class="fa fa-circle-check me-1" style="color:#4caf50;"></i>Assembled &amp; delivered to your door';
+        value.textContent   = 'FREE';
+        value.className     = 'assembly-fee-value free';
+        feeRow.style.display = 'none';
+    } else {
+        label.innerHTML = '<i class="fa fa-box-open me-1" style="color:#ff6b6b;"></i>Separate unassembled parts delivery';
+        value.textContent   = '− RM 25.00';
+        value.className     = 'assembly-fee-value deduct';
+        feeRow.style.display = '';
+    }
+    updateSummary();
+}
+
+// ── Submit build ───────────────────────────────────────────────
+function submitBuild() {
+    const missing = REQUIRED_KEYS.filter(k => !build[k]);
+    if (missing.length > 0) {
+        Swal.fire({
+            icon: 'warning', title: 'Incomplete Build',
+            html: `Please select all required components:<br><small style="color:#d4af37;">${missing.join(', ')}</small>`,
+            background: '#1a1a1a', color: '#fff', confirmButtonColor: '#d4af37'
         });
-    </script>
+        return;
+    }
 
-    <?php if ($addResult === 'success'): ?>
-        <script>
-            Swal.fire({
-                icon: 'success',
-                title: 'Build Added to Cart!',
-                text: 'All selected parts have been added to your cart.',
-                background: '#1a1a1a',
-                color: '#fff',
-                confirmButtonColor: '#d4af37'
-            });
-        </script>
-    <?php elseif ($addResult === 'empty'): ?>
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: 'Nothing Added',
-                text: 'No valid parts were found. Please try again.',
-                background: '#1a1a1a',
-                color: '#fff',
-                confirmButtonColor: '#d4af37'
-            });
-        </script>
-    <?php endif; ?>
+    const subtotal  = parseFloat(document.getElementById('inputSubtotal').value);
+    const discPct   = parseInt(document.getElementById('inputDiscPct').value);
+    const discAmt   = parseFloat(document.getElementById('inputDiscAmt').value);
+    const final     = parseFloat(document.getElementById('inputFinal').value);
+    const partCount = Object.keys(build).length;
+
+    const assemblyDeductConf = assemblySelected ? 0 : 25;
+    const displayedFinal     = Math.max(0, final - assemblyDeductConf);
+
+    let discHtml = discPct > 0
+        ? `<div style="color:#4caf50;font-size:.85rem;margin-top:4px;">
+               <i class="fa fa-tag me-1"></i>${discPct}% discount — you save ${fmt(discAmt)}
+           </div>`
+        : '';
+
+    const assemblyHtml = assemblySelected
+        ? `<div style="color:#4caf50;font-size:.82rem;margin-top:4px;">
+               <i class="fa fa-screwdriver-wrench me-1"></i>Assembly & delivery included — <strong>FREE</strong>
+           </div>`
+        : `<div style="color:#ff6b6b;font-size:.82rem;margin-top:4px;">
+               <i class="fa fa-box-open me-1"></i>Separate unassembled parts — <strong>− RM 25.00</strong>
+           </div>`;
+
+    Swal.fire({
+        icon: 'question',
+        title: 'Add Build to Cart?',
+        html: `<div style="text-align:left;">
+                   <div style="color:#aaa;font-size:.85rem;margin-bottom:8px;">${partCount} part(s) selected</div>
+                   <div style="display:flex;justify-content:space-between;color:#888;font-size:.82rem;margin-bottom:4px;">
+                       <span>Parts Subtotal</span><span>${fmt(subtotal)}</span>
+                   </div>
+                   ${discHtml}
+                   ${assemblyHtml}
+                   <div style="display:flex;justify-content:space-between;font-weight:700;color:#d4af37;font-size:1rem;margin-top:10px;border-top:1px solid #2a2a2a;padding-top:10px;">
+                       <span>Total</span><span>${fmt(displayedFinal)}</span>
+                   </div>
+               </div>`,
+        background: '#1a1a1a', color: '#fff',
+        confirmButtonColor: '#d4af37', cancelButtonColor: '#333',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fa fa-cart-plus me-1"></i> Add to Cart',
+        cancelButtonText: 'Cancel'
+    }).then(result => {
+        if (result.isConfirmed) document.getElementById('buildForm').submit();
+    });
+}
+
+function fmt(val) {
+    return 'RM ' + parseFloat(val).toLocaleString('en-MY', {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+}
+
+// ── Event delegation ───────────────────────────────────────────
+document.addEventListener('click', function (e) {
+    const opt = e.target.closest('.part-option');
+    if (opt) {
+        selectPart(opt.dataset.key, opt.dataset.id, opt.dataset.name, opt.dataset.price);
+        return;
+    }
+    const header = e.target.closest('.part-header');
+    if (header) {
+        const row = document.getElementById('row-' + header.dataset.key);
+        if (row) row.classList.toggle('open');
+    }
+});
+
+// Init
+updateSummary();
+</script>
+
+<?php if ($addResult === 'success'): ?>
+<script>
+Swal.fire({
+    icon: 'success',
+    title: 'Build Added to Cart!',
+    html: `<?php
+        $msg = $addedCountFinal . ' part(s) added';
+        if ($discountPct > 0) $msg .= " with <strong style='color:#4caf50;'>{$discountPct}% discount</strong>";
+        $msg .= '.<br>';
+        if ($assemblyServiceFinal) {
+            $msg .= '<span style="color:#4caf50;font-size:.85rem;"><i class="fa fa-screwdriver-wrench"></i> Assembly &amp; delivery included — FREE</span>';
+        } else {
+            $msg .= '<span style="color:#ff6b6b;font-size:.85rem;"><i class="fa fa-box-open"></i> Unassembled separate parts</span>';
+        }
+        echo $msg;
+    ?>`,
+    background: '#1a1a1a', color: '#fff', confirmButtonColor: '#d4af37'
+}).then(() => { if (typeof updateCartBadge === 'function') updateCartBadge(null); });
+</script>
+<?php elseif ($addResult === 'missing'): ?>
+<script>
+Swal.fire({
+    icon: 'warning', title: 'Incomplete Build',
+    html: 'Missing required components: <strong style="color:#d4af37;"><?php echo htmlspecialchars($missingList ?? ''); ?></strong>',
+    background: '#1a1a1a', color: '#fff', confirmButtonColor: '#d4af37'
+});
+</script>
+<?php elseif ($addResult === 'empty'): ?>
+<script>
+Swal.fire({ icon: 'error', title: 'Nothing Added', text: 'No valid parts were found.',
+    background: '#1a1a1a', color: '#fff', confirmButtonColor: '#d4af37' });
+</script>
+<?php elseif ($addResult === 'error'): ?>
+<script>
+Swal.fire({ icon: 'error', title: 'Error', text: '<?php echo addslashes($addError ?? ''); ?>',
+    background: '#1a1a1a', color: '#fff', confirmButtonColor: '#d4af37' });
+</script>
+<?php endif; ?>
 
 </body>
-
 </html>

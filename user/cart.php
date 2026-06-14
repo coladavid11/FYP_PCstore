@@ -65,14 +65,40 @@ if ($isLoggedIn && isset($_POST['ajax_update_qty'])) {
     $stmtTotal->execute([$user_id]);
     $row = $stmtTotal->fetch(PDO::FETCH_ASSOC);
     $newTotal = floatval($row['total']);
-    $shipping = 15.00;
-    $grandTotal = $newTotal + $shipping;
+    // Shipping is calculated on payment page based on state
+    // Return subtotal only; grand total shown on payment page
+    $newShipping = null;
+    if (isset($_SESSION['user_id'])) {
+        $shpStmt2 = $dbh->prepare("SELECT sr.fee FROM tbluser u LEFT JOIN tbl_shipping_rate sr ON sr.state_id = u.state_id WHERE u.user_id = ?");
+        $shpStmt2->execute([$_SESSION['user_id']]);
+        $shpRow2 = $shpStmt2->fetch(PDO::FETCH_ASSOC);
+        $newShipping = ($shpRow2 && $shpRow2['fee']) ? floatval($shpRow2['fee']) : null;
+    }
+    $newGrand = $newShipping !== null ? $newTotal + $newShipping : $newTotal;
+
+    // Recompute original subtotal and build discount after qty change
+    $ajaxOriginal = 0.00;
+    $ajaxCartItems = $dbh->prepare("SELECT c.product_id, c.product_price, c.quantity, p.price as db_price FROM tblcart c JOIN products p ON p.product_id = c.product_id WHERE c.user_id = ? AND c.status = 'active'");
+    $ajaxCartItems->execute([$user_id]);
+    $ajaxRows = $ajaxCartItems->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($ajaxRows as $r) {
+        $ajaxOriginal += floatval($r['db_price']) * intval($r['quantity']);
+    }
+    $ajaxBuildDisc = max(0, $ajaxOriginal - $newTotal);
+    $ajaxAssembly  = 0.00;
+    $ajaxAStmt = $dbh->prepare("SELECT assembly_fee FROM tbl_pc_build WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+    $ajaxAStmt->execute([$user_id]);
+    $ajaxARow = $ajaxAStmt->fetch(PDO::FETCH_ASSOC);
+    if ($ajaxARow) $ajaxAssembly = floatval($ajaxARow['assembly_fee']);
 
     echo json_encode([
-        'status' => 'success',
-        'item_subtotal' => number_format($info['product_price'] * $qty, 2),
-        'subtotal' => number_format($newTotal, 2),
-        'grand_total' => number_format($grandTotal, 2),
+        'status'           => 'success',
+        'item_subtotal'    => number_format($info['product_price'] * $qty, 2),
+        'original_subtotal'=> number_format($ajaxOriginal, 2),
+        'subtotal'         => number_format($newTotal, 2),
+        'build_discount'   => number_format($ajaxBuildDisc, 2),
+        'assembly_fee'     => number_format($ajaxAssembly, 2),
+        'estimated_total'  => number_format(max(0, $newTotal + $ajaxAssembly), 2),
     ]);
     exit();
 }
@@ -116,6 +142,59 @@ if ($isLoggedIn) {
     }
 }
 
+// ── Detect PC Build discounts and Assembly discount in cart ──
+// We compare product_price in cart vs actual product price in DB.
+// If product_price < DB price → it was added via PC Builder (discounted).
+// Assembly fee: tbl_pc_build.assembly_fee for the latest draft/ordered build by this user.
+$originalSubtotal  = 0.00;  // sum of full DB prices × qty
+$buildDiscountAmt  = 0.00;  // total saved from PC Build tier discount
+$assemblyFeeAmt    = 0.00;  // 0 (assembled) or -25 (not assembled)
+
+if ($isLoggedIn && !empty($cartItems)) {
+    foreach ($cartItems as $item) {
+        // Fetch DB price
+        $pStmt = $dbh->prepare("SELECT price FROM products WHERE product_id = ?");
+        $pStmt->execute([$item['product_id']]);
+        $pRow  = $pStmt->fetch(PDO::FETCH_ASSOC);
+        $dbPrice = $pRow ? floatval($pRow['price']) : floatval($item['product_price']);
+        $originalSubtotal += $dbPrice * $item['quantity'];
+    }
+    $buildDiscountAmt = $originalSubtotal - $total; // positive = saving
+    if ($buildDiscountAmt < 0.005) $buildDiscountAmt = 0.00; // float noise guard
+
+    // Fetch latest PC build assembly fee for this user
+    $aStmt = $dbh->prepare("
+        SELECT assembly_fee FROM tbl_pc_build
+        WHERE user_id = ?
+        ORDER BY created_at DESC LIMIT 1
+    ");
+    $aStmt->execute([$user_id]);
+    $aRow = $aStmt->fetch(PDO::FETCH_ASSOC);
+    if ($aRow) {
+        $assemblyFeeAmt = floatval($aRow['assembly_fee']); // 0.00 or -25.00
+    }
+}
+$cartEstimatedTotal = $total + $assemblyFeeAmt; // before shipping
+
+// Fetch user's state shipping fee for cart preview
+$cartShippingFee = null;
+$cartStateName   = '';
+if ($isLoggedIn && $user_id) {
+    $shpStmt = $dbh->prepare("
+        SELECT sr.fee, s.state_name
+        FROM tbluser u
+        LEFT JOIN tbl_shipping_rate sr ON sr.state_id = u.state_id
+        LEFT JOIN tblstate s ON s.state_id = u.state_id
+        WHERE u.user_id = ?
+    ");
+    $shpStmt->execute([$user_id]);
+    $shpRow = $shpStmt->fetch(PDO::FETCH_ASSOC);
+    if ($shpRow && $shpRow['fee']) {
+        $cartShippingFee = floatval($shpRow['fee']);
+        $cartStateName   = $shpRow['state_name'];
+    }
+}
+
 // Fetch stock for each cart item
 $stockMap = [];
 if ($isLoggedIn && !empty($cartItems)) {
@@ -140,6 +219,7 @@ if ($isLoggedIn) {
         WHERE o.user_id = ?
         GROUP BY o.order_id
         ORDER BY o.created_at DESC
+        LIMIT 3
     ");
     $oStmt->execute([$user_id]);
     $orderHistory = $oStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -327,6 +407,240 @@ function orderStatusConfig(string $status): array
             border-color: #d4af37;
             color: #d4af37;
         }
+        /* ══ ORDER SUMMARY PANEL ══════════════════════════════════ */
+        .summary-panel {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .sp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid #1c1c1c;
+        }
+
+        .sp-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.2px;
+        }
+
+        .sp-count {
+            font-size: 0.75rem;
+            color: #555;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 20px;
+            padding: 3px 10px;
+        }
+
+        /* Item list */
+        .sp-items {
+            padding: 12px 20px;
+            border-bottom: 1px solid #1c1c1c;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .sp-items::-webkit-scrollbar { width: 4px; }
+        .sp-items::-webkit-scrollbar-track { background: transparent; }
+        .sp-items::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+
+        .sp-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sp-item-img-wrap {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .sp-item-img-wrap img {
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #1e1e1e;
+            display: block;
+        }
+
+        .sp-item-qty {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #d4af37;
+            color: #000;
+            font-size: 0.6rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .sp-item-name {
+            flex: 1;
+            font-size: 0.78rem;
+            color: #ccc;
+            line-height: 1.3;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .sp-item-price {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #fff;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* Totals */
+        .sp-totals {
+            padding: 16px 20px 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sp-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.83rem;
+            color: #888;
+        }
+
+        .sp-shipping-note {
+            font-size: 0.75rem;
+            color: #444;
+            font-style: italic;
+        }
+
+        .sp-divider {
+            height: 1px;
+            background: #1c1c1c;
+            margin: 14px 20px;
+        }
+
+        /* Grand total */
+        .sp-grand {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px 20px;
+        }
+
+        .sp-grand-label {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        .sp-grand-sub {
+            font-size: 0.68rem;
+            color: #444;
+        }
+
+        .sp-grand-amount {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #d4af37;
+            letter-spacing: -0.3px;
+        }
+
+        /* Checkout button */
+        .sp-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 16px 12px;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #d4af37 0%, #b8942a 100%);
+            color: #000;
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: opacity .2s, transform .15s;
+        }
+
+        .sp-btn:hover {
+            opacity: .9;
+            transform: translateY(-1px);
+            color: #000;
+        }
+
+        .sp-btn-disabled {
+            background: #1e1e1e;
+            color: #444;
+            cursor: not-allowed;
+        }
+
+        .sp-btn-disabled:hover {
+            transform: none;
+            opacity: 1;
+        }
+
+        /* Trust signals */
+        .sp-trust {
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 16px 16px;
+            border-top: 1px solid #1a1a1a;
+        }
+
+        .sp-trust span {
+            font-size: 0.68rem;
+            color: #444;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .sp-trust i {
+            color: #555;
+            font-size: 0.72rem;
+        }
+        /* Breakdown rows */
+        .sp-row-label { color: #888; font-size: 0.82rem; }
+        .sp-row-value { font-size: 0.82rem; color: #ccc; text-align:right; }
+        .sp-row-value.green   { color: #4caf50; font-weight: 600; }
+        .sp-row-value.red     { color: #ff6b6b; font-weight: 600; }
+        .sp-row-value.muted   { color: #555; font-style: italic; font-size:0.74rem; }
+        .sp-row-value.orig    { color: #555; text-decoration: line-through; font-size:0.76rem; }
+        .sp-separator { height:1px; background:#1c1c1c; margin:10px 20px; }
+        .sp-grand-row {
+            display:flex; justify-content:space-between; align-items:center;
+            padding: 12px 20px 4px;
+        }
+        .sp-grand-row-label { font-size:0.9rem; font-weight:700; color:#fff; }
+        .sp-grand-row-amount {
+            font-size:1.28rem; font-weight:800; color:#d4af37;
+            font-family:'Playfair Display',serif;
+        }
+        .sp-grand-row-sub { font-size:0.68rem; color:#444; padding:0 20px 10px; text-align:right; }
+        /* ══ END SUMMARY PANEL ════════════════════════════════════ */
+
     </style>
 </head>
 
@@ -488,50 +802,125 @@ function orderStatusConfig(string $status): array
 
             </div>
 
-            <!-- ===================== -->
-            <!-- RIGHT: ORDER SUMMARY  -->
-            <!-- ===================== -->
+            <!-- RIGHT: ORDER SUMMARY -->
             <div class="col-lg-4">
-                <?php
-                $shipping = 15.00;
-                $service_fee = $total * 0.03;
-                $grand_total = $total + $shipping + $service_fee;
-                ?>
-                <div class="stat-card p-4 sticky-top" style="top:100px;">
+                <?php $itemCount = array_sum(array_column($cartItems, 'quantity')); ?>
 
-                    <h4>Order Summary</h4>
-                    <hr style="border-color:#2a2a2a;">
+                <div class="summary-panel sticky-top" style="top:100px;">
 
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-soft">Subtotal</span>
-                        <span id="summary-subtotal">RM <?php echo number_format($total, 2); ?></span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-soft">SST (3%)</span>
-                        <span>RM <?php echo number_format($service_fee, 2); ?></span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-3">
-                        <span class="text-soft">Shipping</span>
-                        <span>RM <?php echo number_format($shipping, 2); ?></span>
+                    <!-- Header -->
+                    <div class="sp-header">
+                        <span class="sp-title">Order Summary</span>
+                        <?php if (!empty($cartItems)): ?>
+                        <span class="sp-count"><?php echo $itemCount; ?> item<?php echo $itemCount !== 1 ? 's' : ''; ?></span>
+                        <?php endif; ?>
                     </div>
 
-                    <hr style="border-color:#2a2a2a;">
+                    <?php if (!empty($cartItems)): ?>
 
-                    <div class="d-flex justify-content-between mb-3">
-                        <strong>Total</strong>
-                        <strong id="summary-total" style="color:#d4af37;">
-                            RM <?php echo number_format($grand_total, 2); ?>
-                        </strong>
+                    <!-- Item list (compact) -->
+                    <div class="sp-items">
+                        <?php foreach ($cartItems as $item): ?>
+                        <div class="sp-item">
+                            <div class="sp-item-img-wrap">
+                                <img src="<?php echo htmlspecialchars($item['product_image']); ?>"
+                                     alt="<?php echo htmlspecialchars($item['product_name']); ?>">
+                                <span class="sp-item-qty"><?php echo $item['quantity']; ?></span>
+                            </div>
+                            <div class="sp-item-name"><?php echo htmlspecialchars($item['product_name']); ?></div>
+                            <div class="sp-item-price">RM&nbsp;<?php echo number_format($item['product_price'] * $item['quantity'], 2); ?></div>
+                        </div>
+                        <?php endforeach; ?>
                     </div>
 
+                    <!-- Totals breakdown -->
+                    <div class="sp-totals">
+
+                        <!-- Original subtotal -->
+                        <div class="sp-row">
+                            <span class="sp-row-label">Original Subtotal</span>
+                            <span class="sp-row-value <?php echo $buildDiscountAmt > 0 ? 'orig' : ''; ?>"
+                                  id="sp-original-subtotal">
+                                RM <?php echo number_format($originalSubtotal > 0 ? $originalSubtotal : $total, 2); ?>
+                            </span>
+                        </div>
+
+                        <!-- PC Build Discount (only if > 0) -->
+                        <?php if ($buildDiscountAmt > 0): ?>
+                        <div class="sp-row" id="sp-build-disc-row">
+                            <span class="sp-row-label">
+                                <i class="fa fa-tag me-1" style="color:#4caf50;font-size:0.7rem;"></i>
+                                PC Build Discount
+                            </span>
+                            <span class="sp-row-value green" id="sp-build-disc">
+                                − RM <?php echo number_format($buildDiscountAmt, 2); ?>
+                            </span>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Discounted subtotal (after build disc) -->
+                        <?php if ($buildDiscountAmt > 0): ?>
+                        <div class="sp-row" style="border-top:1px solid #1c1c1c;padding-top:8px;margin-top:4px;">
+                            <span class="sp-row-label">Subtotal after Discount</span>
+                            <span class="sp-row-value" id="summary-subtotal">
+                                RM <?php echo number_format($total, 2); ?>
+                            </span>
+                        </div>
+                        <?php else: ?>
+                        <div class="sp-row" id="sp-subtotal-row" style="display:none;">
+                            <span class="sp-row-label">Subtotal</span>
+                            <span class="sp-row-value" id="summary-subtotal">
+                                RM <?php echo number_format($total, 2); ?>
+                            </span>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Assembly Service -->
+                        <div class="sp-row" id="sp-assembly-row">
+                            <span class="sp-row-label">
+                                <i class="fa fa-screwdriver-wrench me-1"
+                                   style="color:<?php echo $assemblyFeeAmt < 0 ? '#ff6b6b' : '#4caf50'; ?>;font-size:0.7rem;"></i>
+                                Assembly Service
+                            </span>
+                            <?php if ($assemblyFeeAmt < 0): ?>
+                            <span class="sp-row-value red" id="sp-assembly-val">
+                                − RM <?php echo number_format(abs($assemblyFeeAmt), 2); ?>
+                            </span>
+                            <?php else: ?>
+                            <span class="sp-row-value green" id="sp-assembly-val">FREE</span>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Shipping note -->
+                        <div class="sp-row">
+                            <span class="sp-row-label">Shipping</span>
+                            <span class="sp-row-value muted">Calculated at checkout</span>
+                        </div>
+
+                    </div>
+
+                    <div class="sp-separator"></div>
+
+                    <!-- Estimated Total -->
+                    <div class="sp-grand-row">
+                        <span class="sp-grand-row-label">Estimated Total</span>
+                        <span class="sp-grand-row-amount" id="summary-total">
+                            RM <?php echo number_format(max(0, $cartEstimatedTotal), 2); ?>
+                        </span>
+                    </div>
+                    <div class="sp-grand-row-sub">+ Shipping calculated at checkout</div>
+
+                    <?php endif; ?>
+
+                    <!-- Checkout button -->
                     <?php if (!$isLoggedIn): ?>
-                        <a href="login.php" class="btn-gold">Login to Checkout</a>
+                        <a href="login.php" class="sp-btn">Login to Checkout</a>
                     <?php elseif (empty($cartItems)): ?>
-                        <button class="btn-gold" onclick="alert('Your cart is empty!')">Proceed Checkout</button>
-                    <?php elseif ($total < 0): ?>
-                        <button class="btn-gold" onclick="alert('Error: Invalid cart total!')">Proceed Checkout</button>
+                        <button class="sp-btn sp-btn-disabled" disabled>Your cart is empty</button>
                     <?php else: ?>
-                        <a href="payment.php" class="btn-gold">Proceed Checkout</a>
+                        <a href="payment.php" class="sp-btn">
+                            <i class="fa fa-lock me-2"></i>Proceed to Checkout
+                        </a>
                     <?php endif; ?>
 
                 </div>
@@ -574,8 +963,42 @@ function orderStatusConfig(string $status): array
                     .then(data => {
                         if (data.status === 'success') {
                             itemSubtotal.textContent = 'RM ' + data.item_subtotal;
-                            document.getElementById('summary-subtotal').textContent = 'RM ' + data.subtotal;
-                            document.getElementById('summary-total').textContent = 'RM ' + data.grand_total;
+
+                            // Original subtotal
+                            const origEl = document.getElementById('sp-original-subtotal');
+                            if (origEl) origEl.textContent = 'RM ' + data.original_subtotal;
+
+                            // Subtotal after discount
+                            const subEl = document.getElementById('summary-subtotal');
+                            if (subEl) subEl.textContent = 'RM ' + data.subtotal;
+
+                            // Build discount row
+                            const discRow = document.getElementById('sp-build-disc-row');
+                            const discVal = document.getElementById('sp-build-disc');
+                            if (discRow && discVal) {
+                                if (parseFloat(data.build_discount) > 0) {
+                                    discRow.style.display = '';
+                                    discVal.textContent = '− RM ' + data.build_discount;
+                                } else {
+                                    discRow.style.display = 'none';
+                                }
+                            }
+
+                            // Assembly fee
+                            const asmVal = document.getElementById('sp-assembly-val');
+                            if (asmVal) {
+                                const aFee = parseFloat(data.assembly_fee);
+                                if (aFee < 0) {
+                                    asmVal.textContent = '− RM ' + Math.abs(aFee).toFixed(2);
+                                    asmVal.className = 'sp-row-value red';
+                                } else {
+                                    asmVal.textContent = 'FREE';
+                                    asmVal.className = 'sp-row-value green';
+                                }
+                            }
+
+                            // Estimated total
+                            document.getElementById('summary-total').textContent = 'RM ' + data.estimated_total;
                         } else if (data.status === 'stock_error') {
                             qtyInput.value = data.max;
                             updateButtons(data.max);
