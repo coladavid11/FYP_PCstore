@@ -354,6 +354,7 @@ if (isset($_GET['delete'])) {
                         <th style="width: 8%;">ID</th>
                         <th style="width: 20%;">Full Name</th>
                         <th style="width: 25%;">Email</th>
+                        <th style="width: 15%;">Phone</th>
                         <th style="width: 15%;">Role</th>
                         <th style="width: 14%;">Status</th>
                         <th style="width: 10%;">Registered</th>
@@ -367,6 +368,7 @@ if (isset($_GET['delete'])) {
                                 <td>#<?= $admin->admin_id ?></td>
                                 <td><?= htmlspecialchars($admin->fullname) ?></td>
                                 <td><?= htmlspecialchars($admin->email) ?></td>
+                                <td><?= htmlspecialchars($admin->phone) ?></td>
                                 <td><?= htmlspecialchars($admin->role) ?></td>
                                 <td>
                                     <?php if ($admin->status == 1) { ?>
