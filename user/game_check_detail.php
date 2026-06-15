@@ -97,12 +97,6 @@ $demand = demandLevel($game['min_gpu']);
     <link rel="stylesheet" href="newstyle.css">
 
     <style>
-        body {
-            background: #0f0f0f;
-            color: #fff;
-            font-family: 'Poppins', sans-serif;
-        }
-
         /* ── BREADCRUMB ── */
         .breadcrumb-dark {
             display: flex;

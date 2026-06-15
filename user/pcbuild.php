@@ -14,7 +14,7 @@ function getDiscount(float $total): array
 }
 
 // ── Required parts (9 mandatory) ─────────────────────────────
-$REQUIRED_KEYS = ['CPU','Motherboard','RAM','Storage','GPU','PSU','Case','CaseFan','Cooler'];
+$REQUIRED_KEYS = ['CPU','Motherboard','RAM','Storage','GPU','Power Supply','PC Case','Case Fan','Cooler'];
 
 // ── Part definitions ──────────────────────────────────────────
 $parts = [
@@ -23,9 +23,9 @@ $parts = [
     'RAM'         => ['cat_id' => 7,  'icon' => 'fa-memory',          'label' => 'RAM',              'required' => true],
     'Storage'     => ['cat_id' => 8,  'icon' => 'fa-hard-drive',      'label' => 'Storage',          'required' => true],
     'GPU'         => ['cat_id' => 3,  'icon' => 'fa-display',         'label' => 'Graphics Card',    'required' => true],
-    'PSU'         => ['cat_id' => 9,  'icon' => 'fa-bolt',            'label' => 'Power Supply',     'required' => true],
-    'Case'        => ['cat_id' => 11, 'icon' => 'fa-box',             'label' => 'PC Case',          'required' => true],
-    'CaseFan'     => ['cat_id' => 12, 'icon' => 'fa-fan',             'label' => 'Case Fan',         'required' => true],
+    'Power Supply' => ['cat_id' => 9,  'icon' => 'fa-bolt',            'label' => 'Power Supply',     'required' => true],
+    'PC Case'        => ['cat_id' => 11, 'icon' => 'fa-box',             'label' => 'PC Case',          'required' => true],
+    'Case Fan'     => ['cat_id' => 12, 'icon' => 'fa-fan',             'label' => 'Case Fan',         'required' => true],
     'Cooler'      => ['cat_id' => 10, 'icon' => 'fa-wind',            'label' => 'CPU Cooler',       'required' => true],
     'Monitor'     => ['cat_id' => 13, 'icon' => 'fa-desktop',         'label' => 'Monitor',          'required' => false],
     'Keyboard'    => ['cat_id' => 14, 'icon' => 'fa-keyboard',        'label' => 'Keyboard',         'required' => false],
