@@ -8,8 +8,8 @@ $user_id    = $_SESSION['user_id'] ?? null;
 // ── Discount tiers ────────────────────────────────────────────
 function getDiscount(float $total): array
 {
-    if ($total >= 5000) return ['pct' => 10, 'label' => '10% off'];
-    if ($total >= 3000) return ['pct' => 5,  'label' => '5% off'];
+    if ($total >= 6000) return ['pct' => 10, 'label' => '10% off'];
+    if ($total >= 4000) return ['pct' => 5,  'label' => '5% off'];
     return ['pct' => 0, 'label' => 'No discount'];
 }
 
@@ -829,15 +829,15 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
         <div class="discount-tiers">
             <div class="tier-badge" id="tier-0">
                 <span class="tier-pct">0%</span>
-                <span class="tier-range">Below RM 3,000</span>
+                <span class="tier-range">Below RM 4,000</span>
             </div>
             <div class="tier-badge" id="tier-5">
                 <span class="tier-pct">5% off</span>
-                <span class="tier-range">RM 3,000 – 4,999</span>
+                <span class="tier-range">RM 4,000 – 5,999</span>
             </div>
             <div class="tier-badge" id="tier-10">
                 <span class="tier-pct">10% off</span>
-                <span class="tier-range">RM 5,000+</span>
+                <span class="tier-range">RM 6,000+</span>
             </div>
         </div>
 
@@ -943,8 +943,8 @@ function fmt(val) {
 }
 
 function getDiscount(total) {
-    if (total >= 5000) return { pct: 10, label: '10%' };
-    if (total >= 3000) return { pct: 5,  label: '5%'  };
+    if (total >= 6000) return { pct: 10, label: '10%' };
+    if (total >= 4000) return { pct: 5,  label: '5%'  };
     return { pct: 0, label: '0%' };
 }
 
