@@ -305,6 +305,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .card-field:focus { border-color: #d4af37; }
         .card-field::placeholder { color: #555; }
 
+        /* Expiry invalid state */
+        .card-field.is-invalid { border-color: #dc3545 !important; }
+        .expiry-error {
+            font-size: 0.75rem;
+            color: #dc3545;
+            margin-top: 4px;
+            display: none;
+        }
+
         /* Shipping info badge */
         .shipping-badge {
             display: flex;
@@ -602,6 +611,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label class="form-label">Expiry</label>
                         <input type="text" id="expiry" class="card-field"
                                placeholder="MM/YY" maxlength="5" required>
+                        <!-- Real-time month error message -->
+                        <div class="expiry-error" id="expiryError"></div>
                     </div>
                     <div class="col-6">
                         <label class="form-label">CVV</label>
@@ -899,10 +910,33 @@ document.getElementById('cardNumber').addEventListener('input', function () {
     this.value = v.replace(/(\d{4})/g,'$1 ').trim();
 });
 
-// ── Expiry format ─────────────────────────────────────────────
+// ── Expiry format + real-time month validation (01–12) ────────
 document.getElementById('expiry').addEventListener('input', function () {
     let v = this.value.replace(/\D/g,'').slice(0,4);
-    this.value = v.length >= 3 ? v.slice(0,2) + '/' + v.slice(2) : v;
+
+    // Auto-insert slash after month digits
+    if (v.length >= 3) {
+        v = v.slice(0,2) + '/' + v.slice(2);
+    }
+    this.value = v;
+
+    // Validate month range once 2 digits are entered
+    const errEl = document.getElementById('expiryError');
+    const month = parseInt(v.slice(0,2), 10);
+
+    if (v.length >= 2) {
+        if (month < 1 || month > 12) {
+            this.classList.add('is-invalid');
+            errEl.textContent = 'Invalid month (01–12)';
+            errEl.style.display = 'block';
+        } else {
+            this.classList.remove('is-invalid');
+            errEl.style.display = 'none';
+        }
+    } else {
+        this.classList.remove('is-invalid');
+        errEl.style.display = 'none';
+    }
 });
 
 // ── CVV ───────────────────────────────────────────────────────
@@ -941,8 +975,16 @@ document.getElementById('checkoutForm').addEventListener('submit', function (e) 
     const [em, ey] = expiry.split('/').map(Number);
     const now = new Date();
     const nowYear = now.getFullYear(), nowMonth = now.getMonth() + 1;
-    if (em < 1 || em > 12 ||
-        (2000+ey) < nowYear ||
+
+    // Month range check (01–12)
+    if (em < 1 || em > 12) {
+        Swal.fire({ title:'Invalid Expiry', text:'Month must be between 01 and 12.',
+            icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
+        return;
+    }
+
+    // Expired check
+    if ((2000+ey) < nowYear ||
         ((2000+ey) === nowYear && em < nowMonth)) {
         Swal.fire({ title:'Card Expired', text:'Please use a valid card.',
             icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
