@@ -45,12 +45,6 @@ function statusConfig(string $status): array
     <link rel="stylesheet" href="newstyle.css">
 
     <style>
-        body {
-            background: #0f0f0f;
-            color: #fff;
-            font-family: 'Poppins', sans-serif;
-        }
-
         .page-hero {
             padding: 50px 0 36px;
             border-bottom: 1px solid #1a1a1a;

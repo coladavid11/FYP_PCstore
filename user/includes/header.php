@@ -54,7 +54,7 @@ if ($isLoggedIn && isset($_SESSION['user_id'])) {
         </li>
 
         <li class="nav-item">
-          <a class="nav-link <?php echo navActive('products.php', $currentPage); ?>" href="product.php">Products</a>
+          <a class="nav-link <?php echo navActive('product.php', $currentPage); ?>" href="product.php">Products</a>
         </li>
 
         <li class="nav-item">
@@ -160,6 +160,13 @@ function setBadge(badge, count) {
   void badge.offsetWidth; // force reflow
   badge.classList.add('badge-pulse');
 }
+
+// Force uniform font-weight on all nav-links regardless of CSS priority wars
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.navbar .nav-link').forEach(function (el) {
+    el.style.fontWeight = '400';
+  });
+});
 </script>
 
 <style>

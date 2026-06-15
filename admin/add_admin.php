@@ -6,44 +6,57 @@ if (!isset($_SESSION['admin_login'])) {
     header("Location: admin_login.php");
     exit;
 }
+if ($_SESSION['admin_role'] != 'superadmin') {
+    die("Access Denied");
+}
 
 $msg = "";
 $error = "";
 
-if(isset($_POST['submit'])){
+if (isset($_POST['submit'])) {
 
     $fullname = trim($_POST['fullname']);
     $email = trim($_POST['email']);
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $phone = trim($_POST['phone']);
+    $password = $_POST['password'];
+    $confirm_password = $_POST['confirm_password'];
     $role = $_POST['role'];
 
-    // Check email exists
-    $check = $dbh->prepare("SELECT admin_id FROM admin WHERE email = :email");
-    $check->bindParam(':email',$email,PDO::PARAM_STR);
-    $check->execute();
-
-    if($check->rowCount() > 0){
-
-        $error = "Email already exists.";
-
+    // 1. Check if passwords match
+    if ($password !== $confirm_password) {
+        $error = "Passwords do not match. Please try again.";
+    }
+    // 2. Password Length Check (>= 8 characters)
+    elseif (strlen($password) < 8) {
+        $error = "Password must be at least 8 characters long.";
     } else {
+        // 3. Email Duplicate Check
+        $check = $dbh->prepare("SELECT admin_id FROM admin WHERE email = :email");
+        $check->bindParam(':email', $email, PDO::PARAM_STR);
+        $check->execute();
 
-        $sql = "INSERT INTO admin
-                (fullname,email,password,role,status)
-                VALUES
-                (:fullname,:email,:password,:role,1)";
-
-        $query = $dbh->prepare($sql);
-
-        $query->bindParam(':fullname',$fullname,PDO::PARAM_STR);
-        $query->bindParam(':email',$email,PDO::PARAM_STR);
-        $query->bindParam(':password',$password,PDO::PARAM_STR);
-        $query->bindParam(':role',$role,PDO::PARAM_STR);
-
-        if($query->execute()){
-            $msg = "Admin added successfully.";
+        if ($check->rowCount() > 0) {
+            $error = "This email is already registered.";
         } else {
-            $error = "Failed to add admin.";
+            // Password Hashing
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+            // FIXED: Changed :hashed_password to :password to match bindParam precisely
+            $sql = "INSERT INTO admin (fullname, email, phone, password, role, status) 
+                    VALUES (:fullname, :email, :phone, :password, :role, 1)";
+
+            $query = $dbh->prepare($sql);
+            $query->bindParam(':fullname', $fullname, PDO::PARAM_STR);
+            $query->bindParam(':email', $email, PDO::PARAM_STR);
+            $query->bindParam(':phone', $phone, PDO::PARAM_STR);
+            $query->bindParam(':password', $hashed_password, PDO::PARAM_STR);
+            $query->bindParam(':role', $role, PDO::PARAM_STR);
+
+            if ($query->execute()) {
+                $msg = "Admin account created successfully!";
+            } else {
+                $error = "Something went wrong. Please try again.";
+            }
         }
     }
 }
@@ -53,232 +66,299 @@ if(isset($_POST['submit'])){
 <html lang="en">
 
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Admin | My PC Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
-<title>Add Admin | My PC Store</title>
+    <style>
+        /* =========================
+            GENERAL RESET & BASIS
+         ========================= */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+        body {
+            display: flex;
+            background: #f5f5f5;
+        }
 
-<style>
+        /* =========================
+           SIDEBAR LAYOUT
+        ========================= */
+        .sidebar {
+            width: 220px;
+            height: 100vh;
+            background: #000;
+            padding: 20px;
+            position: fixed;
+            left: 0;
+            top: 0;
+        }
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:'Poppins',sans-serif;
-}
+        .sidebar h2 {
+            color: #d4af37;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2rem;
+        }
 
-body{
-    display:flex;
-    background:#f5f5f5;
-}
+        .sidebar a {
+            display: block;
+            color: #adadad;
+            text-decoration: none;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
 
-/* Sidebar */
+        .sidebar a:hover {
+            background: #d4af37;
+            color: #000;
+        }
 
-.sidebar{
-    width:220px;
-    height:100vh;
-    background:#000;
-    padding:20px;
-    position:fixed;
-}
+        .sidebar a.sidebar-active {
+            background: #d4af37;
+            color: #000;
+        }
 
-.sidebar h2{
-    color:#d4af37;
-    margin-bottom:30px;
-    text-align:center;
-}
+        /* =========================
+            MAIN LAYOUT CONTAINER
+         ========================= */
+        .main {
+            margin-left: 220px;
+            width: calc(100% - 220px);
+            padding: 30px;
+        }
 
-.sidebar a{
-    display:block;
-    color:#adadad;
-    text-decoration:none;
-    padding:12px;
-    margin:10px 0;
-    border-radius:5px;
-}
+        /* =========================
+            TOPBAR 
+         ========================= */
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            background: #fff;
+            padding: 15px 25px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
 
-.sidebar a:hover{
-    background:#d4af37;
-    color:#000;
-}
+        .topbar h1 {
+            font-size: 1.8rem;
+            color: #111;
+            font-weight: 600;
+        }
 
-.sidebar-active{
-    background:#d4af37;
-    color:#000 !important;
-}
+        .Back {
+            text-decoration: none;
+            color: #d4af37;
+            font-weight: 500;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.95rem;
+        }
 
-/* Main */
+        .Back:hover {
+            opacity: 0.8;
+        }
 
-.main{
-    margin-left:220px;
-    width:calc(100% - 220px);
-    padding:30px;
-}
+        /* =========================
+            FORM BOX STRUCTURING
+         ========================= */
+        .form-box {
+            background: #fff;
+            padding: 35px;
+            border-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            width: 100%;
+        }
 
-/* Topbar */
+        .form-box h3 {
+            margin-bottom: 25px;
+            font-size: 1.25rem;
+            color: #111;
+            font-weight: 600;
+        }
 
-.topbar{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:25px;
-    background:#fff;
-    padding:15px 25px;
-    border-radius:4px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.05);
-}
+        .form-group {
+            margin-bottom: 22px;
+            width: 100%;
+        }
 
-.topbar h1{
-    font-size:1.8rem;
-}
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #ccac3d;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
 
-.Back{
-    text-decoration:none;
-    color:#d4af37;
-    font-weight:500;
-}
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 13px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            background-color: #fff;
+            color: #333;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
 
-/* Form Box */
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #ccac3d;
+            box-shadow: 0 0 0 3px rgba(204, 172, 61, 0.1);
+        }
 
-.form-box{
-    background:#fff;
-    padding:30px;
-    border-radius:4px;
-    box-shadow:0 5px 15px rgba(0,0,0,0.05);
-}
+        /* =========================
+           ACTION SUBMIT BUTTON
+        ========================= */
+        .btn-save {
+            background: #000;
+            color: #d4af37;
+            border: 1px solid #d4af37;
+            padding: 13px 28px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-.form-box h3{
-    margin-bottom:20px;
-}
+        .btn-save:hover {
+            background: #d4af37;
+            color: #000;
+        }
 
-.form-group{
-    margin-bottom:20px;
-}
+        /* =========================
+           NOTIFICATION ALERT BANNERS
+        ========================= */
+        .success {
+            background-color: #e2f5ea;
+            color: #0b5931;
+            border: 1px solid #c3ebd4;
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-.form-group label{
-    display:block;
-    margin-bottom:8px;
-    font-weight:500;
-}
-
-.form-group input,
-.form-group select{
-    width:100%;
-    padding:12px;
-    border:1px solid #ddd;
-    border-radius:4px;
-}
-
-.btn-save{
-    background:#000;
-    color:#d4af37;
-    border:1px solid #d4af37;
-    padding:12px 25px;
-    cursor:pointer;
-    border-radius:4px;
-}
-
-.btn-save:hover{
-    background:#d4af37;
-    color:#000;
-}
-
-.success{
-    color:green;
-    margin-bottom:15px;
-}
-
-.error{
-    color:red;
-    margin-bottom:15px;
-}
-
-</style>
-
+        .error {
+            background-color: #fdf2f2;
+            color: #9b1c1c;
+            border: 1px solid #fbd5d5;
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
 </head>
 
 <body>
 
-<div class="sidebar">
-
-    <h2>Admin</h2>
-
-    <a href="dashboard.php">🏠 Dashboard</a>
-    <a href="products.php">📦 Products</a>
-    <a href="categories.php">📂 Categories</a>
-    <a href="brands.php">🏷️ Brands</a>
-    <a href="orders.php">🛒 Orders</a>
-    <a href="users.php">👥 Users</a>
-    <a href="admins.php" class="sidebar-active">⚙ Admin</a>
-
-</div>
-
-<div class="main">
-
-    <div class="topbar">
-        <h1>Add Admin</h1>
-        <a href="admins.php" class="Back">← Back</a>
+    <div class="sidebar">
+        <h2>Admin</h2>
+        <a href="dashboard.php">🏠 Dashboard</a>
+        <a href="products.php">📦 Products</a>
+        <a href="categories.php">📂 Categories</a>
+        <a href="brands.php">🏷️ Brands</a>
+        <a href="orders.php">🛒 Orders</a>
+        <a href="users.php">👥 Users</a>
+        <a href="admins.php" class="sidebar-active">⚙ Admin</a>
     </div>
 
-    <div class="form-box">
+    <div class="main">
 
-        <h3>Create New Admin</h3>
+        <div class="topbar">
+            <h1>Add Admin</h1>
+            <a href="admins.php" class="Back"><i class="fa-solid fa-arrow-left"></i>Back</a>
+        </div>
 
-        <?php if($msg){ ?>
-            <div class="success"><?= $msg ?></div>
-        <?php } ?>
+        <div class="form-box">
+            <h3>Create New Admin Account</h3>
 
-        <?php if($error){ ?>
-            <div class="error"><?= $error ?></div>
-        <?php } ?>
+            <?php if ($msg) { ?>
+                <div class="success">
+                    <i class="fa-solid fa-circle-check"></i> <?= htmlspecialchars($msg) ?>
+                </div>
+            <?php } ?>
 
-        <form method="POST">
+            <?php if ($error) { ?>
+                <div class="error">
+                    <i class="fa-solid fa-circle-xmark"></i> <?= htmlspecialchars($error) ?>
+                </div>
+            <?php } ?>
 
-            <div class="form-group">
-                <label>Full Name</label>
-                <input type="text" name="fullname" required>
-            </div>
+            <form method="POST">
 
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" name="email" required>
-            </div>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" name="fullname" placeholder="e.g., John Doe" required>
+                </div>
 
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" required>
-            </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" name="email" placeholder="e.g., admin@domain.com" required>
+                </div>
 
-            <div class="form-group">
-                <label>Role</label>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" name="phone" placeholder="e.g., +60123456789" required>
+                </div>
 
-                <select name="role">
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="At least 8 characters" required>
+                </div>
 
-                    <option value="admin">
-                        Admin
-                    </option>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" name="confirm_password" placeholder="Repeat your password" required>
+                </div>
 
-                    <option value="superadmin">
-                        Super Admin
-                    </option>
+                <div class="form-group">
+                    <label>Account Role Setting</label>
+                    <select name="role">
+                        <option value="admin">Admin</option>
+                        <option value="superadmin">Super Admin</option>
+                    </select>
+                </div>
 
-                </select>
+                <button type="submit" name="submit" class="btn-save">
+                    <i class="fa-solid fa-floppy-disk"></i> Add Admin Account
+                </button>
 
-            </div>
-
-            <button type="submit"
-                    name="submit"
-                    class="btn-save">
-                Add Admin
-            </button>
-
-        </form>
+            </form>
+        </div>
 
     </div>
-
-</div>
 
 </body>
+
 </html>

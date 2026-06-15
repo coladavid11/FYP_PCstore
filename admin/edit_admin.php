@@ -9,6 +9,7 @@ if (!isset($_SESSION['admin_login'])) {
 
 $id = intval($_GET['id']);
 
+// Fetches all columns including 'phone'
 $sql = "SELECT * FROM admin WHERE admin_id = :id";
 $query = $dbh->prepare($sql);
 $query->bindParam(':id', $id, PDO::PARAM_INT);
@@ -26,26 +27,21 @@ if (!$admin) {
 
 if (isset($_POST['update'])) {
 
-    $fullname = trim($_POST['fullname']);
-    $email = trim($_POST['email']);
+    // Read-only fields (fullname, email, phone) are completely omitted here
     $role = $_POST['role'];
     $status = intval($_POST['status']);
     $password = trim($_POST['password']);
 
-    // Update without password
+    // Update without password (Only updates role and status)
     if (empty($password)) {
 
-        $sql = "UPDATE admin
-                SET fullname = :fullname,
-                    email = :email,
-                    role = :role,
-                    status = :status
+        $sql = "UPDATE admin 
+                SET role = :role, 
+                    status = :status 
                 WHERE admin_id = :id";
 
         $query = $dbh->prepare($sql);
 
-        $query->bindParam(':fullname', $fullname);
-        $query->bindParam(':email', $email);
         $query->bindParam(':role', $role);
         $query->bindParam(':status', $status);
         $query->bindParam(':id', $id);
@@ -56,18 +52,14 @@ if (isset($_POST['update'])) {
 
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-        $sql = "UPDATE admin
-                SET fullname = :fullname,
-                    email = :email,
-                    password = :password,
-                    role = :role,
-                    status = :status
+        $sql = "UPDATE admin 
+                SET password = :password, 
+                    role = :role, 
+                    status = :status 
                 WHERE admin_id = :id";
 
         $query = $dbh->prepare($sql);
 
-        $query->bindParam(':fullname', $fullname);
-        $query->bindParam(':email', $email);
         $query->bindParam(':password', $hashedPassword);
         $query->bindParam(':role', $role);
         $query->bindParam(':status', $status);
@@ -240,11 +232,25 @@ if (isset($_POST['update'])) {
             transition: 0.3s;
         }
 
+        /* Styling for read-only fields */
+        .form-group input[readonly] {
+            background-color: #f9f9f9;
+            color: #777;
+            cursor: not-allowed;
+            border-color: #e4e4e4;
+        }
+
         .form-group input:focus,
         .form-group select:focus {
             border-color: #d4af37;
             outline: none;
             box-shadow: 0 0 5px rgba(212, 175, 55, 0.3);
+        }
+
+        /* Remove focus glow effect for read-only fields */
+        .form-group input[readonly]:focus {
+            border-color: #e4e4e4;
+            box-shadow: none;
         }
 
         /* =========================
@@ -293,90 +299,68 @@ if (isset($_POST['update'])) {
 <body>
 
     <div class="sidebar">
-
         <h2>Admin</h2>
-
         <a href="dashboard.php">🏠 Dashboard</a>
         <a href="products.php">📦 Products</a>
         <a href="categories.php">📂 Categories</a>
         <a href="brands.php">🏷️ Brands</a>
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
+        <a href="shipping_rates.php">🚚 Shipping Rates</a>
         <a href="admins.php" class="sidebar-active">⚙ Admin</a>
-
     </div>
 
     <div class="main">
 
         <div class="topbar">
-
             <h1>Edit Admin</h1>
-
             <div class="topbar-links">
                 <a href="admins.php" class="Back">
                     <i class="fa fa-arrow-left"></i> Back
                 </a>
             </div>
-
         </div>
 
         <div class="form-box">
-
             <h3>Edit Admin Information</h3>
 
             <form method="POST">
 
                 <div class="form-group">
                     <label>Full Name</label>
-                    <input type="text" name="fullname" value="<?= htmlspecialchars($admin->fullname) ?>" required>
+                    <input type="text" name="fullname" value="<?= htmlspecialchars($admin->fullname) ?>" readonly>
                 </div>
 
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" name="email" value="<?= htmlspecialchars($admin->email) ?>" required>
+                    <input type="email" name="email" value="<?= htmlspecialchars($admin->email) ?>" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="text" name="phone" value="<?= htmlspecialchars($admin->phone) ?>" readonly>
                 </div>
 
                 <div class="form-group">
                     <label>Role</label>
-
                     <select name="role">
-
-                        <option value="admin" <?= $admin->role == 'admin' ? 'selected' : '' ?>>
-                            Admin
+                        <option value="admin" <?= $admin->role == 'admin' ? 'selected' : '' ?>>Admin</option>
+                        <option value="superadmin" <?= $admin->role == 'superadmin' ? 'selected' : '' ?>>Super Admin
                         </option>
-
-                        <option value="superadmin" <?= $admin->role == 'superadmin' ? 'selected' : '' ?>>
-                            Super Admin
-                        </option>
-
                     </select>
-
                 </div>
 
                 <div class="form-group">
-
                     <label>Status</label>
-
                     <select name="status">
-
-                        <option value="1" <?= $admin->status == 1 ? 'selected' : '' ?>>
-                            Active
-                        </option>
-
-                        <option value="0" <?= $admin->status == 0 ? 'selected' : '' ?>>
-                            Inactive
-                        </option>
-
+                        <option value="1" <?= $admin->status == 1 ? 'selected' : '' ?>>Active</option>
+                        <option value="0" <?= $admin->status == 0 ? 'selected' : '' ?>>Inactive</option>
                     </select>
-
                 </div>
 
-                <button type="submit" name="update" class="btn-submit">
-                    Update Admin
-                </button>
+                <button type="submit" name="update" class="btn-submit">Update Admin</button>
 
             </form>
-
         </div>
 
     </div>

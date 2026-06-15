@@ -38,7 +38,7 @@ if (isset($_POST['login'])) {
                 if ($admin->status == 0) {
                     $errMsg = "Account is blocked.";
                 } else {
-                    
+
                     $_SSESSION['admin_id'] = $admin->admin_id;
                     $_SESSION['admin_login'] = $admin->email;
                     $_SESSION['admin_name'] = $admin->fullname;
@@ -245,6 +245,12 @@ if (isset($_POST['login'])) {
 
                 <div style="margin-top:10px; font-size:0.9rem">
                     <input type="checkbox" onclick="togglePassword()"> Show Password
+                </div>
+
+                <div style="margin-top:15px;">
+                    <a href="forgot_password.php" style="color:#ccac3d;text-decoration:none;font-size:14px;">
+                        Forgot Password?
+                    </a>
                 </div>
 
                 <button type="submit" name="login" class="btn-login">

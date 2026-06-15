@@ -23,12 +23,6 @@ $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="newstyle.css">
 
     <style>
-        body {
-            background: #0f0f0f;
-            color: #fff;
-            font-family: 'Poppins', sans-serif;
-        }
-
         /* ── HERO ── */
         .page-hero {
             padding: 60px 0 40px;

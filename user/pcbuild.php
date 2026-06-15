@@ -8,13 +8,13 @@ $user_id    = $_SESSION['user_id'] ?? null;
 // ── Discount tiers ────────────────────────────────────────────
 function getDiscount(float $total): array
 {
-    if ($total >= 5000) return ['pct' => 10, 'label' => '10% off'];
-    if ($total >= 3000) return ['pct' => 5,  'label' => '5% off'];
+    if ($total >= 6000) return ['pct' => 10, 'label' => '10% off'];
+    if ($total >= 4000) return ['pct' => 5,  'label' => '5% off'];
     return ['pct' => 0, 'label' => 'No discount'];
 }
 
 // ── Required parts (9 mandatory) ─────────────────────────────
-$REQUIRED_KEYS = ['CPU','Motherboard','RAM','Storage','GPU','PSU','Case','CaseFan','Cooler'];
+$REQUIRED_KEYS = ['CPU','Motherboard','RAM','Storage','GPU','Power Supply','PC Case','Case Fan','Cooler'];
 
 // ── Part definitions ──────────────────────────────────────────
 $parts = [
@@ -23,9 +23,9 @@ $parts = [
     'RAM'         => ['cat_id' => 7,  'icon' => 'fa-memory',          'label' => 'RAM',              'required' => true],
     'Storage'     => ['cat_id' => 8,  'icon' => 'fa-hard-drive',      'label' => 'Storage',          'required' => true],
     'GPU'         => ['cat_id' => 3,  'icon' => 'fa-display',         'label' => 'Graphics Card',    'required' => true],
-    'PSU'         => ['cat_id' => 9,  'icon' => 'fa-bolt',            'label' => 'Power Supply',     'required' => true],
-    'Case'        => ['cat_id' => 11, 'icon' => 'fa-box',             'label' => 'PC Case',          'required' => true],
-    'CaseFan'     => ['cat_id' => 12, 'icon' => 'fa-fan',             'label' => 'Case Fan',         'required' => true],
+    'Power Supply'=> ['cat_id' => 9,  'icon' => 'fa-bolt',            'label' => 'Power Supply',     'required' => true],
+    'PC Case'     => ['cat_id' => 11, 'icon' => 'fa-box',             'label' => 'PC Case',          'required' => true],
+    'Case Fan'    => ['cat_id' => 12, 'icon' => 'fa-fan',             'label' => 'Case Fan',         'required' => true],
     'Cooler'      => ['cat_id' => 10, 'icon' => 'fa-wind',            'label' => 'CPU Cooler',       'required' => true],
     'Monitor'     => ['cat_id' => 13, 'icon' => 'fa-desktop',         'label' => 'Monitor',          'required' => false],
     'Keyboard'    => ['cat_id' => 14, 'icon' => 'fa-keyboard',        'label' => 'Keyboard',         'required' => false],
@@ -829,15 +829,15 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
         <div class="discount-tiers">
             <div class="tier-badge" id="tier-0">
                 <span class="tier-pct">0%</span>
-                <span class="tier-range">Below RM 3,000</span>
+                <span class="tier-range">Below RM 4,000</span>
             </div>
             <div class="tier-badge" id="tier-5">
                 <span class="tier-pct">5% off</span>
-                <span class="tier-range">RM 3,000 – 4,999</span>
+                <span class="tier-range">RM 4,000 – 5,999</span>
             </div>
             <div class="tier-badge" id="tier-10">
                 <span class="tier-pct">10% off</span>
-                <span class="tier-range">RM 5,000+</span>
+                <span class="tier-range">RM 6,000+</span>
             </div>
         </div>
 
@@ -943,8 +943,8 @@ function fmt(val) {
 }
 
 function getDiscount(total) {
-    if (total >= 5000) return { pct: 10, label: '10%' };
-    if (total >= 3000) return { pct: 5,  label: '5%'  };
+    if (total >= 6000) return { pct: 10, label: '10%' };
+    if (total >= 4000) return { pct: 5,  label: '5%'  };
     return { pct: 0, label: '0%' };
 }
 

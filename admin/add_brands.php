@@ -7,18 +7,33 @@ if (!isset($_SESSION['admin_login'])) {
     exit;
 }
 
+$error_msg = ""; // Initialize error message variable
+
 if (isset($_POST['submit'])) {
 
     $name = trim($_POST['brand_name']);
 
-    $sql = "INSERT INTO tblbrand(brand_name) VALUES(:name)";
+    // 1. Check if the brand name already exists in the tblbrand table
+    $check_sql = "SELECT COUNT(*) FROM tblbrand WHERE brand_name = :name";
+    $check_query = $dbh->prepare($check_sql);
+    $check_query->bindParam(':name', $name, PDO::PARAM_STR);
+    $check_query->execute();
 
-    $query = $dbh->prepare($sql);
-    $query->bindParam(':name', $name, PDO::PARAM_STR);
-    $query->execute();
+    $brand_exists = $check_query->fetchColumn();
 
-    header("Location: brands.php");
-    exit;
+    if ($brand_exists > 0) {
+        // 2. Set the error message if a duplicate is found
+        $error_msg = "This name is already exist";
+    } else {
+        // 3. Proceed to insert if the name is completely unique
+        $sql = "INSERT INTO tblbrand(brand_name) VALUES(:name)";
+        $query = $dbh->prepare($sql);
+        $query->bindParam(':name', $name, PDO::PARAM_STR);
+        $query->execute();
+
+        header("Location: brands.php");
+        exit;
+    }
 }
 ?>
 
@@ -131,11 +146,10 @@ if (isset($_POST['submit'])) {
             transition: 0.3s;
             color: #d4af37;
             font-size: 0.95rem;
-            0
         }
 
         /* =========================
-           FORM CONTAINER (Reusing table-box layout)
+           FORM CONTAINER
         ========================= */
         .table-box {
             background: #fff;
@@ -143,7 +157,38 @@ if (isset($_POST['submit'])) {
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
             border-radius: 4px;
             max-width: 600px;
-            /* Limits the form width so it doesn't stretch too wide */
+        }
+
+        /* --- RED PILL ERROR BANNER --- */
+        .alert-error-banner {
+            background-color: #fce8e6;
+            /* Soft light red background */
+            color: #c5221f;
+            /* Sharp dark red text */
+            border: 1px solid #fad2cf;
+            /* Delicate matching border */
+            padding: 14px 20px;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Circle wrapper for the "✕" icon */
+        .alert-error-banner .error-icon {
+            background-color: #c5221f;
+            color: #fff;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
         }
 
         /* Form Group Styles */
@@ -230,7 +275,14 @@ if (isset($_POST['submit'])) {
 
     <div class="sidebar">
         <h2>Admin</h2>
-        <a href="brands.php" class="active">Brands</a>
+        <a href="dashboard.php">🏠 Dashboard</a>
+        <a href="products.php">📦 Products</a>
+        <a href="categories.php">📂 Categories</a>
+        <a href="brands.php" class="sidebar-active">🏷️ Brands</a>
+        <a href="orders.php">🛒 Orders</a>
+        <a href="users.php">👥 Users</a>
+        <a href="shipping_rates.php">🚚 Shipping Rates</a>
+        <a href="admins.php">⚙ Admin</a>
     </div>
 
     <div class="main">
@@ -244,11 +296,19 @@ if (isset($_POST['submit'])) {
 
         <div class="table-box">
 
+            <?php if (!empty($error_msg)): ?>
+                <div class="alert-error-banner">
+                    <span class="error-icon">✕</span> <?php echo htmlspecialchars($error_msg); ?>
+                </div>
+            <?php endif; ?>
+
             <form method="POST">
 
                 <div class="form-group">
                     <label for="brand_name">Brand Name</label>
-                    <input type="text" id="brand_name" name="brand_name" placeholder="e.g. ASUS, MSI" required>
+                    <input type="text" id="brand_name" name="brand_name" placeholder="e.g. ASUS, MSI"
+                        value="<?php echo isset($_POST['brand_name']) ? htmlspecialchars($_POST['brand_name']) : ''; ?>"
+                        required>
                 </div>
 
                 <div class="form-actions">
