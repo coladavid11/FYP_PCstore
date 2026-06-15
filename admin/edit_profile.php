@@ -23,7 +23,22 @@ if (!$admin) {
     exit;
 }
 
-/* ── HANDLE POST ── */
+/* ── AJAX GOOGLE-STYLE IDENTITY CHECKPOINT ── */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_current_password'])) {
+    if (ob_get_length()) ob_clean(); // Clear any accidental background spaces/buffers
+    
+    header('Content-Type: application/json');
+    $password_input = $_POST['verify_current_password'];
+    
+    if (password_verify($password_input, $admin->password)) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'The current password you entered is incorrect.']);
+    }
+    exit; // Stops PHP from rendering the rest of the HTML layout during an AJAX call
+}
+
+/* ── HANDLE STANDARD DATA PROFILE SUBMISSION ── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fullname = trim($_POST['fullname'] ?? '');
     $new_email = trim($_POST['email'] ?? '');
@@ -32,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $new_password = $_POST['new_password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
 
-    /* Basic validation */
+    /* Basic input checking rules */
     if ($fullname === '') {
         $errors[] = 'Full name cannot be empty.';
     }
@@ -43,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Phone number cannot be empty.';
     }
 
-    /* Email uniqueness check if email is changing */
+    /* Email collision check */
     if (empty($errors) && strtolower($new_email) !== strtolower($admin->email)) {
         $chkEmail = $dbh->prepare("SELECT admin_id FROM admin WHERE LOWER(email) = LOWER(:email)");
         $chkEmail->bindParam(':email', $new_email, PDO::PARAM_STR);
@@ -53,16 +68,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    /* Password Processing Validation */
-    $updating_password = !empty($current_password) || !empty($new_password) || !empty($confirm_password);
+    /* Evaluate new credentials updates */
+    $updating_password = !empty($new_password);
 
     if ($updating_password) {
-        // Verify current password
-        if (!password_verify($current_password, $admin->password)) {
+        if (empty($current_password)) {
+            $errors[] = 'Please enter your current password to authorize a password reset.';
+        } elseif (!password_verify($current_password, $admin->password)) {
             $errors[] = 'The current password you entered is incorrect.';
         }
 
-        // Validate new password rules
         if (strlen($new_password) < 8) {
             $errors[] = 'The new password must be at least 8 characters long.';
         }
@@ -74,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    /* Save Profile Changes */
+    /* Save verified changes downstream */
     if (empty($errors)) {
         if ($updating_password) {
             $password_hash = password_hash($new_password, PASSWORD_DEFAULT);
@@ -94,8 +109,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($upd->execute()) {
             $success = true;
             $_SESSION['admin_login'] = $new_email;
+            $_SESSION['admin_name'] = $fullname; 
 
-            // Refresh local object references
+            // Sync structural parameters locally
             $admin->fullname = $fullname;
             $admin->email = $new_email;
             $admin->phone = $phone;
@@ -114,7 +130,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Edit Profile — Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
         * {
@@ -168,14 +183,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #000;
         }
 
-        /* ── MAIN ── */
+        /* ── MAIN LAYOUT FRAMEWORK ── */
         .main {
             margin-left: 220px;
             width: calc(100% - 220px);
             padding: 30px;
         }
 
-        /* ── TOPBAR ── */
+        /* ── TOP ACTION BAR ── */
         .topbar {
             display: flex;
             justify-content: space-between;
@@ -205,6 +220,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: center;
         }
 
+        /* ── INTEGRATED STATUS NOTICES ── */
+        .alert-success-banner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: #d4edda;
+            border: 1px solid rgba(40, 167, 69, 0.2);
+            color: #155724;
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .alert-success-banner i {
+            font-size: 1.1rem;
+        }
+
+        .alert-error-banner {
+            background-color: #f8d7da;
+            border: 1px solid rgba(220, 53, 69, 0.2);
+            color: #721c24;
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+
+        .alert-error-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .alert-error-banner i {
+            font-size: 1.1rem;
+        }
+
+        .alert-error-list {
+            margin-left: 28px;
+            padding-left: 0;
+        }
+
+        .alert-error-list li {
+            margin-top: 2px;
+        }
+
         .btn-back {
             display: inline-flex;
             align-items: center;
@@ -224,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #000;
         }
 
-        /* ── LAYOUT COLUMNS ── */
+        /* ── TWO-COLUMN VIEWPORT LAYOUT ── */
         .edit-layout {
             display: flex;
             gap: 20px;
@@ -241,7 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flex-shrink: 0;
         }
 
-        /* ── FORM CARD ── */
+        /* ── INTERACTIVE CARD BLOCKS ── */
         .form-card {
             background: #fff;
             border-radius: 4px;
@@ -283,7 +348,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 28px;
         }
 
-        /* ── FORM ELEMENTS ── */
         .form-group {
             margin-bottom: 22px;
         }
@@ -320,13 +384,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
         }
 
+        .form-control:read-only {
+            background-color: #fafafa;
+            color: #777;
+            border-color: #e5e5e5;
+            cursor: not-allowed;
+        }
+
         .form-hint {
             font-size: 0.76rem;
             color: #aaa;
             margin-top: 5px;
         }
 
-        /* Email changes warning module */
         .email-warning {
             display: none;
             margin-top: 14px;
@@ -339,7 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             line-height: 1.5;
         }
 
-        /* ── FOOTER ── */
+        /* ── FOOTER CONTAINER ── */
         .form-footer {
             padding: 18px 28px;
             border-top: 1px solid #f0f0f0;
@@ -365,9 +435,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transition: 0.2s;
         }
 
-        .btn-save:hover {
+        .btn-save:hover:not(:disabled) {
             background: #d4af37;
             color: #000;
+        }
+
+        .btn-save:disabled {
+            cursor: not-allowed;
         }
 
         .btn-cancel {
@@ -392,7 +466,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #555;
         }
 
-        /* ── SIDE CARDS ── */
+        /* ── ASIDE CONTEXT BLOCKS ── */
         .side-card {
             background: #fff;
             border-radius: 4px;
@@ -486,21 +560,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <a href="brands.php">🏷️ Brands</a>
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
-        <a href="admin.php" class="sidebar-active">⚙ Admin</a>
+        <a href="shipping_rates.php">🚚 Shipping Rates</a>
+        <a href="admins.php" class="sidebar-active">⚙ Admin</a>
     </div>
 
     <div class="main">
 
         <div class="topbar">
             <div>
-                <h1><i class="fa fa-user-gear" style="color:#d4af37;margin-right:8px;font-size:1.2rem;"></i>My Profile
-                </h1>
+                <h1><i class="fa fa-user-gear" style="color:#d4af37;margin-right:8px;font-size:1.2rem;"></i>My Profile</h1>
                 <div class="topbar-sub">Update personal metrics and administrative credentials</div>
             </div>
             <div class="topbar-right">
-                <a href="dashboard.php" class="btn-back"><i class="fa fa-arrow-left"></i> To Dashboard</a>
+                <a href="dashboard.php" class="btn-back"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
+
+        <?php if ($success): ?>
+            <div class="alert-success-banner">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>User status updated successfully!</span>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($errors)): ?>
+            <div class="alert-error-banner">
+                <div class="alert-error-title">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                    <span>Verification Failed</span>
+                </div>
+                <ul class="alert-error-list">
+                    <?php foreach ($errors as $error): ?>
+                        <li><?php echo htmlspecialchars($error); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
 
         <form method="POST" id="profileForm" novalidate>
             <div class="edit-layout">
@@ -517,25 +612,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="form-group">
                                 <label class="form-label" for="fullname">Full Name <span class="req">*</span></label>
                                 <input type="text" id="fullname" name="fullname" class="form-control"
-                                    value="<?php echo htmlspecialchars($admin->fullname); ?>" required>
+                                       value="<?php echo htmlspecialchars($admin->fullname); ?>" required>
                             </div>
 
                             <div class="form-group">
                                 <label class="form-label" for="email">Email Address <span class="req">*</span></label>
                                 <input type="email" id="email" name="email" class="form-control"
-                                    value="<?php echo htmlspecialchars($admin->email); ?>"
-                                    data-orig="<?php echo htmlspecialchars($admin->email); ?>" required>
+                                       value="<?php echo htmlspecialchars($admin->email); ?>"
+                                       data-orig="<?php echo htmlspecialchars($admin->email); ?>" required>
                                 <div class="email-warning" id="emailWarn">
                                     <i class="fa fa-triangle-exclamation"></i>
-                                    <strong>Note:</strong> Modifying your email updates your primary administrator
-                                    system login identifier.
+                                    <strong>Note:</strong> Modifying your email updates your primary administrator system login identifier.
                                 </div>
                             </div>
 
                             <div class="form-group" style="margin-bottom:0;">
                                 <label class="form-label" for="phone">Phone Number <span class="req">*</span></label>
                                 <input type="text" id="phone" name="phone" class="form-control"
-                                    value="<?php echo htmlspecialchars($admin->phone); ?>" required>
+                                       value="<?php echo htmlspecialchars($admin->phone); ?>" required>
                             </div>
                         </div>
                     </div>
@@ -546,28 +640,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <h2>Change Security Credentials</h2>
                         </div>
                         <div class="form-body">
-                            <div class="form-hint" style="margin-bottom: 15px;">Leave password fields completely blank
-                                if you do not want to update your current system password.</div>
-
-                            <div class="form-group">
-                                <label class="form-label" for="current_password">Current Password</label>
-                                <input type="password" id="current_password" name="current_password"
-                                    class="form-control" placeholder="••••••••">
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label" for="new_password">New Password</label>
-                                <input type="password" id="new_password" name="new_password" class="form-control"
-                                    placeholder="Minimum 8 characters">
-                                <div class="form-hint">Must be at least 8 characters long and differ from the old one.
+                            
+                            <div id="identityVerificationStep">
+                                <div class="form-hint" style="margin-bottom: 15px;">To ensure your administrative security, you must first verify your identity using your current password.</div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label" for="current_password">Enter your current password</label>
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="password" id="current_password" name="current_password"
+                                               class="form-control" placeholder="••••••••">
+                                        <button type="button" id="btnVerifyPassword" class="btn-save" style="white-space: nowrap; padding: 10px 20px;">
+                                            Next
+                                        </button>
+                                    </div>
+                                    <div id="verifyMessage" style="font-size: 0.8rem; margin-top: 8px; display: none; font-weight: 500;"></div>
                                 </div>
                             </div>
 
-                            <div class="form-group" style="margin-bottom:0;">
-                                <label class="form-label" for="confirm_password">Confirm New Password</label>
-                                <input type="password" id="confirm_password" name="confirm_password"
-                                    class="form-control" placeholder="Retype new password">
+                            <div id="newPasswordFields" style="display: none; border-top: 1px dashed #e0e0e0; margin-top: 20px; padding-top: 15px;">
+                                <div class="form-group">
+                                    <label class="form-label" for="new_password">New Password</label>
+                                    <input type="password" id="new_password" name="new_password" class="form-control"
+                                           placeholder="Minimum 8 characters">
+                                    <div class="form-hint">Must be at least 8 characters long and differ from the old one.</div>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label" for="confirm_password">Confirm New Password</label>
+                                    <input type="password" id="confirm_password" name="confirm_password"
+                                           class="form-control" placeholder="Retype new password">
+                                </div>
                             </div>
+
                         </div>
 
                         <div class="form-footer">
@@ -581,6 +684,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                 </div>
+
                 <div class="col-aside">
                     <div class="side-card">
                         <div class="side-card-header">
@@ -590,38 +694,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="side-card-body">
                             <div class="meta-row">
                                 <i class="fa fa-user"></i>
-                                <span>Role:
-                                    <strong><?php echo htmlspecialchars(strtoupper($admin->role)); ?></strong></span>
+                                <span>Role: <strong><?php echo htmlspecialchars(strtoupper($admin->role ?? 'ADMIN')); ?></strong></span>
                             </div>
                             <div class="meta-row">
                                 <i class="fa fa-calendar-day"></i>
                                 <div>
                                     <div style="margin-bottom:2px;">Created On</div>
-                                    <strong><?php echo date('d M Y', strtotime($admin->created_at)); ?></strong>
+                                    <strong><?php echo isset($admin->created_at) ? date('d M Y', strtotime($admin->created_at)) : date('d M Y'); ?></strong>
                                 </div>
                             </div>
                             <div class="meta-row">
                                 <i class="fa fa-signal"></i>
                                 <div>
                                     <div style="margin-bottom:4px;">Account Status</div>
-                                    <?php if (intval($admin->status) === 1): ?>
-                                        <span class="status-badge status-active"><i class="fa fa-circle"
-                                                style="font-size:0.45rem;"></i> Enabled</span>
+                                    <?php if (isset($admin->status) && intval($admin->status) === 1): ?>
+                                        <span class="status-badge status-active"><i class="fa fa-circle" style="font-size:0.45rem;"></i> Enabled</span>
                                     <?php else: ?>
-                                        <span class="status-badge status-inactive"><i class="fa fa-circle"
-                                                style="font-size:0.45rem;"></i> Disabled</span>
+                                        <span class="status-badge status-inactive"><i class="fa fa-circle" style="font-size:0.45rem;"></i> Disabled</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </form>
 
     </div>
+
     <script>
-        /* ── INLINE DYNAMIC EMAIL NOTICE ── */
+        /* ── INLINE DYNAMIC EMAIL WARNINGS ── */
         const emailInput = document.getElementById('email');
         const emailWarn = document.getElementById('emailWarn');
         if (emailInput) {
@@ -634,30 +737,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         }
 
-        /* ── ALERT SYSTEM HANDLERS (SWEETALERT2) ── */
-        <?php if ($success): ?>
-            Swal.fire({
-                icon: 'success',
-                title: 'Profile Updated!',
-                html: 'Your administration records have been saved completely.',
-                confirmButtonText: '<i class="fa fa-check"></i> Complete',
-                confirmButtonColor: '#d4af37',
-                background: '#fff'
-            });
-        <?php endif; ?>
+        /* ── ASYNC SECURITY IDENTITY CHECK ENGINE (GOOGLE MODULE) ── */
+        const btnVerify = document.getElementById('btnVerifyPassword');
+        const currentPassInput = document.getElementById('current_password');
+        const verifyMessage = document.getElementById('verifyMessage');
+        const newPasswordFields = document.getElementById('newPasswordFields');
 
-        <?php if (!empty($errors)): ?>
-            Swal.fire({
-                icon: 'error',
-                title: 'Verification Failed',
-                html: `<?php echo implode('<br>', array_map('htmlspecialchars', $errors)); ?>`,
-                confirmButtonText: 'Review Fields',
-                confirmButtonColor: '#d4af37',
-                background: '#fff'
-            });
-        <?php endif; ?>
+        if (btnVerify) {
+            btnVerify.addEventListener('click', function () {
+                const passwordVal = currentPassInput.value.trim();
+                
+                if (!passwordVal) {
+                    verifyMessage.style.color = '#721c24';
+                    verifyMessage.textContent = 'Please type your current system password to proceed.';
+                    verifyMessage.style.display = 'block';
+                    return;
+                }
 
-        /* ── LEAVE PAGE PREVENTION ── */
+                const formData = new FormData();
+                formData.append('verify_current_password', passwordVal);
+
+                verifyMessage.style.color = '#666';
+                verifyMessage.textContent = 'Verifying security metrics...';
+                verifyMessage.style.display = 'block';
+
+                // FIXED: Changed destination route from admin_profile.php to edit_profile.php
+                fetch('edit_profile.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .catch(() => { return { success: false, message: 'Server communication error.' }; })
+                .then(data => {
+                    if (data.success) {
+                        verifyMessage.style.color = '#155724';
+                        verifyMessage.innerHTML = '<i class="fa fa-circle-check"></i> Identity Verified! Enter your new password configurations below.';
+                        
+                        // Lock validation parameters to prevent alteration exploits
+                        currentPassInput.readOnly = true;
+                        btnVerify.disabled = true;
+                        btnVerify.style.opacity = '0.5';
+                        
+                        // Display the hidden credential change fields
+                        newPasswordFields.style.display = 'block';
+                    } else {
+                        verifyMessage.style.color = '#721c24';
+                        verifyMessage.textContent = data.message || 'The current password you entered is incorrect.';
+                    }
+                });
+            });
+        }
+
+        /* ── COMPONENT CLOSURE LEAVE MANAGEMENT ── */
         let formChanged = false;
         const form = document.getElementById('profileForm');
         form.querySelectorAll('input').forEach(el => {
@@ -666,13 +797,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         });
         window.addEventListener('beforeunload', e => {
             if (formChanged <?php echo $success ? '&& false' : ''; ?>) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-});
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
         form.addEventListener('submit', () => formChanged = false);
     </script>
 
 </body>
-
 </html>

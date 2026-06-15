@@ -651,6 +651,7 @@ if (isset($_POST['update_product'])) {
         <a href="brands.php">🏷️ Brands</a>
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
+        <a href="shipping_rates.php">🚚 Shipping Rates</a>
         <a href="admin.php">⚙ Admin</a>
     </div>
 

@@ -460,6 +460,7 @@ $total = count($categories);
         <a href="brands.php">🏷️ Brands</a>
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
+        <a href="shipping_rates.php">🚚 Shipping Rates</a>
         <a href="admins.php">⚙ Admin</a>
 
     </div>
