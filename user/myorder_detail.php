@@ -873,7 +873,7 @@ $invoiceData = json_encode([
                                 style="font-size:0.75rem;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">
                                 Method</div>
                             <div style="font-weight:600;color:#ccc;">
-                                <?php echo htmlspecialchars($order['payment_method']); ?></div>
+                                <?php echo htmlspecialchars(str_replace('Demo Card', 'Card', $order['payment_method'])); ?></div>
                         </div>
                         <div class="ms-auto">
                             <span
@@ -1007,7 +1007,7 @@ $invoiceData = json_encode([
                                 style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:4px;">
                                 Payment</div>
                             <div style="font-weight:600;color:#333;">
-                                <?php echo htmlspecialchars($order['payment_method']); ?></div>
+                                <?php echo htmlspecialchars(str_replace('Demo Card', 'Card', $order['payment_method'])); ?></div>
                             <div style="font-size:0.8rem;color:#666;">Status:
                                 <?php echo htmlspecialchars($order['payment_status'] ?? 'N/A'); ?></div>
                         </div>
