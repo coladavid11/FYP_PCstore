@@ -483,7 +483,7 @@ function statusConfig(string $status): array
                                     </div>
                                     <div class="order-meta-item">
                                         <span class="meta-label">Payment</span>
-                                        <span class="meta-value"><?php echo htmlspecialchars($order['payment_method']); ?></span>
+                                        <span class="meta-value"><?php echo htmlspecialchars(str_replace('Demo Card', 'Card', $order['payment_method'])); ?></span>
                                     </div>
                                     <div class="order-meta-item">
                                         <span class="meta-label">Total</span>

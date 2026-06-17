@@ -2,6 +2,11 @@
 session_start();
 include('includes/config.php');
 error_reporting(0);
+
+// ── Quick Stats: read from DB ─────────────────────────────────
+$productCount  = $dbh->query("SELECT COUNT(*) FROM products")->fetchColumn();
+$categoryCount = $dbh->query("SELECT COUNT(*) FROM categories WHERE status = 1")->fetchColumn();
+$userCount     = $dbh->query("SELECT COUNT(*) FROM tbluser")->fetchColumn();
 ?>
 
 <!DOCTYPE html>
@@ -285,20 +290,21 @@ error_reporting(0);
     </section>
 
     <script>
-        // simple animated counter
+        // ── Animated counter using real DB values ─────────────────
         function count(id, target) {
             let el = document.getElementById(id);
             let i = 0;
+            let step = Math.ceil(target / 60); // finish in ~60 frames
             let interval = setInterval(() => {
-                i++;
+                i += step;
+                if (i >= target) { i = target; clearInterval(interval); }
                 el.innerText = i;
-                if (i >= target) clearInterval(interval);
             }, 30);
         }
 
-        count("s1", 120);
-        count("s2", 12);
-        count("s3", 300);
+        count("s1", <?php echo intval($productCount);  ?>);
+        count("s2", <?php echo intval($categoryCount); ?>);
+        count("s3", <?php echo intval($userCount);     ?>);
     </script>
 
     <?php include('includes/footer.php'); ?>
