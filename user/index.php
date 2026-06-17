@@ -84,7 +84,7 @@ include('includes/config.php');
                             class="img-fluid mb-3">
                         <h5>Gaming Beast</h5>
                         <p class="text-soft">RTX Series • High FPS Gaming</p>
-                        <a href="full_set.php" class="btn-cta mt-2">View</a>
+                        <a href="product.php?category=2&brand=all&sort=newest" class="btn-cta mt-2">View</a>
                     </div>
                 </div>
 
