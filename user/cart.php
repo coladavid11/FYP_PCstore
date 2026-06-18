@@ -142,6 +142,38 @@ if ($isLoggedIn) {
     }
 }
 
+// ── Sync cart prices with current product prices ──
+if ($isLoggedIn && !empty($cartItems)) {
+    foreach ($cartItems as $item) {
+        $pSync = $dbh->prepare("SELECT price FROM products WHERE product_id = ?");
+        $pSync->execute([$item['product_id']]);
+        $pRow = $pSync->fetch(PDO::FETCH_ASSOC);
+        if ($pRow && floatval($pRow['price']) !== floatval($item['product_price'])) {
+            $newPrice = floatval($pRow['price']);
+            $dbh->prepare("
+                UPDATE tblcart
+                SET product_price = ?,
+                    subtotal      = ? * quantity
+                WHERE cart_id = ?
+            ")->execute([$newPrice, $newPrice, $item['cart_id']]);
+        }
+    }
+
+    // Re-fetch cart after sync
+    $stmt = $dbh->prepare("
+        SELECT * FROM tblcart
+        WHERE user_id = ? AND status = 'active'
+        ORDER BY created_at DESC
+    ");
+    $stmt->execute([$user_id]);
+    $cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $total = 0;
+    foreach ($cartItems as $item) {
+        $total += $item['product_price'] * $item['quantity'];
+    }
+}
+
 // ── Detect PC Build discounts and Assembly discount in cart ──
 // We compare product_price in cart vs actual product price in DB.
 // If product_price < DB price → it was added via PC Builder (discounted).
