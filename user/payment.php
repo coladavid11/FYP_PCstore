@@ -85,9 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } else {
 
+        // ── Payment method: 'card' or 'ewallet' ──
+        $paymentMethodChoice = $_POST['payment_method_choice'] ?? 'card';
+
         // Collect delivery address fields
         $useProfile   = isset($_POST['use_profile_address']) && $_POST['use_profile_address'] === '1';
-        $cardHolder  = trim($_POST['card_holder_name'] ?? '');
+        $cardHolder   = trim($_POST['card_holder_name'] ?? '');
+        $ewalletPhone = trim($_POST['ewallet_phone']     ?? '');
         $receiverName = trim($_POST['receiver_name'] ?? '');
         $receiverPhone= trim($_POST['receiver_phone'] ?? '');
         $addr1        = trim($_POST['addr_line1']    ?? '');
@@ -97,7 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $state_id     = intval($_POST['state_id']   ?? 0);
 
         // Validate address fields
-        if (empty($cardHolder)) {
+        if ($paymentMethodChoice === 'ewallet' && empty($ewalletPhone)) {
+            $error = "Please enter your e-wallet phone number.";
+
+        } elseif ($paymentMethodChoice === 'card' && empty($cardHolder)) {
             $error = "Please enter the card holder name.";
 
         } elseif (empty($receiverName) || empty($receiverPhone) || empty($addr1) ||
@@ -115,6 +122,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $shipping   = $feeRow ? floatval($feeRow['fee']) : 15.00;
             $service_fee = 0.00;
             $grand_total = $subtotal + $shipping + $service_fee;
+
+            // ── Determine payment method label + card holder column value ──
+            if ($paymentMethodChoice === 'ewallet') {
+                $paymentMethodLabel = 'E-Wallet';
+                $cardHolderColumnValue = $ewalletPhone; // store phone number in card_holder_name column
+            } else {
+                $paymentMethodLabel = 'Demo Card';
+                $cardHolderColumnValue = $cardHolder;
+            }
 
             try {
                 $dbh->beginTransaction();
@@ -139,9 +155,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     INSERT INTO tblorders
                         (user_id, order_number, total_amount, shipping_fee, service_fee,
                          grand_total, payment_method, card_holder_name, payment_status, order_status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'Demo Card', ?, 'paid', 'processing')
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'paid', 'processing')
                 ");
-                $orderStmt->execute([$user_id, $order_number, $subtotal, $shipping, $service_fee, $grand_total, $cardHolder]);
+                $orderStmt->execute([$user_id, $order_number, $subtotal, $shipping, $service_fee, $grand_total, $paymentMethodLabel, $cardHolderColumnValue]);
                 $order_id = $dbh->lastInsertId();
 
                 // 3. Insert order items
@@ -312,6 +328,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #dc3545;
             margin-top: 4px;
             display: none;
+        }
+
+        /* ── Payment method tabs ── */
+        .pm-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .pm-tab {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 14px;
+            background: #161616;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all .2s;
+            font-size: 0.88rem;
+            color: #888;
+        }
+        .pm-tab:hover { border-color: #555; color: #ccc; }
+        .pm-tab.active {
+            background: rgba(212,175,55,0.08);
+            border-color: #d4af37;
+            color: #d4af37;
+            font-weight: 600;
+        }
+        .pm-tab i { font-size: 1rem; }
+
+        /* E-wallet form */
+        .ewallet-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #0f0f0f;
+            border: 1px solid #1e1e1e;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+        .ewallet-brand-icon {
+            width: 42px; height: 42px;
+            border-radius: 10px;
+            background: rgba(212,175,55,0.12);
+            color: #d4af37;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .ewallet-brand-text { font-size: 0.78rem; color: #666; line-height: 1.4; }
+        .ewallet-brand-text strong { color: #fff; font-size: 0.9rem; display: block; }
+
+        .pin-display {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 6px 0 4px;
+        }
+        .pin-display span {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 1px solid #3a3a3a;
+            background: transparent;
+            display: inline-block;
+            transition: all .15s;
+        }
+        .pin-display span.filled {
+            background: #d4af37;
+            border-color: #d4af37;
         }
 
         /* Shipping info badge */
@@ -591,34 +682,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- ── Payment ───────────────────────────────── -->
             <div class="addr-card">
                 <div class="section-heading">
-                    <i class="fa fa-credit-card"></i> Card Payment
+                    <i class="fa fa-credit-card"></i> Payment Method
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Card Holder Name</label>
-                    <input type="text" name="card_holder_name" id="cardHolderName" class="card-field"
-                           placeholder="Name as shown on card" maxlength="100" autocomplete="cc-name" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Card Number</label>
-                    <input type="text" id="cardNumber" class="card-field"
-                           placeholder="0000 0000 0000 0000" maxlength="19" required>
-                </div>
-
-                <div class="row g-3">
-                    <div class="col-6">
-                        <label class="form-label">Expiry</label>
-                        <input type="text" id="expiry" class="card-field"
-                               placeholder="MM/YY" maxlength="5" required>
-                        <!-- Real-time month error message -->
-                        <div class="expiry-error" id="expiryError"></div>
+                <!-- Payment method tabs -->
+                <div class="pm-tabs">
+                    <div class="pm-tab active" id="tabCard" onclick="switchPaymentMethod('card')">
+                        <i class="fa fa-credit-card"></i> Card
                     </div>
-                    <div class="col-6">
-                        <label class="form-label">CVV</label>
-                        <input type="text" id="cvv" class="card-field"
-                               placeholder="123" maxlength="3" required>
+                    <div class="pm-tab" id="tabEwallet" onclick="switchPaymentMethod('ewallet')">
+                        <i class="fa fa-wallet"></i> e-Wallet
                     </div>
+                </div>
+
+                <!-- Hidden field tracking chosen payment method -->
+                <input type="hidden" name="payment_method_choice" id="paymentMethodChoice" value="card">
+
+                <!-- ── Card payment form ── -->
+                <div id="cardPaymentForm">
+
+                    <div class="mb-3">
+                        <label class="form-label">Card Holder Name</label>
+                        <input type="text" name="card_holder_name" id="cardHolderName" class="card-field"
+                               placeholder="Name as shown on card" maxlength="100" autocomplete="cc-name">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Card Number</label>
+                        <input type="text" id="cardNumber" class="card-field"
+                               placeholder="0000 0000 0000 0000" maxlength="19">
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label">Expiry</label>
+                            <input type="text" id="expiry" class="card-field"
+                                   placeholder="MM/YY" maxlength="5">
+                            <!-- Real-time month error message -->
+                            <div class="expiry-error" id="expiryError"></div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">CVV</label>
+                            <input type="text" id="cvv" class="card-field"
+                                   placeholder="123" maxlength="3">
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ── E-Wallet payment form ── -->
+                <div id="ewalletPaymentForm" style="display:none;">
+
+                    <div class="ewallet-brand">
+                        <div class="ewallet-brand-icon"><i class="fa fa-wallet"></i></div>
+                        <div class="ewallet-brand-text">
+                            <strong>My PC Store e-Wallet</strong>
+                            Pay instantly using your registered e-wallet number
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Phone Number</label>
+                        <input type="text" name="ewallet_phone" id="ewalletPhone" class="card-field"
+                               placeholder="+60" maxlength="17" inputmode="tel">
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">6-Digit PIN</label>
+                        <input type="password" id="ewalletPin" class="card-field" maxlength="6"
+                               placeholder="••••••" inputmode="numeric" autocomplete="off">
+                        <!-- Visual PIN dots, mirrors the masked input -->
+                        <div class="pin-display" id="pinDisplay">
+                            <span></span><span></span><span></span>
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+
                 </div>
 
                 <button type="submit" class="btn-pay" id="btnPay">
@@ -776,6 +915,7 @@ const PROFILE = {
 };
 
 let currentShipping = PROFILE.fee;
+let currentPaymentMethod = 'card'; // 'card' or 'ewallet'
 
 // ── Init on load ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -944,63 +1084,142 @@ document.getElementById('cvv').addEventListener('input', function () {
     this.value = this.value.replace(/\D/g,'').slice(0,3);
 });
 
+// ════════════════════════════════════════════════════════════
+//  E-WALLET PAYMENT METHOD
+// ════════════════════════════════════════════════════════════
+
+// ── Switch between Card / E-wallet tabs ───────────────────────
+function switchPaymentMethod(method) {
+    currentPaymentMethod = method;
+    document.getElementById('paymentMethodChoice').value = method;
+
+    const isCard = method === 'card';
+    document.getElementById('tabCard').classList.toggle('active', isCard);
+    document.getElementById('tabEwallet').classList.toggle('active', !isCard);
+    document.getElementById('cardPaymentForm').style.display    = isCard ? 'block' : 'none';
+    document.getElementById('ewalletPaymentForm').style.display = isCard ? 'none'  : 'block';
+
+    // Enable/disable name attributes so only the active method's fields submit
+    document.getElementById('cardHolderName').name = isCard ? 'card_holder_name' : '';
+    document.getElementById('ewalletPhone').name   = isCard ? '' : 'ewallet_phone';
+}
+
+// ── E-wallet phone number: force +60xx xxxxxxxx format (space after area code) ──
+document.getElementById('ewalletPhone').addEventListener('input', function () {
+    let v = this.value.replace(/[^\d+]/g, '');
+
+    // Always start with +60
+    if (!v.startsWith('+60')) {
+        v = '+60' + v.replace(/^\+?60?/, '');
+    }
+
+    // Split into +60 | xx | xxxxxxxx
+    let digits = v.slice(3).replace(/\D/g, '').slice(0, 10);
+    let formatted = '+60';
+    if (digits.length > 0) {
+        formatted += digits.slice(0, 2);
+        if (digits.length > 2) {
+            formatted += ' ' + digits.slice(2);
+        }
+    }
+    this.value = formatted;
+});
+
+// Prevent deleting the +60 prefix awkwardly — reset on focus if empty
+document.getElementById('ewalletPhone').addEventListener('focus', function () {
+    if (!this.value) this.value = '+60';
+});
+
+// ── E-wallet PIN: mask with dots, only digits, max 6 ───────────
+document.getElementById('ewalletPin').addEventListener('input', function () {
+    this.value = this.value.replace(/\D/g, '').slice(0, 6);
+
+    const dots = document.querySelectorAll('#pinDisplay span');
+    dots.forEach((dot, i) => {
+        dot.classList.toggle('filled', i < this.value.length);
+    });
+});
+
 // ── Form submit validation ────────────────────────────────────
 document.getElementById('checkoutForm').addEventListener('submit', function (e) {
     e.preventDefault();
 
-    // Card validation
-    const holderName = document.getElementById('cardHolderName').value.trim();
-    const card   = document.getElementById('cardNumber').value.replace(/\s/g,'');
+    if (currentPaymentMethod === 'card') {
 
-    if (!holderName) {
-        Swal.fire({ title:'Required', text:'Please enter the card holder name.',
-            icon:'warning', background:'#1a1a1a', color:'#fff', iconColor:'#d4af37', confirmButtonColor:'#d4af37' });
-        return;
-    }
-    const expiry = document.getElementById('expiry').value;
-    const cvv    = document.getElementById('cvv').value;
+        // Card validation
+        const holderName = document.getElementById('cardHolderName').value.trim();
+        const card   = document.getElementById('cardNumber').value.replace(/\s/g,'');
 
-    if (card.length !== 16) {
-        Swal.fire({ title:'Invalid Card', text:'Card number must be exactly 16 digits.',
-            icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
-        return;
-    }
+        if (!holderName) {
+            Swal.fire({ title:'Required', text:'Please enter the card holder name.',
+                icon:'warning', background:'#1a1a1a', color:'#fff', iconColor:'#d4af37', confirmButtonColor:'#d4af37' });
+            return;
+        }
+        const expiry = document.getElementById('expiry').value;
+        const cvv    = document.getElementById('cvv').value;
 
-    if (expiry.length !== 5) {
-        Swal.fire({ title:'Invalid Expiry', text:'Use MM/YY format.',
-            icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
-        return;
-    }
+        if (card.length !== 16) {
+            Swal.fire({ title:'Invalid Card', text:'Card number must be exactly 16 digits.',
+                icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
+            return;
+        }
 
-    const [em, ey] = expiry.split('/').map(Number);
-    const now = new Date();
-    const nowYear = now.getFullYear(), nowMonth = now.getMonth() + 1;
+        if (expiry.length !== 5) {
+            Swal.fire({ title:'Invalid Expiry', text:'Use MM/YY format.',
+                icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
+            return;
+        }
 
-    // Month range check (01–12)
-    if (em < 1 || em > 12) {
-        Swal.fire({ title:'Invalid Expiry', text:'Month must be between 01 and 12.',
-            icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
-        return;
-    }
+        const [em, ey] = expiry.split('/').map(Number);
+        const now = new Date();
+        const nowYear = now.getFullYear(), nowMonth = now.getMonth() + 1;
 
-    // Expired check
-    if ((2000+ey) < nowYear ||
-        ((2000+ey) === nowYear && em < nowMonth)) {
-        Swal.fire({ title:'Card Expired', text:'Please use a valid card.',
-            icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
-        return;
-    }
+        // Month range check (01–12)
+        if (em < 1 || em > 12) {
+            Swal.fire({ title:'Invalid Expiry', text:'Month must be between 01 and 12.',
+                icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
+            return;
+        }
 
-    if (cvv.length !== 3) {
-        Swal.fire({ title:'Invalid CVV', text:'CVV must be 3 digits.',
-            icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
-        return;
+        // Expired check
+        if ((2000+ey) < nowYear ||
+            ((2000+ey) === nowYear && em < nowMonth)) {
+            Swal.fire({ title:'Card Expired', text:'Please use a valid card.',
+                icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
+            return;
+        }
+
+        if (cvv.length !== 3) {
+            Swal.fire({ title:'Invalid CVV', text:'CVV must be 3 digits.',
+                icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
+            return;
+        }
+
+    } else {
+
+        // E-wallet validation
+        const phone = document.getElementById('ewalletPhone').value;
+        const pin   = document.getElementById('ewalletPin').value;
+
+        // Expect format +60 (2 digits, space, 7-8 digits)
+        if (!/^\+60\d{2} \d{7,8}$/.test(phone)) {
+            Swal.fire({ title:'Invalid Phone Number', text:'Use the format +60xx xxxxxxxx.',
+                icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
+            return;
+        }
+
+        if (pin.length !== 6) {
+            Swal.fire({ title:'Invalid PIN', text:'PIN must be exactly 6 digits.',
+                icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
+            return;
+        }
     }
 
     // Confirm payment
+    const methodLabel = currentPaymentMethod === 'card' ? 'Card' : 'E-Wallet';
     Swal.fire({
         title: 'Confirm Payment',
-        html: `Pay <strong style="color:#d4af37;">RM ${(SUBTOTAL + currentShipping).toFixed(2)}</strong>?`,
+        html: `Pay <strong style="color:#d4af37;">RM ${(SUBTOTAL + currentShipping).toFixed(2)}</strong> via <strong style="color:#d4af37;">${methodLabel}</strong>?`,
         icon: 'question',
         background: '#1a1a1a', color: '#fff',
         showCancelButton: true,
