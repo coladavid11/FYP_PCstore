@@ -17,13 +17,14 @@ if ($isLoggedIn) {
 }
 
 /* ── STATUS CONFIG ── */
+// 注意：数据库 enum 用 'delivered'，不是 'completed'
 function statusConfig(string $status): array
 {
     return match (strtolower($status)) {
         'processing' => ['label' => 'Processing', 'color' => '#ffc107', 'bg' => 'rgba(255,193,7,0.1)', 'icon' => 'fa-clock'],
         'packed' => ['label' => 'Packed', 'color' => '#17a2b8', 'bg' => 'rgba(23,162,184,0.1)', 'icon' => 'fa-box'],
         'shipped' => ['label' => 'Shipped', 'color' => '#007bff', 'bg' => 'rgba(0,123,255,0.1)', 'icon' => 'fa-truck'],
-        'completed' => ['label' => 'Completed', 'color' => '#28a745', 'bg' => 'rgba(40,167,69,0.1)', 'icon' => 'fa-check-circle'],
+        'delivered' => ['label' => 'Delivered', 'color' => '#28a745', 'bg' => 'rgba(40,167,69,0.1)', 'icon' => 'fa-check-circle'],
         'cancelled' => ['label' => 'Cancelled', 'color' => '#dc3545', 'bg' => 'rgba(220,53,69,0.1)', 'icon' => 'fa-times-circle'],
         default => ['label' => ucfirst($status), 'color' => '#aaa', 'bg' => 'rgba(170,170,170,0.1)', 'icon' => 'fa-circle'],
     };
@@ -363,7 +364,7 @@ function statusConfig(string $status): array
             <?php
             /* ── STATS ── */
             $total = count($orders);
-            $completed = count(array_filter($orders, fn($o) => strtolower($o['order_status']) === 'completed'));
+            $completed = count(array_filter($orders, fn($o) => strtolower($o['order_status']) === 'delivered'));
             $ongoing = count(array_filter($orders, fn($o) => in_array(strtolower($o['order_status']), ['processing', 'packed', 'shipped'])));
             $cancelled = count(array_filter($orders, fn($o) => strtolower($o['order_status']) === 'cancelled'));
             $spent = array_sum(array_column($orders, 'grand_total'));
@@ -394,7 +395,7 @@ function statusConfig(string $status): array
                         <div class="sp-icon"><i class="fa fa-check-circle"></i></div>
                         <div>
                             <div class="sp-val"><?php echo $completed; ?></div>
-                            <div class="sp-lbl">Completed</div>
+                            <div class="sp-lbl">Delivered</div>
                         </div>
                     </div>
                 </div>
@@ -432,7 +433,7 @@ function statusConfig(string $status): array
                         (<?php echo count(array_filter($orders, fn($o) => strtolower($o['order_status']) === 'processing')); ?>)</button>
                     <button class="filter-tab" data-filter="packed">Packed</button>
                     <button class="filter-tab" data-filter="shipped">Shipped</button>
-                    <button class="filter-tab" data-filter="completed">Completed (<?php echo $completed; ?>)</button>
+                    <button class="filter-tab" data-filter="delivered">Delivered (<?php echo $completed; ?>)</button>
                     <button class="filter-tab" data-filter="cancelled">Cancelled (<?php echo $cancelled; ?>)</button>
                 </div>
 
@@ -519,7 +520,7 @@ function statusConfig(string $status): array
                                         <i class="fa fa-eye"></i> View Details
                                     </a>
 
-                                    <?php if (strtolower($order['order_status']) === 'completed'): ?>
+                                    <?php if (strtolower($order['order_status']) === 'delivered'): ?>
                                         <button class="btn-oa btn-oa-outline" onclick="reorder(<?php echo $order['order_id']; ?>)">
                                             <i class="fa fa-rotate-right"></i> Reorder
                                         </button>
