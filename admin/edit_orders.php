@@ -344,6 +344,7 @@ body { display:flex; background:#f5f5f5; }
     <a href="orders.php" class="sidebar-active">🛒 Orders</a>
     <a href="users.php">👥 Users</a>
     <a href="shipping_rates.php">🚚 Shipping Rates</a>
+    <a href="sales_report.php">📊 Sales Report</a>
     <a href="admin.php">⚙ Admin</a>
 </div>
 

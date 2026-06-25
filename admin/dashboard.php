@@ -345,6 +345,7 @@ WHERE order_status='cancelled'
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
         <a href="shipping_rates.php">🚚 Shipping Rates</a>
+        <a href="sales_report.php">📊 Sales Report</a>
         <a href="admins.php">⚙ Admin</a>
 
     </div>
@@ -388,7 +389,7 @@ WHERE order_status='cancelled'
                 </div>
             </a>
 
-            <a href="revenue.php">
+            <a href="sales_report.php">
                 <div class="card">
                     <h3>Total Revenue</h3>
                     <p>

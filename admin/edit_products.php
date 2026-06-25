@@ -59,6 +59,7 @@ if (isset($_POST['update_product'])) {
     $brand_id = intval($_POST['brand_id'] ?? 0);
     $price = floatval($_POST['price'] ?? 0);
     $stock = intval($_POST['stock'] ?? 0);
+    $status = trim($_POST['status'] ?? 'active'); 
     $description = trim($_POST['description'] ?? '');
 
     /* Spec fields */
@@ -75,8 +76,7 @@ if (isset($_POST['update_product'])) {
     if ($deleteImage && !empty($product->image)) {
         /* DELETE existing image from disk */
         $oldPath = '../image/products/' . basename($product->image);
-        // also handle if stored as full relative path
-        $oldPathFull = $product->image; // e.g. "../image/products/product_1.jpg"
+        $oldPathFull = $product->image; 
         if (file_exists($oldPathFull)) {
             unlink($oldPathFull);
         } elseif (file_exists($oldPath)) {
@@ -118,9 +118,9 @@ if (isset($_POST['update_product'])) {
     }
 
     if ($msg === '') {
-        /* ── BUILD UPDATE QUERY DYNAMICALLY ── */
+        /* ── BUILD UPDATE QUERY DYNAMICALLY WITH STATUS ── */
         $setClauses = "name=:name, category_id=:category_id, brand_id=:brand_id,
-                       price=:price, stock=:stock, description=:description, image=:image";
+                       price=:price, stock=:stock, status=:status, description=:description, image=:image";
         foreach ($specFields as $col => $label) {
             $setClauses .= ", `$col`=:$col";
         }
@@ -133,6 +133,7 @@ if (isset($_POST['update_product'])) {
         $upStmt->bindParam(':brand_id', $brand_id, PDO::PARAM_INT);
         $upStmt->bindParam(':price', $price, PDO::PARAM_STR);
         $upStmt->bindParam(':stock', $stock, PDO::PARAM_INT);
+        $upStmt->bindParam(':status', $status, PDO::PARAM_STR); 
         $upStmt->bindParam(':description', $description, PDO::PARAM_STR);
         $upStmt->bindParam(':image', $image, PDO::PARAM_STR);
         $upStmt->bindParam(':id', $id, PDO::PARAM_INT);
@@ -376,6 +377,16 @@ if (isset($_POST['update_product'])) {
             margin-left: 2px;
         }
 
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         input[type="text"],
         input[type="number"],
         input[type="file"],
@@ -391,7 +402,6 @@ if (isset($_POST['update_product'])) {
             background: #fafafa;
             transition: border-color 0.2s;
             display: block;
-            /* Ensures consistent layout behavior across browsers */
         }
 
         input:focus,
@@ -417,7 +427,6 @@ if (isset($_POST['update_product'])) {
             overflow: hidden;
             background: #fafafa;
             width: 100%;
-            /* Force full-width growth inside grid item */
         }
 
         .input-prefix span {
@@ -433,9 +442,7 @@ if (isset($_POST['update_product'])) {
             border: none;
             border-radius: 0;
             flex: 1;
-            /* Instructs input to absorb all left-over wide space */
             min-width: 0;
-            /* Keeps default HTML sizing from cracking flex bounds */
             background: transparent;
         }
 
@@ -453,6 +460,88 @@ if (isset($_POST['update_product'])) {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 14px;
+        }
+
+        /* ── STATUS FIELD STYLING ── */
+        .status-options {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            margin-top: 6px;
+            margin-bottom: 8px;
+        }
+
+        .status-option {
+            flex: 1;
+        }
+
+        .status-option input[type="radio"] {
+            display: none; 
+        }
+
+        .status-option label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.2s ease;
+            user-select: none;
+            text-transform: none; 
+            letter-spacing: normal;
+        }
+
+        .status-option label i {
+            font-size: 0.95rem;
+        }
+
+        .status-option label:hover {
+            border-color: #bbb;
+            background: #fafafa;
+        }
+
+        .status-option input[type="radio"]#status_active:checked + .label-active {
+            background-color: #e8f5e9;
+            border-color: #28a745;
+            color: #1b5e20;
+        }
+
+        .status-option input[type="radio"]#status_inactive:checked + .label-inactive {
+            background-color: #f8c1ccf9;
+            border-color: #be4040;
+            color: #343a40;
+        }
+
+        .form-hint {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+            margin-bottom: 12px;
+        }
+
+        .inactive-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 12px 15px;
+            border-radius: 4px;
+            font-size: 0.82rem;
+            margin-top: 10px;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .inactive-warning i {
+            font-size: 1rem;
+            color: #e0a800;
+            margin-top: 2px;
         }
 
         /* ── SPEC TABS ── */
@@ -642,7 +731,6 @@ if (isset($_POST['update_product'])) {
 
 <body>
 
-    <!-- SIDEBAR -->
     <div class="sidebar">
         <h2>Admin</h2>
         <a href="dashboard.php">🏠 Dashboard</a>
@@ -652,12 +740,12 @@ if (isset($_POST['update_product'])) {
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
         <a href="shipping_rates.php">🚚 Shipping Rates</a>
+        <a href="sales_report.php">📊 Sales Report</a>
         <a href="admin.php">⚙ Admin</a>
     </div>
 
     <div class="main">
 
-        <!-- TOPBAR -->
         <div class="topbar">
             <div>
                 <h1><i class="fa fa-pen-to-square" style="color:#d4af37;margin-right:8px;"></i>Edit Product</h1>
@@ -684,7 +772,6 @@ if (isset($_POST['update_product'])) {
 
             <div class="form-layout">
 
-                <!-- ════════ LEFT COLUMN ════════ -->
                 <div>
 
                     <div class="card">
@@ -693,7 +780,6 @@ if (isset($_POST['update_product'])) {
                             <h3>Basic Information</h3>
                         </div>
 
-                        <!-- 1. BASIC INFO -->
                         <div class="card-body">
                             <div class="form-group">
                                 <label>Product Name <span class="req">*</span></label>
@@ -756,6 +842,35 @@ if (isset($_POST['update_product'])) {
                             </div>
 
                             <div class="form-group">
+                                <label class="form-label">Status <span class="req">*</span></label>
+                                <div class="status-options">
+                                    <div class="status-option">
+                                        <input type="radio" id="status_active" name="status" value="active"
+                                            <?php echo (!isset($product->status) || $product->status === 'active') ? 'checked' : ''; ?>>
+                                        <label for="status_active" class="label-active">
+                                            <i class="fa fa-circle-check"></i> Active
+                                        </label>
+                                    </div>
+                                    <div class="status-option">
+                                        <input type="radio" id="status_inactive" name="status" value="inactive"
+                                            <?php echo (isset($product->status) && $product->status === 'inactive') ? 'checked' : ''; ?>>
+                                        <label for="status_inactive" class="label-inactive">
+                                            <i class="fa fa-circle-xmark"></i> Inactive
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-hint">Inactive products are hidden from the storefront.</div>
+                                
+                                <div class="inactive-warning" id="inactiveWarn" style="display: <?php echo (isset($product->status) && $product->status === 'inactive') ? 'flex' : 'none'; ?>;">
+                                    <i class="fa fa-triangle-exclamation"></i>
+                                    <div>
+                                        <strong>Note:</strong> This product currently has <strong><?php echo intval($product->stock); ?></strong> unit<?php echo intval($product->stock) != 1 ? 's' : ''; ?> remaining in stock.
+                                        Setting it to Inactive will completely hide it from the storefront workspace.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
                                 <label>Description</label>
                                 <textarea name="description" rows="5"
                                     placeholder="Describe this product…"><?php echo htmlspecialchars($product->description); ?></textarea>
@@ -764,7 +879,6 @@ if (isset($_POST['update_product'])) {
                         </div>
                     </div>
 
-                    <!-- 2. SPEC FIELDS (TABBED) -->
                     <div class="card">
                         <div class="card-header">
                             <i class="fa fa-microchip"></i>
@@ -772,7 +886,6 @@ if (isset($_POST['update_product'])) {
                         </div>
                         <div class="card-body">
 
-                            <!-- TAB BUTTONS -->
                             <div class="spec-tabs">
                                 <?php
                                 $tabGroups = [
@@ -793,7 +906,6 @@ if (isset($_POST['update_product'])) {
                                     <?php $first = false; endforeach; ?>
                             </div>
 
-                            <!-- TAB PANELS -->
                             <?php
                             $first = true;
                             foreach ($tabGroups as $tabKey => $tab):
@@ -817,14 +929,12 @@ if (isset($_POST['update_product'])) {
                                 <?php $first = false; endforeach; ?>
 
                         </div>
-                    </div><!-- spec card -->
+                    </div>
 
-                </div><!-- LEFT -->
+                </div>
 
-                <!-- ════════ RIGHT COLUMN ════════ -->
                 <div>
 
-                    <!-- PRODUCT IMAGE -->
                     <div class="card">
                         <div class="card-header">
                             <i class="fa fa-image"></i>
@@ -832,7 +942,6 @@ if (isset($_POST['update_product'])) {
                         </div>
                         <div class="card-body">
 
-                            <!-- CURRENT IMAGE PREVIEW -->
                             <div class="img-preview-wrap">
                                 <?php if (!empty($product->image)): ?>
                                     <img src="<?php echo htmlspecialchars($product->image); ?>" id="imgPreview"
@@ -852,14 +961,12 @@ if (isset($_POST['update_product'])) {
                             </div>
 
                             <?php if (!empty($product->image)): ?>
-                                <!-- CURRENT IMAGE PATH -->
                                 <div
                                     style="font-size:0.72rem;color:#aaa;margin-bottom:12px;word-break:break-all;padding:6px 10px;background:#fafafa;border-radius:4px;border:1px solid #f0f0f0;">
                                     <i class="fa fa-folder-open" style="color:#d4af37;margin-right:5px;"></i>
                                     <?php echo htmlspecialchars(basename($product->image)); ?>
                                 </div>
 
-                                <!-- DELETE CHECKBOX -->
                                 <div class="delete-img-wrap">
                                     <input type="checkbox" name="delete_image" id="deleteImage" value="1"
                                         onchange="toggleDeleteImg(this)">
@@ -870,7 +977,6 @@ if (isset($_POST['update_product'])) {
                                 </div>
                             <?php endif; ?>
 
-                            <!-- UPLOAD NEW IMAGE -->
                             <div class="form-group">
                                 <label>Upload New Image</label>
                                 <input type="file" name="image" id="newImageInput"
@@ -878,7 +984,6 @@ if (isset($_POST['update_product'])) {
                                     onchange="previewNewImage(this)">
                             </div>
 
-                            <!-- NAMING NOTE -->
                             <div class="upload-note">
                                 <i class="fa fa-circle-info"></i>
                                 <div>
@@ -890,9 +995,8 @@ if (isset($_POST['update_product'])) {
                             </div>
 
                         </div>
-                    </div><!-- image card -->
+                    </div>
 
-                    <!-- PRODUCT META (read-only info) -->
                     <div class="card">
                         <div class="card-header">
                             <i class="fa fa-circle-info"></i>
@@ -919,7 +1023,6 @@ if (isset($_POST['update_product'])) {
                         </div>
                     </div>
 
-                    <!-- SAVE ACTIONS -->
                     <div class="card">
                         <div class="card-body">
                             <button type="submit" name="update_product" class="btn-save"
@@ -933,13 +1036,13 @@ if (isset($_POST['update_product'])) {
                         </div>
                     </div>
 
-                </div><!-- RIGHT -->
+                </div>
 
-            </div><!-- form-layout -->
+            </div>
 
         </form>
 
-    </div><!-- main -->
+    </div>
 
     <script>
         /* ── SPEC TABS ── */
@@ -951,7 +1054,7 @@ if (isset($_POST['update_product'])) {
             document.getElementById('tab-' + key).classList.add('active');
         }
 
-        /* ── IMAGE PREVIEW on new file select ── */
+        /* ── IMAGE PREVIEW ── */
         function previewNewImage(input) {
             const file = input.files[0];
             if (!file) return;
@@ -975,7 +1078,6 @@ if (isset($_POST['update_product'])) {
             const placeholder = document.getElementById('imgPlaceholder');
 
             if (checkbox.checked) {
-                /* Grey out preview to show it will be deleted */
                 if (preview) preview.style.opacity = '0.3';
                 newInput.disabled = true;
                 newInput.value = '';
@@ -987,7 +1089,25 @@ if (isset($_POST['update_product'])) {
             }
         }
 
-        /* ── CONFIRM BEFORE LEAVE if form is dirty ── */
+        /* ── STATUS TOGGLE ENGINE ── */
+        document.addEventListener("DOMContentLoaded", function() {
+            const activeRadio = document.getElementById('status_active');
+            const inactiveRadio = document.getElementById('status_inactive');
+            const warningBox = document.getElementById('inactiveWarn');
+
+            function toggleWarningPanel() {
+                if (inactiveRadio.checked) {
+                    warningBox.style.display = 'flex';
+                } else {
+                    warningBox.style.display = 'none';
+                }
+            }
+
+            activeRadio.addEventListener('change', toggleWarningPanel);
+            inactiveRadio.addEventListener('change', toggleWarningPanel);
+        });
+
+        /* ── CONFIRM BEFORE LEAVE ── */
         let formChanged = false;
         document.getElementById('editForm').addEventListener('change', () => { formChanged = true; });
         window.addEventListener('beforeunload', function (e) {

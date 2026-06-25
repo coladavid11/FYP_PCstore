@@ -154,6 +154,7 @@ $rates = $query->fetchAll(PDO::FETCH_OBJ);
         <a href="orders.php">🛒 Orders</a>
         <a href="users.php">👥 Users</a>
         <a href="shipping_rates.php" class="active">🚚 Shipping Rates</a>
+        <a href="sales_report.php">📊 Sales Report</a>
         <a href="admins.php">⚙ Admin</a>
     </div>
 
