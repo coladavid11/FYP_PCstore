@@ -237,37 +237,6 @@ if ($isLoggedIn && !empty($cartItems)) {
         $stockMap[$item['cart_id']] = $row ? intval($row['stock']) : 0;
     }
 }
-
-// =======================
-// FETCH ORDER HISTORY
-// =======================
-$orderHistory = [];
-if ($isLoggedIn) {
-    $oStmt = $dbh->prepare("
-        SELECT o.*, 
-               COUNT(oi.order_id) as item_count
-        FROM tblorders o
-        LEFT JOIN tblorder_item oi ON o.order_id = oi.order_id
-        WHERE o.user_id = ?
-        GROUP BY o.order_id
-        ORDER BY o.created_at DESC
-        LIMIT 3
-    ");
-    $oStmt->execute([$user_id]);
-    $orderHistory = $oStmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function orderStatusConfig(string $status): array
-{
-    return match (strtolower($status)) {
-        'processing' => ['label' => 'Processing', 'color' => '#ffc107', 'bg' => 'rgba(255,193,7,0.1)', 'icon' => 'fa-clock'],
-        'packed' => ['label' => 'Packed', 'color' => '#17a2b8', 'bg' => 'rgba(23,162,184,0.1)', 'icon' => 'fa-box'],
-        'shipped' => ['label' => 'Shipped', 'color' => '#007bff', 'bg' => 'rgba(0,123,255,0.1)', 'icon' => 'fa-truck'],
-        'completed' => ['label' => 'Completed', 'color' => '#28a745', 'bg' => 'rgba(40,167,69,0.1)', 'icon' => 'fa-check-circle'],
-        'cancelled' => ['label' => 'Cancelled', 'color' => '#dc3545', 'bg' => 'rgba(220,53,69,0.1)', 'icon' => 'fa-times-circle'],
-        default => ['label' => ucfirst($status), 'color' => '#aaa', 'bg' => 'rgba(170,170,170,0.1)', 'icon' => 'fa-circle'],
-    };
-}
 ?>
 
 <!DOCTYPE html>
@@ -348,97 +317,6 @@ function orderStatusConfig(string $status): array
             display: none;
         }
 
-        /* ── ORDER HISTORY ── */
-        .history-section {
-            margin-top: 40px;
-        }
-
-        .history-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.4rem;
-            color: #fff;
-            margin-bottom: 6px;
-        }
-
-        .history-subtitle {
-            font-size: 0.78rem;
-            color: #555;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 20px;
-        }
-
-        .order-row {
-            background: #121212;
-            border: 1px solid #1e1e1e;
-            border-radius: 10px;
-            padding: 16px 18px;
-            margin-bottom: 10px;
-            transition: border-color 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-            text-decoration: none;
-        }
-
-        .order-row:hover {
-            border-color: #d4af37;
-        }
-
-        .order-num {
-            font-size: 0.88rem;
-            font-weight: 700;
-            color: #d4af37;
-            margin-bottom: 2px;
-        }
-
-        .order-date {
-            font-size: 0.75rem;
-            color: #555;
-        }
-
-        .order-items-count {
-            font-size: 0.78rem;
-            color: #666;
-        }
-
-        .order-total {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #d4af37;
-        }
-
-        .order-status-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            border: 1px solid;
-        }
-
-        .view-all-btn {
-            display: block;
-            text-align: center;
-            padding: 10px;
-            background: transparent;
-            border: 1px solid #2a2a2a;
-            border-radius: 8px;
-            color: #555;
-            font-size: 0.8rem;
-            text-decoration: none;
-            margin-top: 8px;
-            transition: all 0.2s;
-        }
-
-        .view-all-btn:hover {
-            border-color: #d4af37;
-            color: #d4af37;
-        }
         /* ══ ORDER SUMMARY PANEL ══════════════════════════════════ */
         .summary-panel {
             background: #111;
@@ -767,69 +645,6 @@ function orderStatusConfig(string $status): array
 
                     <?php endif; ?>
 
-                <?php endif; ?>
-
-                <!-- ===================== -->
-                <!-- ORDER HISTORY SECTION -->
-                <!-- ===================== -->
-                <?php if ($isLoggedIn): ?>
-                    <div class="history-section">
-
-                        <div class="history-title">Order History</div>
-                        <div class="history-subtitle">Your recent purchases</div>
-
-                        <?php if (empty($orderHistory)): ?>
-                            <div class="dark-card p-4 text-center">
-                                <i class="fa fa-box-open fa-2x mb-2" style="color:#2a2a2a;"></i>
-                                <p class="text-soft mb-0">No orders yet.</p>
-                            </div>
-                        <?php else: ?>
-
-                            <?php foreach ($orderHistory as $order):
-                                $cfg = orderStatusConfig($order['order_status']);
-                                ?>
-                                <a href="myorder_detail.php?id=<?php echo $order['order_id']; ?>" class="order-row">
-
-                                    <!-- Left: order number + date -->
-                                    <div>
-                                        <div class="order-num"><?php echo htmlspecialchars($order['order_number']); ?></div>
-                                        <div class="order-date">
-                                            <i class="fa fa-calendar me-1"></i>
-                                            <?php echo date('d M Y', strtotime($order['created_at'])); ?>
-                                        </div>
-                                    </div>
-
-                                    <!-- Middle: item count -->
-                                    <div class="order-items-count">
-                                        <i class="fa fa-box me-1"></i>
-                                        <?php echo $order['item_count']; ?> item<?php echo $order['item_count'] != 1 ? 's' : ''; ?>
-                                    </div>
-
-                                    <!-- Status pill -->
-                                    <span class="order-status-pill"
-                                        style="color:<?php echo $cfg['color']; ?>; background:<?php echo $cfg['bg']; ?>; border-color:<?php echo $cfg['color']; ?>55;">
-                                        <i class="fa <?php echo $cfg['icon']; ?>"></i>
-                                        <?php echo $cfg['label']; ?>
-                                    </span>
-
-                                    <!-- Total -->
-                                    <div class="order-total">
-                                        RM <?php echo number_format($order['grand_total'], 2); ?>
-                                    </div>
-
-                                    <!-- Arrow -->
-                                    <i class="fa fa-chevron-right" style="color:#333; font-size:0.8rem;"></i>
-
-                                </a>
-                            <?php endforeach; ?>
-
-                            <a href="myorder.php" class="view-all-btn">
-                                View All Orders <i class="fa fa-arrow-right ms-1"></i>
-                            </a>
-
-                        <?php endif; ?>
-
-                    </div>
                 <?php endif; ?>
 
             </div>
