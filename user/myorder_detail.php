@@ -115,6 +115,20 @@ $paymentCfg = paymentStatusConfig($order['payment_status'] ?? 'pending');
 $isCancelled = strtolower($order['order_status']) === 'cancelled';
 $isDelivered = strtolower($order['order_status']) === 'delivered';  // ← 修正：用 'delivered'
 
+/* ── FETCH EXISTING REVIEWS FOR THIS ORDER (for edit prefill) ── */
+$existingReviews = [];
+if ($isDelivered) {
+    $erStmt = $dbh->prepare("
+        SELECT product_id, rating, review_text
+        FROM tblreviews
+        WHERE user_id = ? AND order_id = ?
+    ");
+    $erStmt->execute([$user_id, $order_id]);
+    foreach ($erStmt->fetchAll(PDO::FETCH_ASSOC) as $er) {
+        $existingReviews[$er['product_id']] = $er;
+    }
+}
+
 /* ── TRACKING: find current step ── */
 $currentStep = $isCancelled ? -1 : array_search(strtolower($order['order_status']), $STATUS_FLOW);
 if ($currentStep === false)
@@ -663,7 +677,7 @@ $invoiceData = json_encode([
                             ['key' => 'processing', 'icon' => 'fa-clock', 'label' => 'Order Placed'],
                             ['key' => 'packed', 'icon' => 'fa-box', 'label' => 'Packed'],
                             ['key' => 'shipped', 'icon' => 'fa-truck', 'label' => 'Shipped'],
-                            ['key' => 'delivered', 'icon' => 'fa-check-circle', 'label' => 'Delivered'],  // ← 修正
+                            ['key' => 'delivered', 'icon' => 'fa-circle-check', 'label' => 'Delivered'],  // ← FA6 正确名称
                         ];
                         $progressPct = $currentStep === 0 ? 0 : round(($currentStep / (count($steps) - 1)) * 100);
                         ?>
@@ -674,6 +688,13 @@ $invoiceData = json_encode([
                             <?php foreach ($steps as $i => $step):
                                 $done = $i < $currentStep;
                                 $current = $i === $currentStep;
+
+                                // When status is delivered (last step), force done so dot shows gold filled + ✓ Done
+                                if ($isDelivered && $i === $currentStep) {
+                                    $done    = true;
+                                    $current = false;
+                                }
+
                                 $dotCls = $done ? 'done' : ($current ? 'current' : '');
                                 $lblCls = $done ? 'done' : ($current ? 'current' : '');
                                 ?>
@@ -739,10 +760,20 @@ $invoiceData = json_encode([
                                     RM <?php echo number_format($item['product_price'], 2); ?> ×
                                     <?php echo $item['quantity']; ?>
                                 </div>
-                                <?php if ($isDelivered): ?>
-                                    <button class="btn-act btn-act-info mt-2" style="padding:5px 12px;font-size:0.72rem;"
-                                        onclick="reviewProduct(<?php echo $item['product_id']; ?>, '<?php echo htmlspecialchars(addslashes($item['product_name'])); ?>')">
-                                        <i class="fa fa-star"></i> Review
+                                <?php if ($isDelivered):
+                                    $hasReview = isset($existingReviews[$item['product_id']]);
+                                    $er        = $hasReview ? $existingReviews[$item['product_id']] : null;
+                                ?>
+                                    <button class="btn-act <?php echo $hasReview ? 'btn-act-outline' : 'btn-act-info'; ?> mt-2"
+                                            style="padding:5px 12px;font-size:0.72rem;"
+                                            onclick="reviewProduct(
+                                                <?php echo $item['product_id']; ?>,
+                                                '<?php echo htmlspecialchars(addslashes($item['product_name'])); ?>',
+                                                <?php echo $hasReview ? $er['rating'] : 0; ?>,
+                                                '<?php echo $hasReview ? htmlspecialchars(addslashes($er['review_text'] ?? '')) : ''; ?>'
+                                            )">
+                                        <i class="fa <?php echo $hasReview ? 'fa-pen-to-square' : 'fa-star'; ?>"></i>
+                                        <?php echo $hasReview ? 'Edit Review' : 'Review'; ?>
                                     </button>
                                 <?php endif; ?>
                             </div>
@@ -1113,7 +1144,7 @@ $invoiceData = json_encode([
                 <div class="modal-header" style="border-color:#1e1e1e;">
                     <h5 class="modal-title" style="color:#fff;">
                         <i class="fa fa-star me-2" style="color:#d4af37;"></i>
-                        Review: <span id="reviewProductName"></span>
+                        <span id="reviewModalTitle">Review</span>: <span id="reviewProductName"></span>
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -1145,7 +1176,7 @@ $invoiceData = json_encode([
                             placeholder="Share your experience with this product…"></textarea>
                     </div>
 
-                    <button class="btn-act btn-act-gold w-100" onclick="submitReview()">
+                    <button id="reviewSubmitBtn" class="btn-act btn-act-gold w-100" onclick="submitReview()">
                         <i class="fa fa-paper-plane"></i> Submit Review
                     </button>
                 </div>
@@ -1261,15 +1292,28 @@ $invoiceData = json_encode([
 
         function reviewOrder() {
             const firstItem = <?php echo json_encode(!empty($items) ? ['id' => $items[0]['product_id'], 'name' => $items[0]['product_name']] : null); ?>;
-            if (firstItem) reviewProduct(firstItem.id, firstItem.name);
+            if (firstItem) reviewProduct(firstItem.id, firstItem.name, 0, '');
         }
 
-        function reviewProduct(pid, name) {
+        function reviewProduct(pid, name, prefillRating, prefillText) {
             document.getElementById('reviewProductId').value = pid;
             document.getElementById('reviewProductName').textContent = name;
-            selectedStar = 0;
+
+            // Update modal title based on edit or new
+            const isEdit = prefillRating > 0 || prefillText !== '';
+            document.getElementById('reviewModalTitle').textContent = isEdit ? 'Edit Review' : 'Review';
+
+            // Prefill rating
+            selectedStar = prefillRating || 0;
             resetStars();
-            document.getElementById('reviewText').value = '';
+
+            // Prefill review text
+            document.getElementById('reviewText').value = prefillText || '';
+
+            // Update submit button label
+            document.getElementById('reviewSubmitBtn').innerHTML =
+                '<i class="fa fa-paper-plane"></i> ' + (isEdit ? 'Update Review' : 'Submit Review');
+
             new bootstrap.Modal(document.getElementById('reviewModal')).show();
         }
 
@@ -1289,7 +1333,7 @@ $invoiceData = json_encode([
         }
 
         function submitReview() {
-            const pid = document.getElementById('reviewProductId').value;
+            const pid    = document.getElementById('reviewProductId').value;
             const rating = selectedStar;
             const review = document.getElementById('reviewText').value.trim();
 
@@ -1310,11 +1354,12 @@ $invoiceData = json_encode([
                     bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
                     if (data.status === 'success') {
                         Swal.fire({
-                            icon: 'success', title: 'Review Submitted!',
-                            text: 'Thank you for your feedback.',
+                            icon: 'success',
+                            title: data.message.includes('updated') ? 'Review Updated!' : 'Review Submitted!',
+                            text: data.message,
                             background: '#1a1a1a', color: '#fff', confirmButtonColor: '#d4af37',
                             timer: 2000, showConfirmButton: false, timerProgressBar: true
-                        });
+                        }).then(() => location.reload()); // reload so button switches to "Edit Review"
                     } else {
                         Swal.fire({
                             icon: 'error', title: 'Error', text: data.message,

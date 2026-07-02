@@ -10,11 +10,11 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
+$user_id    = $_SESSION['user_id'];
 $product_id = intval($_POST['product_id'] ?? 0);
-$order_id = intval($_POST['order_id'] ?? 0);
-$rating = intval($_POST['rating'] ?? 0);
-$review = trim($_POST['review'] ?? '');
+$order_id   = intval($_POST['order_id']   ?? 0);
+$rating     = intval($_POST['rating']     ?? 0);
+$review     = trim($_POST['review']       ?? '');
 
 /* ── INPUT VALIDATION ── */
 if ($product_id <= 0 || $order_id <= 0) {
@@ -50,7 +50,7 @@ if (!$order) {
 
 if (strtolower($order['order_status']) !== 'delivered') {
     echo json_encode([
-        'status' => 'error',
+        'status'  => 'error',
         'message' => 'You can only review products from delivered orders.'
     ]);
     exit();
@@ -65,56 +65,79 @@ $itemStmt = $dbh->prepare("
 $itemStmt->execute([$order_id, $product_id]);
 if (!$itemStmt->fetch()) {
     echo json_encode([
-        'status' => 'error',
+        'status'  => 'error',
         'message' => 'This product was not part of the order.'
     ]);
     exit();
 }
 
-/* ── CHECK FOR DUPLICATE REVIEW ── */
+/* ── CHECK IF REVIEW ALREADY EXISTS ── */
 $dupStmt = $dbh->prepare("
     SELECT review_id FROM tblreviews
     WHERE user_id = ? AND product_id = ? AND order_id = ?
     LIMIT 1
 ");
 $dupStmt->execute([$user_id, $product_id, $order_id]);
-if ($dupStmt->fetch()) {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'You have already reviewed this product for this order.'
-    ]);
-    exit();
-}
+$existing = $dupStmt->fetch(PDO::FETCH_ASSOC);
 
-/* ── INSERT REVIEW ── */
 $now = date('Y-m-d H:i:s');
 
-$insert = $dbh->prepare("
-    INSERT INTO tblreviews
-        (product_id, order_id, user_id, rating, review_text, created_at, updated_at)
-    VALUES
-        (?, ?, ?, ?, ?, ?, ?)
-");
-
-$success = $insert->execute([
-    $product_id,
-    $order_id,
-    $user_id,
-    $rating,
-    htmlspecialchars($review),
-    $now,
-    $now
-]);
-
-if ($success) {
-    echo json_encode([
-        'status' => 'success',
-        'message' => 'Thank you! Your review has been submitted.'
+if ($existing) {
+    /* ── UPDATE existing review ── */
+    $updateStmt = $dbh->prepare("
+        UPDATE tblreviews
+        SET rating      = ?,
+            review_text = ?,
+            updated_at  = ?
+        WHERE review_id = ?
+    ");
+    $success = $updateStmt->execute([
+        $rating,
+        htmlspecialchars($review),
+        $now,
+        $existing['review_id']
     ]);
+
+    if ($success) {
+        echo json_encode([
+            'status'  => 'success',
+            'message' => 'Your review has been updated.'
+        ]);
+    } else {
+        echo json_encode([
+            'status'  => 'error',
+            'message' => 'Failed to update your review. Please try again.'
+        ]);
+    }
+
 } else {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'Failed to save your review. Please try again.'
+    /* ── INSERT new review ── */
+    $insert = $dbh->prepare("
+        INSERT INTO tblreviews
+            (product_id, order_id, user_id, rating, review_text, created_at, updated_at)
+        VALUES
+            (?, ?, ?, ?, ?, ?, ?)
+    ");
+    $success = $insert->execute([
+        $product_id,
+        $order_id,
+        $user_id,
+        $rating,
+        htmlspecialchars($review),
+        $now,
+        $now
     ]);
+
+    if ($success) {
+        echo json_encode([
+            'status'  => 'success',
+            'message' => 'Thank you! Your review has been submitted.'
+        ]);
+    } else {
+        echo json_encode([
+            'status'  => 'error',
+            'message' => 'Failed to save your review. Please try again.'
+        ]);
+    }
 }
 ?>

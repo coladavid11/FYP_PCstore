@@ -10,6 +10,11 @@ if (!$isLoggedIn || !$user_id) {
     exit;
 }
 
+// ── Detect source: pcbuild or cart ───────────────────────────
+$source    = $_GET['source']   ?? 'cart';
+$build_id  = intval($_GET['build_id'] ?? 0);
+$isPCBuild = ($source === 'pcbuild' && $build_id > 0);
+
 // ── Fetch user profile (for default address) ──────────────────
 $uStmt = $dbh->prepare("
     SELECT u.*, s.state_name, sr.fee AS shipping_fee
@@ -34,158 +39,279 @@ foreach ($states as $s) {
     $shippingRates[$s['state_id']] = floatval($s['fee']);
 }
 
-// ── Fetch cart ────────────────────────────────────────────────
-$stmt = $dbh->prepare("SELECT * FROM tblcart WHERE user_id = ? AND status = 'active'");
-$stmt->execute([$user_id]);
-$cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// ── PC Build flow: fetch build + items ────────────────────────
+$buildData        = null;
+$buildItems       = [];
+$cartItems        = [];
+$subtotal         = 0;
+$originalSubtotal = 0.00;
+$buildDiscountAmt = 0.00;
+$assemblyFeeAmt   = 0.00;
+$assemblyIsService= true;
 
-$subtotal = 0;
-foreach ($cartItems as $item) {
-    $subtotal += $item['product_price'] * $item['quantity'];
+if ($isPCBuild) {
+    // Fetch build record (must belong to this user)
+    $bStmt = $dbh->prepare("
+        SELECT * FROM tbl_pc_build
+        WHERE build_id = ? AND user_id = ? AND status = 'draft'
+        LIMIT 1
+    ");
+    $bStmt->execute([$build_id, $user_id]);
+    $buildData = $bStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$buildData) {
+        // Invalid or already paid build — redirect away
+        header('Location: pcbuild.php');
+        exit;
+    }
+
+    // Fetch build items
+    $biStmt = $dbh->prepare("
+        SELECT bi.*, p.image
+        FROM tbl_pc_build_item bi
+        LEFT JOIN products p ON p.product_id = bi.product_id
+        WHERE bi.build_id = ?
+    ");
+    $biStmt->execute([$build_id]);
+    $buildItems = $biStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Calculate totals from build record
+    $originalSubtotal  = floatval($buildData['subtotal']);
+    $buildDiscountAmt  = floatval($buildData['discount_amt']);
+    $subtotal          = $originalSubtotal - $buildDiscountAmt; // discounted parts total
+    $assemblyFeeAmt    = floatval($buildData['assembly_fee']);   // 0.00 or -25.00
+    $assemblyIsService = (bool)$buildData['assembly_service'];
+
+} else {
+    // ── Cart flow: original logic unchanged ───────────────────
+    $stmt = $dbh->prepare("SELECT * FROM tblcart WHERE user_id = ? AND status = 'active'");
+    $stmt->execute([$user_id]);
+    $cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $subtotal = 0;
+    foreach ($cartItems as $item) {
+        $subtotal += $item['product_price'] * $item['quantity'];
+    }
+
+    if (!empty($cartItems)) {
+        foreach ($cartItems as $item) {
+            $pStmt = $dbh->prepare("SELECT price FROM products WHERE product_id = ?");
+            $pStmt->execute([$item['product_id']]);
+            $pRow    = $pStmt->fetch(PDO::FETCH_ASSOC);
+            $dbPrice = $pRow ? floatval($pRow['price']) : floatval($item['product_price']);
+            $originalSubtotal += $dbPrice * $item['quantity'];
+        }
+        $buildDiscountAmt = max(0, $originalSubtotal - $subtotal);
+
+        $aStmt = $dbh->prepare("SELECT assembly_service, assembly_fee FROM tbl_pc_build WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+        $aStmt->execute([$user_id]);
+        $aRow = $aStmt->fetch(PDO::FETCH_ASSOC);
+        if ($aRow) {
+            $assemblyFeeAmt    = floatval($aRow['assembly_fee']);
+            $assemblyIsService = (bool)$aRow['assembly_service'];
+        }
+    }
 }
 
 // Default shipping based on user's state
 $defaultShipping = floatval($userProfile['shipping_fee'] ?? 15.00);
 
-// ── Build discount & Assembly detection ──────────────────────
-$originalSubtotal  = 0.00;
-$buildDiscountAmt  = 0.00;
-$assemblyFeeAmt    = 0.00;
-$assemblyIsService = true; // default: assembled (free)
-
-if (!empty($cartItems)) {
-    foreach ($cartItems as $item) {
-        $pStmt = $dbh->prepare("SELECT price FROM products WHERE product_id = ?");
-        $pStmt->execute([$item['product_id']]);
-        $pRow  = $pStmt->fetch(PDO::FETCH_ASSOC);
-        $dbPrice = $pRow ? floatval($pRow['price']) : floatval($item['product_price']);
-        $originalSubtotal += $dbPrice * $item['quantity'];
-    }
-    $buildDiscountAmt = max(0, $originalSubtotal - $subtotal);
-
-    // Fetch latest PC build for this user
-    $aStmt = $dbh->prepare("SELECT assembly_service, assembly_fee FROM tbl_pc_build WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
-    $aStmt->execute([$user_id]);
-    $aRow = $aStmt->fetch(PDO::FETCH_ASSOC);
-    if ($aRow) {
-        $assemblyFeeAmt    = floatval($aRow['assembly_fee']); // 0.00 or -25.00
-        $assemblyIsService = (bool)$aRow['assembly_service'];
-    }
-}
-
-$success = false;
-$error   = '';
+$success     = false;
+$error       = '';
 $grand_total = 0;
 
 // ── Process payment ───────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    if (empty($cartItems)) {
-        $error = "Your cart is empty.";
+    $isEmpty = $isPCBuild ? empty($buildItems) : empty($cartItems);
+
+    if ($isEmpty) {
+        $error = $isPCBuild ? "No build items found." : "Your cart is empty.";
 
     } else {
 
-        // Collect delivery address fields
-        $useProfile   = isset($_POST['use_profile_address']) && $_POST['use_profile_address'] === '1';
-        $cardHolder  = trim($_POST['card_holder_name'] ?? '');
-        $receiverName = trim($_POST['receiver_name'] ?? '');
-        $receiverPhone= trim($_POST['receiver_phone'] ?? '');
-        $addr1        = trim($_POST['addr_line1']    ?? '');
-        $addr2        = trim($_POST['addr_line2']    ?? '');
-        $postcode     = trim($_POST['postcode']      ?? '');
-        $city         = trim($_POST['city']          ?? '');
-        $state_id     = intval($_POST['state_id']   ?? 0);
+        $useProfile = isset($_POST['use_profile_address']) && $_POST['use_profile_address'] === '1';
+        $cardHolder = trim($_POST['card_holder_name'] ?? '');
 
-        // Validate address fields
+        // ── Address: take from profile hidden fields or custom form fields ──
+        if ($useProfile) {
+            $receiverName  = trim($_POST['h_receiver_name']  ?? '');
+            $receiverPhone = trim($_POST['h_receiver_phone'] ?? '');
+            $addr1         = trim($_POST['h_addr_line1']     ?? '');
+            $addr2         = trim($_POST['h_addr_line2']     ?? '');
+            $postcode      = trim($_POST['h_postcode']       ?? '');
+            $city          = trim($_POST['h_city']           ?? '');
+            $state_id      = intval($_POST['h_state_id']    ?? 0);
+        } else {
+            $receiverName  = trim($_POST['receiver_name']  ?? '');
+            $receiverPhone = trim($_POST['receiver_phone'] ?? '');
+            $addr1         = trim($_POST['addr_line1']     ?? '');
+            $addr2         = trim($_POST['addr_line2']     ?? '');
+            $postcode      = trim($_POST['postcode']       ?? '');
+            $city          = trim($_POST['city']           ?? '');
+            $state_id      = intval($_POST['state_id']    ?? 0);
+        }
+
         if (empty($cardHolder)) {
             $error = "Please enter the card holder name.";
 
         } elseif (empty($receiverName) || empty($receiverPhone) || empty($addr1) ||
-            empty($postcode)     || empty($city)           || $state_id <= 0) {
+                  empty($postcode)     || empty($city)           || $state_id <= 0) {
             $error = "Please fill in all delivery address fields.";
 
         } elseif (!preg_match('/^[0-9]{5}$/', $postcode)) {
             $error = "Postcode must be exactly 5 digits.";
 
         } else {
-            // Fetch shipping fee for chosen state
             $feeStmt = $dbh->prepare("SELECT fee FROM tbl_shipping_rate WHERE state_id = ?");
             $feeStmt->execute([$state_id]);
-            $feeRow  = $feeStmt->fetch(PDO::FETCH_ASSOC);
-            $shipping   = $feeRow ? floatval($feeRow['fee']) : 15.00;
+            $feeRow      = $feeStmt->fetch(PDO::FETCH_ASSOC);
+            $shipping    = $feeRow ? floatval($feeRow['fee']) : 15.00;
             $service_fee = 0.00;
-            $grand_total = $subtotal + $shipping + $service_fee;
+            $grand_total = $subtotal + $assemblyFeeAmt + $shipping + $service_fee;
+            $grand_total = max(0, $grand_total);
 
             try {
                 $dbh->beginTransaction();
 
-                // 1. Stock check
-                $stockCheck = $dbh->prepare("SELECT product_id, stock FROM products WHERE product_id = ? FOR UPDATE");
-                foreach ($cartItems as $item) {
-                    $stockCheck->execute([$item['product_id']]);
-                    $stockRow = $stockCheck->fetch(PDO::FETCH_ASSOC);
-                    if (!$stockRow || $stockRow['stock'] < $item['quantity']) {
-                        throw new Exception(
-                            "'{$item['product_name']}' is out of stock. " .
-                            "Available: " . ($stockRow['stock'] ?? 0) .
-                            ", Requested: " . $item['quantity']
-                        );
+                if ($isPCBuild) {
+                    // ── PC Build checkout ─────────────────────
+                    // 1. Stock check
+                    $stockCheck = $dbh->prepare("SELECT product_id, stock FROM products WHERE product_id = ? FOR UPDATE");
+                    foreach ($buildItems as $item) {
+                        $stockCheck->execute([$item['product_id']]);
+                        $stockRow = $stockCheck->fetch(PDO::FETCH_ASSOC);
+                        if (!$stockRow || $stockRow['stock'] < 1) {
+                            throw new Exception("'{$item['product_name']}' is out of stock.");
+                        }
                     }
-                }
 
-                // 2. Insert order
-                $order_number = 'PC' . date('Ymd') . strtoupper(substr(uniqid(), -5));
-                $orderStmt = $dbh->prepare("
-                    INSERT INTO tblorders
-                        (user_id, order_number, total_amount, shipping_fee, service_fee,
-                         grand_total, payment_method, card_holder_name, payment_status, order_status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'Demo Card', ?, 'paid', 'processing')
-                ");
-                $orderStmt->execute([$user_id, $order_number, $subtotal, $shipping, $service_fee, $grand_total, $cardHolder]);
-                $order_id = $dbh->lastInsertId();
-
-                // 3. Insert order items
-                $itemStmt = $dbh->prepare("
-                    INSERT INTO tblorder_item
-                        (order_id, user_id, product_id, product_name, product_price, quantity, subtotal)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ");
-                foreach ($cartItems as $item) {
-                    $itemStmt->execute([
-                        $order_id, $user_id, $item['product_id'],
-                        $item['product_name'], $item['product_price'],
-                        $item['quantity'], $item['product_price'] * $item['quantity']
+                    // 2. Insert order
+                    $order_number = 'PC' . date('Ymd') . strtoupper(substr(uniqid(), -5));
+                    $orderStmt = $dbh->prepare("
+                        INSERT INTO tblorders
+                            (user_id, order_number, total_amount, shipping_fee, service_fee,
+                             grand_total, payment_method, card_holder_name, payment_status, order_status)
+                        VALUES (?, ?, ?, ?, ?, ?, 'Demo Card', ?, 'paid', 'processing')
+                    ");
+                    $orderStmt->execute([
+                        $user_id, $order_number, $subtotal, $shipping,
+                        $service_fee, $grand_total, $cardHolder
                     ]);
-                }
+                    $order_id = $dbh->lastInsertId();
 
-                // 4. Insert delivery address
-                $addrStmt = $dbh->prepare("
-                    INSERT INTO tbl_order_address
-                        (order_id, receiver_name, phone, addr_line1, addr_line2,
-                         postcode, city, state_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-                $addrStmt->execute([
-                    $order_id, $receiverName, $receiverPhone,
-                    $addr1, $addr2, $postcode, $city, $state_id
-                ]);
+                    // 3. Insert order items from build items
+                    $itemStmt = $dbh->prepare("
+                        INSERT INTO tblorder_item
+                            (order_id, user_id, product_id, product_name, product_price, quantity, subtotal)
+                        VALUES (?, ?, ?, ?, ?, 1, ?)
+                    ");
+                    foreach ($buildItems as $item) {
+                        $itemStmt->execute([
+                            $order_id, $user_id, $item['product_id'],
+                            $item['product_name'], $item['final_price'], $item['final_price']
+                        ]);
+                    }
 
-                // 5. Mark cart as ordered
-                $dbh->prepare("UPDATE tblcart SET status = 'ordered' WHERE user_id = ? AND status = 'active'")
-                    ->execute([$user_id]);
+                    // 4. Insert delivery address
+                    $addrStmt = $dbh->prepare("
+                        INSERT INTO tbl_order_address
+                            (order_id, receiver_name, phone, addr_line1, addr_line2,
+                             postcode, city, state_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $addrStmt->execute([
+                        $order_id, $receiverName, $receiverPhone,
+                        $addr1, $addr2, $postcode, $city, $state_id
+                    ]);
 
-                // 6. Deduct stock
-                $stockStmt = $dbh->prepare("UPDATE products SET stock = stock - ? WHERE product_id = ? AND stock >= ?");
-                foreach ($cartItems as $item) {
-                    $stockStmt->execute([$item['quantity'], $item['product_id'], $item['quantity']]);
-                    if ($stockStmt->rowCount() === 0) {
-                        throw new Exception("{$item['product_name']} stock not enough.");
+                    // 5. Mark build as ordered (paid)
+                    $dbh->prepare("UPDATE tbl_pc_build SET status = 'ordered' WHERE build_id = ?")
+                        ->execute([$build_id]);
+
+                    // 6. Deduct stock
+                    $stockStmt = $dbh->prepare("UPDATE products SET stock = stock - 1 WHERE product_id = ? AND stock >= 1");
+                    foreach ($buildItems as $item) {
+                        $stockStmt->execute([$item['product_id']]);
+                        if ($stockStmt->rowCount() === 0) {
+                            throw new Exception("{$item['product_name']} stock not enough.");
+                        }
+                    }
+
+                } else {
+                    // ── Cart checkout (original logic unchanged) ──
+                    // 1. Stock check
+                    $stockCheck = $dbh->prepare("SELECT product_id, stock FROM products WHERE product_id = ? FOR UPDATE");
+                    foreach ($cartItems as $item) {
+                        $stockCheck->execute([$item['product_id']]);
+                        $stockRow = $stockCheck->fetch(PDO::FETCH_ASSOC);
+                        if (!$stockRow || $stockRow['stock'] < $item['quantity']) {
+                            throw new Exception(
+                                "'{$item['product_name']}' is out of stock. " .
+                                "Available: " . ($stockRow['stock'] ?? 0) .
+                                ", Requested: " . $item['quantity']
+                            );
+                        }
+                    }
+
+                    // 2. Insert order
+                    $order_number = 'PC' . date('Ymd') . strtoupper(substr(uniqid(), -5));
+                    $orderStmt = $dbh->prepare("
+                        INSERT INTO tblorders
+                            (user_id, order_number, total_amount, shipping_fee, service_fee,
+                             grand_total, payment_method, card_holder_name, payment_status, order_status)
+                        VALUES (?, ?, ?, ?, ?, ?, 'Demo Card', ?, 'paid', 'processing')
+                    ");
+                    $orderStmt->execute([
+                        $user_id, $order_number, $subtotal, $shipping,
+                        $service_fee, $grand_total, $cardHolder
+                    ]);
+                    $order_id = $dbh->lastInsertId();
+
+                    // 3. Insert order items
+                    $itemStmt = $dbh->prepare("
+                        INSERT INTO tblorder_item
+                            (order_id, user_id, product_id, product_name, product_price, quantity, subtotal)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    foreach ($cartItems as $item) {
+                        $itemStmt->execute([
+                            $order_id, $user_id, $item['product_id'],
+                            $item['product_name'], $item['product_price'],
+                            $item['quantity'], $item['product_price'] * $item['quantity']
+                        ]);
+                    }
+
+                    // 4. Insert delivery address
+                    $addrStmt = $dbh->prepare("
+                        INSERT INTO tbl_order_address
+                            (order_id, receiver_name, phone, addr_line1, addr_line2,
+                             postcode, city, state_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $addrStmt->execute([
+                        $order_id, $receiverName, $receiverPhone,
+                        $addr1, $addr2, $postcode, $city, $state_id
+                    ]);
+
+                    // 5. Mark cart as ordered
+                    $dbh->prepare("UPDATE tblcart SET status = 'ordered' WHERE user_id = ? AND status = 'active'")
+                        ->execute([$user_id]);
+
+                    // 6. Deduct stock
+                    $stockStmt = $dbh->prepare("UPDATE products SET stock = stock - ? WHERE product_id = ? AND stock >= ?");
+                    foreach ($cartItems as $item) {
+                        $stockStmt->execute([$item['quantity'], $item['product_id'], $item['quantity']]);
+                        if ($stockStmt->rowCount() === 0) {
+                            throw new Exception("{$item['product_name']} stock not enough.");
+                        }
                     }
                 }
 
                 $dbh->commit();
-                $success   = true;
-                $cartItems = [];
+                $success    = true;
+                $cartItems  = [];
+                $buildItems = [];
 
             } catch (Exception $e) {
                 $dbh->rollBack();
@@ -194,6 +320,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+// Items to display in summary panel
+$displayItems = $isPCBuild ? $buildItems : $cartItems;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -328,6 +457,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-top: 8px;
         }
 
+        /* PC Build badge */
+        .pcbuild-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(212,175,55,0.06);
+            border: 1px solid rgba(212,175,55,0.2);
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            color: #d4af37;
+            margin-bottom: 16px;
+        }
+
         /* Summary */
         .summary-row {
             display: flex;
@@ -354,10 +497,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-top: 1px;
         }
         .summary-row .sr-value { white-space: nowrap; text-align: right; }
-        .summary-row .sr-value.green          { color: #4caf50; font-weight: 600; }
-        .summary-row .sr-value.red            { color: #ff6b6b; font-weight: 600; }
-        .summary-row .sr-value.gold           { color: #d4af37; font-weight: 600; }
-        .summary-row .sr-value.muted          { color: #555; font-style: italic; font-size: 0.76rem; }
+        .summary-row .sr-value.green            { color: #4caf50; font-weight: 600; }
+        .summary-row .sr-value.red              { color: #ff6b6b; font-weight: 600; }
+        .summary-row .sr-value.gold             { color: #d4af37; font-weight: 600; }
+        .summary-row .sr-value.muted            { color: #555; font-style: italic; font-size: 0.76rem; }
         .summary-row .sr-value.sr-strikethrough { text-decoration: line-through; color: #555; font-size: 0.78rem; }
 
         /* item list in payment summary */
@@ -441,8 +584,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         RM <?php echo number_format($grand_total, 2); ?>
     </h4>
     <div class="d-flex gap-3 justify-content-center">
-        <a href="index.php"    class="btn-cta">Back to Store</a>
-        <a href="myorder.php"  class="btn-cta">My Orders</a>
+        <a href="index.php"   class="btn-cta">Back to Store</a>
+        <a href="myorder.php" class="btn-cta">My Orders</a>
     </div>
 </div>
 </div>
@@ -461,12 +604,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="col-lg-7">
 
         <form method="POST" id="checkoutForm">
+            <?php if ($isPCBuild): ?>
+            <input type="hidden" name="source"   value="pcbuild">
+            <input type="hidden" name="build_id" value="<?php echo $build_id; ?>">
+            <?php endif; ?>
 
             <!-- ── Delivery Address ───────────────────────── -->
             <div class="addr-card">
                 <div class="section-heading">
                     <i class="fa fa-location-dot"></i> Delivery Address
                 </div>
+
+                <?php if ($isPCBuild): ?>
+                <div class="pcbuild-badge">
+                    <i class="fa fa-screwdriver-wrench"></i>
+                    PC Build Order — <?php echo count($buildItems); ?> part(s)
+                    <?php if ($assemblyIsService): ?>
+                    · <span style="color:#4caf50;">Assembled &amp; delivered</span>
+                    <?php else: ?>
+                    · <span style="color:#ff6b6b;">Unassembled parts</span>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
 
                 <!-- Use Profile Address checkbox -->
                 <label class="use-profile-check" for="useProfileChk">
@@ -483,7 +642,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </label>
 
                 <?php
-                // Build profile address display
                 $profState = $userProfile['state_name'] ?? '';
                 $profAddr  = array_filter([
                     $userProfile['addr_line1'] ?? '',
@@ -494,7 +652,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $profAddrStr = implode(', ', $profAddr);
                 ?>
 
-                <!-- Profile address preview (shown when checkbox is checked) -->
+                <!-- Profile address preview (shown when checkbox checked) -->
                 <div id="profileAddrPreview">
                     <?php if ($profAddrStr): ?>
                     <div class="profile-addr-display">
@@ -513,7 +671,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <!-- Editable address form (hidden by default) -->
                 <div id="customAddrForm" style="display:none;">
-
                     <div class="row g-3 mt-1">
                         <div class="col-md-6">
                             <label class="form-label">Receiver Name <span class="text-danger">*</span></label>
@@ -529,15 +686,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label">Address Line 1 <span class="text-danger">*</span>
                                 <small style="color:#555;">(Street, House No.)</small>
                             </label>
-                            <input type="text" name="addr_line1" class="form-control"
-                                   placeholder="e.g. No. 12, Jalan Harmoni 3">
+                            <input type="text" name="addr_line1" id="addrLine1Custom"
+                                   class="form-control" placeholder="e.g. No. 12, Jalan Harmoni 3">
                         </div>
                         <div class="col-12">
                             <label class="form-label">Address Line 2
                                 <small style="color:#555;">(Optional)</small>
                             </label>
-                            <input type="text" name="addr_line2" class="form-control"
-                                   placeholder="e.g. Taman Lagenda Putra">
+                            <input type="text" name="addr_line2" id="addrLine2Custom"
+                                   class="form-control" placeholder="e.g. Taman Lagenda Putra">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Postcode <span class="text-danger">*</span></label>
@@ -546,7 +703,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div class="col-md-8">
                             <label class="form-label">City <span class="text-danger">*</span></label>
-                            <input type="text" name="city" class="form-control" placeholder="e.g. Kulai">
+                            <input type="text" name="city" id="cityCustom"
+                                   class="form-control" placeholder="e.g. Kulai">
                         </div>
                         <div class="col-12">
                             <label class="form-label">State <span class="text-danger">*</span></label>
@@ -565,24 +723,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                     </div>
-
                 </div>
 
-                <!-- Hidden fields that always get submitted -->
-                <!-- When "use profile" is checked, these are filled by JS from profile data -->
-                <input type="hidden" name="receiver_name"  id="hiddenReceiverName"
+                <!-- Hidden fields for profile address (use h_ prefix to avoid name clash) -->
+                <input type="hidden" name="h_receiver_name"  id="hiddenReceiverName"
                        value="<?php echo htmlentities($userProfile['fullname'] ?? ''); ?>">
-                <input type="hidden" name="receiver_phone" id="hiddenReceiverPhone"
+                <input type="hidden" name="h_receiver_phone" id="hiddenReceiverPhone"
                        value="<?php echo htmlentities($userProfile['phone_num'] ?? ''); ?>">
-                <input type="hidden" name="addr_line1"     id="hiddenAddr1"
+                <input type="hidden" name="h_addr_line1"     id="hiddenAddr1"
                        value="<?php echo htmlentities($userProfile['addr_line1'] ?? ''); ?>">
-                <input type="hidden" name="addr_line2"     id="hiddenAddr2"
+                <input type="hidden" name="h_addr_line2"     id="hiddenAddr2"
                        value="<?php echo htmlentities($userProfile['addr_line2'] ?? ''); ?>">
-                <input type="hidden" name="postcode"       id="hiddenPostcode"
+                <input type="hidden" name="h_postcode"       id="hiddenPostcode"
                        value="<?php echo htmlentities($userProfile['postcode'] ?? ''); ?>">
-                <input type="hidden" name="city"           id="hiddenCity"
+                <input type="hidden" name="h_city"           id="hiddenCity"
                        value="<?php echo htmlentities($userProfile['city'] ?? ''); ?>">
-                <input type="hidden" name="state_id"       id="hiddenStateId"
+                <input type="hidden" name="h_state_id"       id="hiddenStateId"
                        value="<?php echo intval($userProfile['state_id'] ?? 0); ?>">
                 <input type="hidden" name="use_profile_address" id="hiddenUseProfile" value="1">
 
@@ -611,7 +767,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label class="form-label">Expiry</label>
                         <input type="text" id="expiry" class="card-field"
                                placeholder="MM/YY" maxlength="5" required>
-                        <!-- Real-time month error message -->
                         <div class="expiry-error" id="expiryError"></div>
                     </div>
                     <div class="col-6">
@@ -623,7 +778,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <button type="submit" class="btn-pay" id="btnPay">
                     <i class="fa fa-lock me-2"></i>Pay RM <span id="payBtnTotal">
-                        <?php echo number_format($subtotal + $defaultShipping, 2); ?>
+                        <?php echo number_format(max(0, $subtotal + $assemblyFeeAmt + $defaultShipping), 2); ?>
                     </span>
                 </button>
             </div>
@@ -637,29 +792,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Header -->
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Order Summary</h5>
-                <?php $totalQty = array_sum(array_column($cartItems, 'quantity')); ?>
+                <h5 class="mb-0"><?php echo $isPCBuild ? 'PC Build Summary' : 'Order Summary'; ?></h5>
                 <span style="font-size:0.72rem;color:#555;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:3px 10px;">
-                    <?php echo $totalQty; ?> item<?php echo $totalQty !== 1 ? 's' : ''; ?>
+                    <?php echo count($displayItems); ?> item<?php echo count($displayItems) !== 1 ? 's' : ''; ?>
                 </span>
             </div>
 
             <!-- Item list -->
-            <?php if (!empty($cartItems)): ?>
+            <?php if (!empty($displayItems)): ?>
             <div class="pmt-items">
-                <?php foreach ($cartItems as $item):
-                    $imgSrc   = htmlspecialchars($item['product_image'] ?? '');
-                    $iSubtotal = $item['product_price'] * $item['quantity'];
+                <?php foreach ($displayItems as $item):
+                    $imgSrc   = htmlspecialchars($item['image'] ?? $item['product_image'] ?? '');
+                    $itemName = htmlspecialchars($item['product_name']);
+                    $itemPrice = $isPCBuild ? floatval($item['final_price']) : floatval($item['product_price'] * $item['quantity']);
+                    $itemQty   = $isPCBuild ? 1 : $item['quantity'];
                 ?>
                 <div class="pmt-item">
                     <img src="<?php echo $imgSrc; ?>"
-                         alt="<?php echo htmlspecialchars($item['product_name']); ?>"
+                         alt="<?php echo $itemName; ?>"
                          onerror="this.src='assets/images/placeholder.jpg'">
                     <div class="pmt-item-name">
-                        <?php echo htmlspecialchars($item['product_name']); ?>
-                        <span class="pmt-item-qty">× <?php echo $item['quantity']; ?></span>
+                        <?php echo $itemName; ?>
+                        <?php if (!$isPCBuild): ?>
+                        <span class="pmt-item-qty">× <?php echo $itemQty; ?></span>
+                        <?php else: ?>
+                        <span class="pmt-item-qty"><?php echo htmlspecialchars($item['part_key'] ?? ''); ?></span>
+                        <?php endif; ?>
                     </div>
-                    <div class="pmt-item-price">RM <?php echo number_format($iSubtotal, 2); ?></div>
+                    <div class="pmt-item-price">RM <?php echo number_format($itemPrice, 2); ?></div>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -681,6 +841,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <span class="sr-label">
                     <i class="fa fa-tag me-1" style="color:#4caf50;font-size:0.72rem;"></i>
                     PC Build Discount
+                    <?php if ($isPCBuild && $buildData['discount_pct'] > 0): ?>
+                    <small><?php echo $buildData['discount_pct']; ?>% off</small>
+                    <?php endif; ?>
                 </span>
                 <span class="sr-value green">− RM <?php echo number_format($buildDiscountAmt, 2); ?></span>
             </div>
@@ -709,7 +872,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
             </div>
 
-            <!-- Shipping (updates live via JS) -->
+            <!-- Shipping -->
             <div class="summary-row" id="shippingRow">
                 <span class="sr-label">
                     Shipping
@@ -729,7 +892,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </span>
             </div>
 
-            <!-- Delivery address summary (right panel) -->
+            <!-- Delivery address summary -->
             <div id="addrSummary" style="margin-top:16px;padding:12px 14px;background:#0f0f0f;border:1px solid #1a1a1a;border-radius:6px;font-size:0.8rem;color:#aaa;line-height:1.7;">
                 <div style="font-size:0.7rem;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
                     <i class="fa fa-location-dot me-1" style="color:#d4af37;"></i> Delivering To
@@ -755,31 +918,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php include('includes/footer.php'); ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-// ── Shipping rate map (from PHP) ──────────────────────────────
+// ── Constants from PHP ────────────────────────────────────────
 const SHIPPING_RATES    = <?php echo json_encode($shippingRates); ?>;
 const SUBTOTAL          = <?php echo floatval($subtotal); ?>;
 const ORIGINAL_SUBTOTAL = <?php echo floatval($originalSubtotal); ?>;
 const BUILD_DISCOUNT    = <?php echo floatval($buildDiscountAmt); ?>;
-const ASSEMBLY_FEE      = <?php echo floatval($assemblyFeeAmt); ?>;   // 0 or -25
+const ASSEMBLY_FEE      = <?php echo floatval($assemblyFeeAmt); ?>; // 0 or -25
 
-// Profile address data
 const PROFILE = {
-    name:     <?php echo json_encode($userProfile['fullname']  ?? ''); ?>,
-    phone:    <?php echo json_encode($userProfile['phone_num'] ?? ''); ?>,
+    name:     <?php echo json_encode($userProfile['fullname']   ?? ''); ?>,
+    phone:    <?php echo json_encode($userProfile['phone_num']  ?? ''); ?>,
     addr1:    <?php echo json_encode($userProfile['addr_line1'] ?? ''); ?>,
     addr2:    <?php echo json_encode($userProfile['addr_line2'] ?? ''); ?>,
-    postcode: <?php echo json_encode($userProfile['postcode']  ?? ''); ?>,
-    city:     <?php echo json_encode($userProfile['city']      ?? ''); ?>,
+    postcode: <?php echo json_encode($userProfile['postcode']   ?? ''); ?>,
+    city:     <?php echo json_encode($userProfile['city']       ?? ''); ?>,
     stateId:  <?php echo intval($userProfile['state_id'] ?? 0); ?>,
     stateName:<?php echo json_encode($userProfile['state_name'] ?? ''); ?>,
-    fee:      <?php echo floatval($userProfile['shipping_fee'] ?? 15); ?>
+    fee:      <?php echo floatval($userProfile['shipping_fee']  ?? 15); ?>
 };
 
 let currentShipping = PROFILE.fee;
 
-// ── Init on load ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    // Show profile shipping fee on load
     updateSummary(PROFILE.fee, PROFILE.stateName);
 });
 
@@ -789,12 +949,8 @@ function toggleAddressForm(useProfile) {
     document.getElementById('customAddrForm').style.display     = useProfile ? 'none'  : 'block';
     document.getElementById('hiddenUseProfile').value           = useProfile ? '1' : '0';
 
-    // Disable/enable hidden fields vs form fields
-    const hiddenFields = ['hiddenReceiverName','hiddenReceiverPhone','hiddenAddr1',
-                          'hiddenAddr2','hiddenPostcode','hiddenCity','hiddenStateId'];
-
     if (useProfile) {
-        // Restore hidden fields from profile
+        // Restore hidden profile fields
         document.getElementById('hiddenReceiverName').value  = PROFILE.name;
         document.getElementById('hiddenReceiverPhone').value = PROFILE.phone;
         document.getElementById('hiddenAddr1').value         = PROFILE.addr1;
@@ -803,27 +959,23 @@ function toggleAddressForm(useProfile) {
         document.getElementById('hiddenCity').value          = PROFILE.city;
         document.getElementById('hiddenStateId').value       = PROFILE.stateId;
 
-        // Disable custom form inputs so they don't submit
-        document.querySelectorAll('#customAddrForm input, #customAddrForm select')
-            .forEach(el => el.removeAttribute('name'));
-
         updateSummary(PROFILE.fee, PROFILE.stateName);
         updateAddrSummary(PROFILE.name, PROFILE.phone,
             [PROFILE.addr1, PROFILE.addr2, PROFILE.postcode + ' ' + PROFILE.city, PROFILE.stateName]);
 
     } else {
-        // Disable hidden fields — custom form fields will use the real names
-        hiddenFields.forEach(id => { document.getElementById(id).value = ''; });
+        // Clear hidden fields (custom form fields have different names, no clash)
+        document.getElementById('hiddenReceiverName').value  = '';
+        document.getElementById('hiddenReceiverPhone').value = '';
+        document.getElementById('hiddenAddr1').value         = '';
+        document.getElementById('hiddenAddr2').value         = '';
+        document.getElementById('hiddenPostcode').value      = '';
+        document.getElementById('hiddenCity').value          = '';
+        document.getElementById('hiddenStateId').value       = '';
 
-        // Re-attach names to custom form fields
-        document.getElementById('receiverName').name  = 'receiver_name';
-        document.getElementById('receiverPhone').name = 'receiver_phone';
-        document.querySelector('[name="addr_line1"]') // already has name
-        document.getElementById('stateSelectCustom').name = 'state_id';
-
-        // Reset shipping to placeholder
         updateSummary(0, '');
-        document.getElementById('addrSummaryText').innerHTML = '<span style="color:#666;">Fill in delivery address above.</span>';
+        document.getElementById('addrSummaryText').innerHTML =
+            '<span style="color:#666;">Fill in delivery address above.</span>';
     }
 }
 
@@ -845,25 +997,20 @@ function updateShipping(stateId) {
     document.getElementById('shippingTextCustom').textContent =
         `Shipping to ${name}: RM ${fee.toFixed(2)}`;
 
-    // Update hidden state_id
-    document.getElementById('hiddenStateId').value = stateId;
-
     updateSummary(fee, name);
 
-    // Update address summary
     const name2  = document.getElementById('receiverName').value || '—';
     const phone2 = document.getElementById('receiverPhone').value || '—';
-    const a1     = document.querySelector('#customAddrForm [placeholder*="House"]').value;
-    const a2     = document.querySelector('#customAddrForm [placeholder*="Taman"]').value;
+    const a1     = document.getElementById('addrLine1Custom').value;
+    const a2     = document.getElementById('addrLine2Custom').value;
     const pc     = document.getElementById('postcodeCustom').value;
-    const city   = document.querySelector('#customAddrForm [placeholder="e.g. Kulai"]').value;
+    const city   = document.getElementById('cityCustom').value;
     updateAddrSummary(name2, phone2, [a1, a2, pc + ' ' + city, name]);
 }
 
 // ── Update summary panel numbers ──────────────────────────────
 function updateSummary(fee, stateName) {
     currentShipping = fee;
-    // Grand total = discounted subtotal + assembly fee + shipping
     const grandTotal = Math.max(0, SUBTOTAL + ASSEMBLY_FEE + fee);
 
     document.getElementById('summaryShipping').textContent =
@@ -910,17 +1057,12 @@ document.getElementById('cardNumber').addEventListener('input', function () {
     this.value = v.replace(/(\d{4})/g,'$1 ').trim();
 });
 
-// ── Expiry format + real-time month validation (01–12) ────────
+// ── Expiry format + real-time month validation ────────────────
 document.getElementById('expiry').addEventListener('input', function () {
     let v = this.value.replace(/\D/g,'').slice(0,4);
-
-    // Auto-insert slash after month digits
-    if (v.length >= 3) {
-        v = v.slice(0,2) + '/' + v.slice(2);
-    }
+    if (v.length >= 3) v = v.slice(0,2) + '/' + v.slice(2);
     this.value = v;
 
-    // Validate month range once 2 digits are entered
     const errEl = document.getElementById('expiryError');
     const month = parseInt(v.slice(0,2), 10);
 
@@ -948,15 +1090,15 @@ document.getElementById('cvv').addEventListener('input', function () {
 document.getElementById('checkoutForm').addEventListener('submit', function (e) {
     e.preventDefault();
 
-    // Card validation
     const holderName = document.getElementById('cardHolderName').value.trim();
-    const card   = document.getElementById('cardNumber').value.replace(/\s/g,'');
+    const card       = document.getElementById('cardNumber').value.replace(/\s/g,'');
 
     if (!holderName) {
         Swal.fire({ title:'Required', text:'Please enter the card holder name.',
             icon:'warning', background:'#1a1a1a', color:'#fff', iconColor:'#d4af37', confirmButtonColor:'#d4af37' });
         return;
     }
+
     const expiry = document.getElementById('expiry').value;
     const cvv    = document.getElementById('cvv').value;
 
@@ -976,16 +1118,13 @@ document.getElementById('checkoutForm').addEventListener('submit', function (e) 
     const now = new Date();
     const nowYear = now.getFullYear(), nowMonth = now.getMonth() + 1;
 
-    // Month range check (01–12)
     if (em < 1 || em > 12) {
         Swal.fire({ title:'Invalid Expiry', text:'Month must be between 01 and 12.',
             icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
         return;
     }
 
-    // Expired check
-    if ((2000+ey) < nowYear ||
-        ((2000+ey) === nowYear && em < nowMonth)) {
+    if ((2000+ey) < nowYear || ((2000+ey) === nowYear && em < nowMonth)) {
         Swal.fire({ title:'Card Expired', text:'Please use a valid card.',
             icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
         return;
@@ -997,10 +1136,11 @@ document.getElementById('checkoutForm').addEventListener('submit', function (e) 
         return;
     }
 
-    // Confirm payment
+    const grandTotal = Math.max(0, SUBTOTAL + ASSEMBLY_FEE + currentShipping);
+
     Swal.fire({
         title: 'Confirm Payment',
-        html: `Pay <strong style="color:#d4af37;">RM ${(SUBTOTAL + currentShipping).toFixed(2)}</strong>?`,
+        html: `Pay <strong style="color:#d4af37;">RM ${grandTotal.toFixed(2)}</strong>?`,
         icon: 'question',
         background: '#1a1a1a', color: '#fff',
         showCancelButton: true,

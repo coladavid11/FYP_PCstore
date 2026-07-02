@@ -8,9 +8,7 @@ include('includes/config.php');
 $isLoggedIn = isset($_SESSION['login']);
 $user_id = $_SESSION['user_id'] ?? null;
 
-// =======================
-// AJAX: UPDATE QUANTITY
-// =======================
+
 if ($isLoggedIn && isset($_POST['ajax_update_qty'])) {
 
     header('Content-Type: application/json');
@@ -142,20 +140,37 @@ if ($isLoggedIn) {
     }
 }
 
-// ── Sync cart prices with current product prices ──
+// ── Sync cart prices with current product prices (skip PC Build items) ──
 if ($isLoggedIn && !empty($cartItems)) {
     foreach ($cartItems as $item) {
         $pSync = $dbh->prepare("SELECT price FROM products WHERE product_id = ?");
         $pSync->execute([$item['product_id']]);
         $pRow = $pSync->fetch(PDO::FETCH_ASSOC);
-        if ($pRow && floatval($pRow['price']) !== floatval($item['product_price'])) {
-            $newPrice = floatval($pRow['price']);
-            $dbh->prepare("
-                UPDATE tblcart
-                SET product_price = ?,
-                    subtotal      = ? * quantity
-                WHERE cart_id = ?
-            ")->execute([$newPrice, $newPrice, $item['cart_id']]);
+        if ($pRow) {
+            $dbPrice   = floatval($pRow['price']);
+            $cartPrice = floatval($item['product_price']);
+
+            if ($cartPrice !== $dbPrice) {
+                // Check if this cart item came from a PC build (price locked at discount)
+                $buildCheck = $dbh->prepare("
+                    SELECT COUNT(*) FROM tbl_pc_build_item bi
+                    JOIN tbl_pc_build b ON b.build_id = bi.build_id
+                    WHERE bi.product_id = ? AND b.user_id = ? AND b.status = 'ordered'
+                ");
+                $buildCheck->execute([$item['product_id'], $user_id]);
+                $fromBuild = $buildCheck->fetchColumn() > 0;
+
+                if (!$fromBuild) {
+                    // Normal cart item — sync to latest DB price
+                    $dbh->prepare("
+                        UPDATE tblcart
+                        SET product_price = ?,
+                            subtotal      = ? * quantity
+                        WHERE cart_id = ?
+                    ")->execute([$dbPrice, $dbPrice, $item['cart_id']]);
+                }
+                // PC Build item — leave price unchanged (discount locked at order time)
+            }
         }
     }
 

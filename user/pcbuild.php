@@ -50,28 +50,27 @@ foreach ($parts as $key => $info) {
     $partProducts[$key] = getPartsByCategory($dbh, $info['cat_id']);
 }
 
-// ── Handle Add Build to Cart ──────────────────────────────────
+// ── Handle Proceed to Checkout (PC Build → direct payment) ───
 $addResult = '';
 if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
 
-    $selectedIds  = json_decode($_POST['selected_product_ids'] ?? '[]', true);
-    $buildSubtotal= floatval($_POST['build_subtotal']    ?? 0);
-    $discountPct  = intval($_POST['discount_pct']        ?? 0);
-    $discountAmt  = floatval($_POST['discount_amt']      ?? 0);
-    $finalPrice   = floatval($_POST['final_price']       ?? 0);
+    $selectedIds     = json_decode($_POST['selected_product_ids'] ?? '[]', true);
+    $buildSubtotal   = floatval($_POST['build_subtotal']  ?? 0);
+    $discountPct     = intval($_POST['discount_pct']      ?? 0);
+    $discountAmt     = floatval($_POST['discount_amt']    ?? 0);
+    $finalPrice      = floatval($_POST['final_price']     ?? 0);
     $missingParts    = json_decode($_POST['missing_parts']  ?? '[]', true);
     $assemblyService = isset($_POST['assembly_service']) && $_POST['assembly_service'] === '1';
     $assemblyFee     = $assemblyService ? 0.00 : -25.00; // Free if assembled, -25 if not
 
     if (!empty($missingParts)) {
-        $addResult = 'missing';
+        $addResult   = 'missing';
         $missingList = implode(', ', $missingParts);
     } else {
         try {
             $dbh->beginTransaction();
 
-            // 1. Save build record
-            // Adjust final price: no assembly = deduct RM25
+            // 1. Save build record (status = 'draft' — saved but not submitted for payment)
             $assemblyFeeAdj = $assemblyService ? 0.00 : -25.00;
             $adjustedFinal  = max(0, $finalPrice + $assemblyFeeAdj);
 
@@ -93,8 +92,8 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
             $addedCount = 0;
 
             foreach ($selectedIds as $entry) {
-                $pid      = intval($entry['id']);
-                $partKey  = $entry['key'];
+                $pid     = intval($entry['id']);
+                $partKey = $entry['key'];
                 if ($pid <= 0) continue;
 
                 // Fetch product
@@ -103,61 +102,33 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
                 $prod = $pStmt->fetch(PDO::FETCH_ASSOC);
                 if (!$prod) continue;
 
-                $unitPrice  = floatval($prod['price']);
-                $itemFinal  = round($unitPrice * $multiplier, 2);
+                $unitPrice = floatval($prod['price']);
+                $itemFinal = round($unitPrice * $multiplier, 2);
 
-                // 2. Save build item
+                // 2. Save build item (no tblcart — goes direct to payment)
                 $biStmt = $dbh->prepare("
                     INSERT INTO tbl_pc_build_item
                         (build_id, part_key, product_id, product_name, unit_price, final_price)
                     VALUES (?, ?, ?, ?, ?, ?)
                 ");
                 $biStmt->execute([$build_id, $partKey, $pid, $prod['name'], $unitPrice, $itemFinal]);
-
-                // 3. Add to cart at discounted price
-                $cStmt = $dbh->prepare("
-                    SELECT cart_id, quantity FROM tblcart
-                    WHERE user_id = ? AND product_id = ? AND status = 'active'
-                ");
-                $cStmt->execute([$user_id, $pid]);
-                $existing = $cStmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($existing) {
-                    $newQty = $existing['quantity'] + 1;
-                    if ($newQty <= $prod['stock']) {
-                        $dbh->prepare("
-                            UPDATE tblcart
-                            SET quantity = ?, subtotal = ? * ?, product_price = ?
-                            WHERE cart_id = ?
-                        ")->execute([$newQty, $itemFinal, $newQty, $itemFinal, $existing['cart_id']]);
-                    }
-                } else {
-                    $dbh->prepare("
-                        INSERT INTO tblcart
-                            (user_id, product_id, product_name, product_image,
-                             product_price, quantity, subtotal, created_at, updated_at, status)
-                        VALUES (?, ?, ?, ?, ?, 1, ?, NOW(), NOW(), 'active')
-                    ")->execute([
-                        $user_id, $pid, $prod['name'], $prod['image'],
-                        $itemFinal, $itemFinal
-                    ]);
-                }
                 $addedCount++;
             }
 
-            // Mark build as ordered
-            $dbh->prepare("UPDATE tbl_pc_build SET status='ordered' WHERE build_id=?")
-                ->execute([$build_id]);
-
             $dbh->commit();
-            $addResult       = $addedCount > 0 ? 'success' : 'empty';
-            $addedCountFinal = $addedCount;
-            $assemblyServiceFinal = $assemblyService;
+
+            if ($addedCount > 0) {
+                // Redirect directly to payment with build context
+                header('Location: payment.php?source=pcbuild&build_id=' . $build_id);
+                exit();
+            } else {
+                $addResult = 'empty';
+            }
 
         } catch (Exception $e) {
             $dbh->rollBack();
-            $addResult  = 'error';
-            $addError   = $e->getMessage();
+            $addResult = 'error';
+            $addError  = $e->getMessage();
         }
     }
 }
@@ -909,11 +880,11 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
                 <input type="hidden" name="assembly_service"      id="inputAssembly"   value="1">
 
                 <?php if (!$isLoggedIn): ?>
-                    <a href="login.php" class="btn-build">Login to Add Build to Cart</a>
+                    <a href="login.php" class="btn-build">Login to Proceed to Checkout</a>
                 <?php else: ?>
                     <button type="button" class="btn-build" id="addBuildBtn"
                             onclick="submitBuild()" disabled>
-                        <i class="fa fa-cart-plus"></i> Add Build to Cart
+                        <i class="fa fa-arrow-right"></i> Proceed to Checkout
                     </button>
                 <?php endif; ?>
             </form>
@@ -950,11 +921,9 @@ function getDiscount(total) {
 
 // ── Select a part ──────────────────────────────────────────────
 function selectPart(key, id, name, price) {
-    // Deactivate all options in group
     document.querySelectorAll(`.part-option[data-key="${key}"]`)
         .forEach(el => el.classList.remove('active'));
 
-    // Activate chosen
     const optEl = id == 0
         ? document.querySelector(`.part-option[data-key="${key}"][data-id="0"]`)
         : document.getElementById(`opt-${key}-${id}`);
@@ -976,7 +945,7 @@ function selectPart(key, id, name, price) {
         document.getElementById(`sel-price-${key}`).textContent    = fmt(price);
         document.getElementById(`sel-price-${key}`).style.display  = '';
         row.classList.add('selected');
-        row.classList.remove('open'); // auto-close after selecting
+        row.classList.remove('open');
     }
 
     updateSummary();
@@ -984,18 +953,18 @@ function selectPart(key, id, name, price) {
 
 // ── Update all summary UI ──────────────────────────────────────
 function updateSummary() {
-    let subtotal   = 0;
-    let reqDone    = 0;
+    let subtotal = 0;
+    let reqDone  = 0;
 
     ALL_KEYS.forEach(key => {
-        const row   = document.getElementById(`sum-row-${key}`);
-        const nameEl = document.getElementById(`sum-name-${key}`);
+        const row    = document.getElementById(`sum-row-${key}`);
+        const nameEl  = document.getElementById(`sum-name-${key}`);
         const priceEl = document.getElementById(`sum-price-${key}`);
 
         if (build[key]) {
-            nameEl.textContent     = build[key].name;
-            priceEl.textContent    = fmt(build[key].price);
-            priceEl.style.display  = '';
+            nameEl.textContent    = build[key].name;
+            priceEl.textContent   = fmt(build[key].price);
+            priceEl.style.display = '';
             row.classList.remove('sum-item-empty');
             subtotal += build[key].price;
         } else {
@@ -1012,56 +981,47 @@ function updateSummary() {
         }
     });
 
-    // Progress bar
     const total = REQUIRED_KEYS.length;
     document.getElementById('req-count').textContent = `${reqDone} / ${total}`;
     document.getElementById('req-bar').style.width   = `${(reqDone / total) * 100}%`;
 
-    // Discount
     const disc       = getDiscount(subtotal);
     const discAmt    = parseFloat((subtotal * disc.pct / 100).toFixed(2));
     const finalPrice = parseFloat((subtotal - discAmt).toFixed(2));
 
-    // Tier badges
     ['0','5','10'].forEach(t => document.getElementById(`tier-${t}`).classList.remove('tier-active','tier-next'));
     if (disc.pct === 0 && subtotal > 0)   { document.getElementById('tier-0').classList.add('tier-active'); document.getElementById('tier-5').classList.add('tier-next'); }
     else if (disc.pct === 5)  { document.getElementById('tier-5').classList.add('tier-active'); document.getElementById('tier-10').classList.add('tier-next'); }
     else if (disc.pct === 10) { document.getElementById('tier-10').classList.add('tier-active'); }
     else                      { document.getElementById('tier-0').classList.add('tier-active'); }
 
-    // Totals display
     document.getElementById('tot-subtotal').textContent = fmt(subtotal);
 
     if (disc.pct > 0) {
-        document.getElementById('discount-row').style.display   = '';
-        document.getElementById('discount-label').textContent   = `Discount (${disc.label})`;
-        document.getElementById('tot-discount').textContent     = `− ${fmt(discAmt)}`;
-        document.getElementById('tot-original').style.display   = '';
-        document.getElementById('tot-original').textContent     = fmt(subtotal);
+        document.getElementById('discount-row').style.display  = '';
+        document.getElementById('discount-label').textContent  = `Discount (${disc.label})`;
+        document.getElementById('tot-discount').textContent    = `− ${fmt(discAmt)}`;
+        document.getElementById('tot-original').style.display  = '';
+        document.getElementById('tot-original').textContent    = fmt(subtotal);
     } else {
-        document.getElementById('discount-row').style.display   = 'none';
-        document.getElementById('tot-original').style.display   = 'none';
+        document.getElementById('discount-row').style.display  = 'none';
+        document.getElementById('tot-original').style.display  = 'none';
     }
 
-    // Assembly adjustment
-    const assemblyDeduct  = assemblySelected ? 0 : 25;
-    const displayedTotal  = Math.max(0, finalPrice - assemblyDeduct);
-
+    const assemblyDeduct = assemblySelected ? 0 : 25;
+    const displayedTotal = Math.max(0, finalPrice - assemblyDeduct);
     document.getElementById('tot-final').textContent = fmt(displayedTotal);
 
-    // Hidden form inputs
     document.getElementById('inputSubtotal').value = subtotal.toFixed(2);
     document.getElementById('inputDiscPct').value  = disc.pct;
     document.getElementById('inputDiscAmt').value  = discAmt.toFixed(2);
-    document.getElementById('inputFinal').value    = finalPrice.toFixed(2); // base (before assembly adj, PHP handles)
+    document.getElementById('inputFinal').value    = finalPrice.toFixed(2);
 
-    // Missing required parts
     const missing = REQUIRED_KEYS.filter(k => !build[k]);
     document.getElementById('inputMissing').value = JSON.stringify(
         missing.map(k => PART_LABELS[k] || k)
     );
 
-    // Missing hint
     const hint = document.getElementById('missingHint');
     if (missing.length > 0 && subtotal > 0) {
         hint.textContent = `Missing: ${missing.join(', ')}`;
@@ -1069,7 +1029,6 @@ function updateSummary() {
         hint.textContent = '';
     }
 
-    // Highlight missing rows
     ALL_KEYS.forEach(key => {
         const row = document.getElementById(`row-${key}`);
         if (REQUIRED_KEYS.includes(key) && !build[key] && subtotal > 0) {
@@ -1079,44 +1038,42 @@ function updateSummary() {
         }
     });
 
-    // Enable/disable button
     const btn = document.getElementById('addBuildBtn');
     if (btn) btn.disabled = (missing.length > 0 || subtotal === 0);
 
-    // Build ids for form
     const ids = Object.entries(build).map(([k, v]) => ({ key: k, id: v.id }));
     document.getElementById('selectedIdsInput').value = JSON.stringify(ids);
 }
 
 // ── Assembly service toggle ───────────────────────────────────
-let assemblySelected = true;  // default: checked
+let assemblySelected = true;
 
 function toggleAssembly(checked) {
     assemblySelected = checked;
-    const wrap      = document.getElementById('assemblyToggleWrap');
-    const label     = document.getElementById('assemblyFeeLabel');
-    const value     = document.getElementById('assemblyFeeValue');
-    const feeRow    = document.getElementById('assembly-fee-tot-row');
-    const hiddenIn  = document.getElementById('inputAssembly');
+    const wrap     = document.getElementById('assemblyToggleWrap');
+    const label    = document.getElementById('assemblyFeeLabel');
+    const value    = document.getElementById('assemblyFeeValue');
+    const feeRow   = document.getElementById('assembly-fee-tot-row');
+    const hiddenIn = document.getElementById('inputAssembly');
 
     wrap.classList.toggle('active', checked);
     hiddenIn.value = checked ? '1' : '0';
 
     if (checked) {
-        label.innerHTML = '<i class="fa fa-circle-check me-1" style="color:#4caf50;"></i>Assembled &amp; delivered to your door';
-        value.textContent   = 'FREE';
-        value.className     = 'assembly-fee-value free';
+        label.innerHTML  = '<i class="fa fa-circle-check me-1" style="color:#4caf50;"></i>Assembled &amp; delivered to your door';
+        value.textContent = 'FREE';
+        value.className   = 'assembly-fee-value free';
         feeRow.style.display = 'none';
     } else {
-        label.innerHTML = '<i class="fa fa-box-open me-1" style="color:#ff6b6b;"></i>Separate unassembled parts delivery';
-        value.textContent   = '− RM 25.00';
-        value.className     = 'assembly-fee-value deduct';
+        label.innerHTML  = '<i class="fa fa-box-open me-1" style="color:#ff6b6b;"></i>Separate unassembled parts delivery';
+        value.textContent = '− RM 25.00';
+        value.className   = 'assembly-fee-value deduct';
         feeRow.style.display = '';
     }
     updateSummary();
 }
 
-// ── Submit build ───────────────────────────────────────────────
+// ── Submit build → proceed to checkout ────────────────────────
 function submitBuild() {
     const missing = REQUIRED_KEYS.filter(k => !build[k]);
     if (missing.length > 0) {
@@ -1153,7 +1110,7 @@ function submitBuild() {
 
     Swal.fire({
         icon: 'question',
-        title: 'Add Build to Cart?',
+        title: 'Proceed to Checkout?',
         html: `<div style="text-align:left;">
                    <div style="color:#aaa;font-size:.85rem;margin-bottom:8px;">${partCount} part(s) selected</div>
                    <div style="display:flex;justify-content:space-between;color:#888;font-size:.82rem;margin-bottom:4px;">
@@ -1162,13 +1119,13 @@ function submitBuild() {
                    ${discHtml}
                    ${assemblyHtml}
                    <div style="display:flex;justify-content:space-between;font-weight:700;color:#d4af37;font-size:1rem;margin-top:10px;border-top:1px solid #2a2a2a;padding-top:10px;">
-                       <span>Total</span><span>${fmt(displayedFinal)}</span>
+                       <span>Total (excl. shipping)</span><span>${fmt(displayedFinal)}</span>
                    </div>
                </div>`,
         background: '#1a1a1a', color: '#fff',
         confirmButtonColor: '#d4af37', cancelButtonColor: '#333',
         showCancelButton: true,
-        confirmButtonText: '<i class="fa fa-cart-plus me-1"></i> Add to Cart',
+        confirmButtonText: '<i class="fa fa-arrow-right me-1"></i> Yes, Checkout',
         cancelButtonText: 'Cancel'
     }).then(result => {
         if (result.isConfirmed) document.getElementById('buildForm').submit();
@@ -1199,26 +1156,7 @@ document.addEventListener('click', function (e) {
 updateSummary();
 </script>
 
-<?php if ($addResult === 'success'): ?>
-<script>
-Swal.fire({
-    icon: 'success',
-    title: 'Build Added to Cart!',
-    html: `<?php
-        $msg = $addedCountFinal . ' part(s) added';
-        if ($discountPct > 0) $msg .= " with <strong style='color:#4caf50;'>{$discountPct}% discount</strong>";
-        $msg .= '.<br>';
-        if ($assemblyServiceFinal) {
-            $msg .= '<span style="color:#4caf50;font-size:.85rem;"><i class="fa fa-screwdriver-wrench"></i> Assembly &amp; delivery included — FREE</span>';
-        } else {
-            $msg .= '<span style="color:#ff6b6b;font-size:.85rem;"><i class="fa fa-box-open"></i> Unassembled separate parts</span>';
-        }
-        echo $msg;
-    ?>`,
-    background: '#1a1a1a', color: '#fff', confirmButtonColor: '#d4af37'
-}).then(() => { if (typeof updateCartBadge === 'function') updateCartBadge(null); });
-</script>
-<?php elseif ($addResult === 'missing'): ?>
+<?php if ($addResult === 'missing'): ?>
 <script>
 Swal.fire({
     icon: 'warning', title: 'Incomplete Build',
