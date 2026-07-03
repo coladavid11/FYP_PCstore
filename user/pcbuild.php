@@ -884,7 +884,7 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
                 <?php else: ?>
                     <button type="button" class="btn-build" id="addBuildBtn"
                             onclick="submitBuild()" disabled>
-                        <i class="fa fa-arrow-right"></i> Proceed to Checkout
+                        <i class="fa fa-lock me-2"></i> Proceed to Checkout
                     </button>
                 <?php endif; ?>
             </form>
