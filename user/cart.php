@@ -242,16 +242,21 @@ if ($isLoggedIn && $user_id) {
     }
 }
 
-// Fetch stock for each cart item
-$stockMap = [];
+// Fetch stock and product status for each cart item
+$stockMap  = [];
+$statusMap = []; // cart_id → true (active) / false (inactive)
 if ($isLoggedIn && !empty($cartItems)) {
     foreach ($cartItems as $item) {
-        $s = $dbh->prepare("SELECT stock FROM products WHERE product_id = ?");
+        $s = $dbh->prepare("SELECT stock, status FROM products WHERE product_id = ?");
         $s->execute([$item['product_id']]);
         $row = $s->fetch(PDO::FETCH_ASSOC);
-        $stockMap[$item['cart_id']] = $row ? intval($row['stock']) : 0;
+        $stockMap[$item['cart_id']]  = $row ? intval($row['stock']) : 0;
+        $statusMap[$item['cart_id']] = $row ? strtolower($row['status']) === 'active' : false;
     }
 }
+
+// Check if any item is unavailable (for disabling checkout button)
+$hasUnavailable = in_array(false, $statusMap, true);
 ?>
 
 <!DOCTYPE html>
@@ -331,6 +336,27 @@ if ($isLoggedIn && !empty($cartItems)) {
             margin-top: 4px;
             display: none;
         }
+
+        /* ── Unavailable item styling ── */
+        .item-unavailable {
+            opacity: 0.55;
+            pointer-events: none;
+        }
+
+        .unavailable-badge {
+            display: inline-block;
+            background: rgba(220,53,69,0.15);
+            border: 1px solid rgba(220,53,69,0.35);
+            color: #dc3545;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+            pointer-events: none;
+        }
+
+        .item-unavailable .qty-control { pointer-events: none; }
 
         /* ══ ORDER SUMMARY PANEL ══════════════════════════════════ */
         .summary-panel {
@@ -605,21 +631,27 @@ if ($isLoggedIn && !empty($cartItems)) {
                     <?php else: ?>
 
                         <?php foreach ($cartItems as $item):
-                            $maxStock = $stockMap[$item['cart_id']] ?? 99;
+                            $maxStock   = $stockMap[$item['cart_id']] ?? 99;
+                            $isActive   = $statusMap[$item['cart_id']] ?? true;
                             ?>
 
-                            <div class="info-card mb-3 p-3">
+                            <div class="info-card mb-3 p3 <?php echo !$isActive ? 'item-unavailable' : ''; ?>">
                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
 
                                     <!-- IMAGE + NAME -->
                                     <div class="d-flex align-items-center gap-3" style="min-width:250px;">
                                         <img src="<?php echo $item['product_image']; ?>"
-                                            style="width:80px;height:80px;object-fit:cover;border-radius:8px;">
+                                            style="width:80px;height:80px;object-fit:cover;border-radius:8px;<?php echo !$isActive ? 'filter:grayscale(1);' : ''; ?>">
                                         <div>
                                             <h6 class="mb-1"><?php echo $item['product_name']; ?></h6>
                                             <small class="text-soft">
                                                 RM <?php echo number_format($item['product_price'], 2); ?> each
                                             </small>
+                                            <?php if (!$isActive): ?>
+                                            <div class="unavailable-badge">
+                                                <i class="fa fa-ban me-1"></i>Unavailable
+                                            </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
 
@@ -628,13 +660,15 @@ if ($isLoggedIn && !empty($cartItems)) {
                                         <div class="qty-control" data-cart-id="<?php echo $item['cart_id']; ?>"
                                             data-price="<?php echo $item['product_price']; ?>" data-max="<?php echo $maxStock; ?>">
                                             <button class="qty-btn btn-minus"
-                                                <?php echo $item['quantity'] <= 1 ? 'disabled' : ''; ?>>
+                                                <?php echo ($item['quantity'] <= 1 || !$isActive) ? 'disabled' : ''; ?>>
                                                 &minus;
                                             </button>
 
                                             <input type="number" class="qty-display" value="<?php echo $item['quantity']; ?>"
-                                                min="1" max="<?php echo $maxStock; ?>">
-                                            <button class="qty-btn btn-plus" <?php echo $item['quantity'] >= $maxStock ? 'disabled' : ''; ?>>
+                                                min="1" max="<?php echo $maxStock; ?>"
+                                                <?php echo !$isActive ? 'disabled' : ''; ?>>
+                                            <button class="qty-btn btn-plus"
+                                                <?php echo ($item['quantity'] >= $maxStock || !$isActive) ? 'disabled' : ''; ?>>
                                                 &plus;
                                             </button>
                                         </div>
@@ -645,10 +679,12 @@ if ($isLoggedIn && !empty($cartItems)) {
 
                                     <!-- SUBTOTAL + DELETE -->
                                     <div class="d-flex align-items-center gap-3">
-                                        <strong class="item-subtotal" style="color:#d4af37;">
+                                        <strong class="item-subtotal" style="color:<?php echo !$isActive ? '#555' : '#d4af37'; ?>;">
                                             RM <?php echo number_format($item['product_price'] * $item['quantity'], 2); ?>
                                         </strong>
-                                        <a href="cart.php?remove=<?php echo $item['cart_id']; ?>" class="btn btn-danger btn-sm">
+                                        <a href="cart.php?remove=<?php echo $item['cart_id']; ?>"
+                                           class="btn btn-danger btn-sm"
+                                           style="pointer-events:all;">
                                             <i class="fa fa-trash"></i>
                                         </a>
                                     </div>
@@ -686,11 +722,19 @@ if ($isLoggedIn && !empty($cartItems)) {
                         <div class="sp-item">
                             <div class="sp-item-img-wrap">
                                 <img src="<?php echo htmlspecialchars($item['product_image']); ?>"
-                                     alt="<?php echo htmlspecialchars($item['product_name']); ?>">
+                                     alt="<?php echo htmlspecialchars($item['product_name']); ?>"
+                                     style="<?php echo !($statusMap[$item['cart_id']] ?? true) ? 'filter:grayscale(1);opacity:0.5;' : ''; ?>">
                                 <span class="sp-item-qty"><?php echo $item['quantity']; ?></span>
                             </div>
-                            <div class="sp-item-name"><?php echo htmlspecialchars($item['product_name']); ?></div>
-                            <div class="sp-item-price">RM&nbsp;<?php echo number_format($item['product_price'] * $item['quantity'], 2); ?></div>
+                            <div class="sp-item-name" style="<?php echo !($statusMap[$item['cart_id']] ?? true) ? 'color:#555;' : ''; ?>">
+                                <?php echo htmlspecialchars($item['product_name']); ?>
+                                <?php if (!($statusMap[$item['cart_id']] ?? true)): ?>
+                                <span style="color:#dc3545;font-size:0.65rem;display:block;">Unavailable</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="sp-item-price" style="<?php echo !($statusMap[$item['cart_id']] ?? true) ? 'color:#555;' : ''; ?>">
+                                RM&nbsp;<?php echo number_format($item['product_price'] * $item['quantity'], 2); ?>
+                            </div>
                         </div>
                         <?php endforeach; ?>
                     </div>
@@ -737,22 +781,6 @@ if ($isLoggedIn && !empty($cartItems)) {
                         </div>
                         <?php endif; ?>
 
-                        <!-- Assembly Service -->
-                        <div class="sp-row" id="sp-assembly-row">
-                            <span class="sp-row-label">
-                                <i class="fa fa-screwdriver-wrench me-1"
-                                   style="color:<?php echo $assemblyFeeAmt < 0 ? '#ff6b6b' : '#4caf50'; ?>;font-size:0.7rem;"></i>
-                                Assembly Service
-                            </span>
-                            <?php if ($assemblyFeeAmt < 0): ?>
-                            <span class="sp-row-value red" id="sp-assembly-val">
-                                − RM <?php echo number_format(abs($assemblyFeeAmt), 2); ?>
-                            </span>
-                            <?php else: ?>
-                            <span class="sp-row-value green" id="sp-assembly-val">FREE</span>
-                            <?php endif; ?>
-                        </div>
-
                         <!-- Shipping note -->
                         <div class="sp-row">
                             <span class="sp-row-label">Shipping</span>
@@ -779,6 +807,10 @@ if ($isLoggedIn && !empty($cartItems)) {
                         <a href="login.php" class="sp-btn">Login to Checkout</a>
                     <?php elseif (empty($cartItems)): ?>
                         <button class="sp-btn sp-btn-disabled" disabled>Your cart is empty</button>
+                    <?php elseif ($hasUnavailable): ?>
+                        <button class="sp-btn sp-btn-disabled" disabled>
+                            <i class="fa fa-ban me-2"></i>Remove unavailable items
+                        </button>
                     <?php else: ?>
                         <a href="payment.php" class="sp-btn">
                             <i class="fa fa-lock me-2"></i>Proceed to Checkout
@@ -805,6 +837,9 @@ if ($isLoggedIn && !empty($cartItems)) {
             const qtyInput = control.querySelector('.qty-display');
             const itemSubtotal = control.closest('.info-card').querySelector('.item-subtotal');
             const warning = document.getElementById('warn-' + cartId);
+
+            // Skip unavailable items
+            if (qtyInput.disabled) return;
 
             let debounceTimer = null;
 
