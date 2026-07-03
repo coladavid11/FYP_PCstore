@@ -652,11 +652,6 @@ $invoiceData = json_encode([
                     <i class="fa fa-times"></i> Cancel Order
                 </button>
             <?php endif; ?>
-            <?php if ($isDelivered): ?>
-                <button class="btn-act btn-act-info" onclick="reviewOrder()">
-                    <i class="fa fa-star"></i> Review Products
-                </button>
-            <?php endif; ?>
             <a href="myorder.php" class="btn-act btn-act-outline">
                 <i class="fa fa-arrow-left"></i> Back to Orders
             </a>
