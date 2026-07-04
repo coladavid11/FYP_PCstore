@@ -241,15 +241,27 @@ if ($isLoggedIn && $user_id) {
 }
 
 // Fetch stock and product status for each cart item
+// (checks BOTH the product's own status AND its brand's status —
+//  a product should count as unavailable if its brand was set inactive too)
 $stockMap  = [];
 $statusMap = []; // cart_id → true (active) / false (inactive)
 if ($isLoggedIn && !empty($cartItems)) {
     foreach ($cartItems as $item) {
-        $s = $dbh->prepare("SELECT stock, status FROM products WHERE product_id = ?");
+        $s = $dbh->prepare("
+            SELECT p.stock, p.status, b.status AS brand_status
+            FROM products p
+            LEFT JOIN tblbrand b ON b.brand_id = p.brand_id
+            WHERE p.product_id = ?
+        ");
         $s->execute([$item['product_id']]);
         $row = $s->fetch(PDO::FETCH_ASSOC);
-        $stockMap[$item['cart_id']]  = $row ? intval($row['stock']) : 0;
-        $statusMap[$item['cart_id']] = $row ? strtolower($row['status']) === 'active' : false;
+
+        $stockMap[$item['cart_id']] = $row ? intval($row['stock']) : 0;
+
+        $productActive = $row && strtolower($row['status']) === 'active';
+        $brandActive   = !$row || $row['brand_status'] === null || strtolower($row['brand_status']) === 'active';
+
+        $statusMap[$item['cart_id']] = $productActive && $brandActive;
     }
 }
 

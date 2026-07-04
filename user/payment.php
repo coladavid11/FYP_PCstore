@@ -178,12 +178,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($isPCBuild) {
                     // PC Build checkout 
-                    // 1. Stock check
-                    $stockCheck = $dbh->prepare("SELECT product_id, stock FROM products WHERE product_id = ? FOR UPDATE");
+                    // 1. Stock + availability check (product status AND brand status)
+                    $stockCheck = $dbh->prepare("
+                        SELECT p.product_id, p.stock, p.status, b.status AS brand_status
+                        FROM products p
+                        LEFT JOIN tblbrand b ON b.brand_id = p.brand_id
+                        WHERE p.product_id = ?
+                        FOR UPDATE
+                    ");
                     foreach ($buildItems as $item) {
                         $stockCheck->execute([$item['product_id']]);
                         $stockRow = $stockCheck->fetch(PDO::FETCH_ASSOC);
-                        if (!$stockRow || $stockRow['stock'] < 1) {
+
+                        $productActive = $stockRow && strtolower($stockRow['status']) === 'active';
+                        $brandActive   = !$stockRow || $stockRow['brand_status'] === null || strtolower($stockRow['brand_status']) === 'active';
+
+                        if (!$stockRow || !$productActive || !$brandActive) {
+                            throw new Exception("'{$item['product_name']}' is no longer available for purchase.");
+                        }
+
+                        if ($stockRow['stock'] < 1) {
                             throw new Exception("'{$item['product_name']}' is out of stock.");
                         }
                     }
@@ -242,12 +256,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 } else {
                     // Cart checkout (original logic unchanged) 
-                    // 1. Stock check
-                    $stockCheck = $dbh->prepare("SELECT product_id, stock FROM products WHERE product_id = ? FOR UPDATE");
+                    // 1. Stock + availability check (product status AND brand status)
+                    $stockCheck = $dbh->prepare("
+                        SELECT p.product_id, p.stock, p.status, b.status AS brand_status
+                        FROM products p
+                        LEFT JOIN tblbrand b ON b.brand_id = p.brand_id
+                        WHERE p.product_id = ?
+                        FOR UPDATE
+                    ");
                     foreach ($cartItems as $item) {
                         $stockCheck->execute([$item['product_id']]);
                         $stockRow = $stockCheck->fetch(PDO::FETCH_ASSOC);
-                        if (!$stockRow || $stockRow['stock'] < $item['quantity']) {
+
+                        $productActive = $stockRow && strtolower($stockRow['status']) === 'active';
+                        $brandActive   = !$stockRow || $stockRow['brand_status'] === null || strtolower($stockRow['brand_status']) === 'active';
+
+                        if (!$stockRow || !$productActive || !$brandActive) {
+                            throw new Exception("'{$item['product_name']}' is no longer available for purchase.");
+                        }
+
+                        if ($stockRow['stock'] < $item['quantity']) {
                             throw new Exception(
                                 "'{$item['product_name']}' is out of stock. " .
                                 "Available: " . ($stockRow['stock'] ?? 0) .
@@ -760,8 +788,15 @@ $displayItems = $isPCBuild ? $buildItems : $cartItems;
 
                 <div class="mb-3">
                     <label class="form-label">Card Number</label>
-                    <input type="text" id="cardNumber" class="card-field"
-                           placeholder="0000 0000 0000 0000" maxlength="19" required>
+                    <div style="position:relative;">
+                        <input type="text" id="cardNumber" class="card-field"
+                               placeholder="0000 0000 0000 0000" maxlength="19" required
+                               style="padding-right:120px;">
+                        <span id="cardTypeIcon" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:0.75rem;font-weight:700;letter-spacing:0.5px;"></span>
+                    </div>
+                    <div id="cardTypeError" style="font-size:0.75rem;color:#dc3545;margin-top:4px;display:none;">
+                        Please enter a valid Visa or Mastercard number.
+                    </div>
                 </div>
 
                 <div class="row g-3">
@@ -1053,10 +1088,42 @@ document.getElementById('receiverPhone').addEventListener('input', function () {
     this.value = v;
 });
 
-// Card number format 
+
+// ── Detect card type ──────────────────────────────────────────
+function detectCardType(number) {
+    const num = number.replace(/\s/g, '');
+    if (/^4/.test(num)) return 'visa';
+    if (/^5[1-5]/.test(num) || /^2[2-7]/.test(num)) return 'mastercard';
+    return 'unknown';
+}
+
+// ── Card number format + real-time card type badge ────────────
 document.getElementById('cardNumber').addEventListener('input', function () {
     let v = this.value.replace(/\D/g,'').slice(0,16);
     this.value = v.replace(/(\d{4})/g,'$1 ').trim();
+
+    const type    = detectCardType(this.value);
+    const iconEl  = document.getElementById('cardTypeIcon');
+    const errorEl = document.getElementById('cardTypeError');
+    const digits  = this.value.replace(/\s/g,'').length;
+
+    if (type === 'visa') {
+        iconEl.innerHTML = '<span style="background:#1a1f71;color:#fff;padding:3px 10px;border-radius:4px;">VISA</span>';
+        errorEl.style.display = 'none';
+        this.classList.remove('is-invalid');
+    } else if (type === 'mastercard') {
+        iconEl.innerHTML = '<span style="background:#eb001b;color:#fff;padding:3px 10px;border-radius:4px;">MASTERCARD</span>';
+        errorEl.style.display = 'none';
+        this.classList.remove('is-invalid');
+    } else if (digits >= 1) {
+        iconEl.innerHTML = '';
+        errorEl.style.display = 'block';
+        this.classList.add('is-invalid');
+    } else {
+        iconEl.innerHTML = '';
+        errorEl.style.display = 'none';
+        this.classList.remove('is-invalid');
+    }
 });
 
 // Expiry format + real-time month validation 
@@ -1111,6 +1178,13 @@ document.getElementById('checkoutForm').addEventListener('submit', function (e) 
 
     if (card.length !== 16) {
         Swal.fire({ title:'Invalid Card', text:'Card number must be exactly 16 digits.',
+            icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
+        return;
+    }
+
+    const cardType = detectCardType(card);
+    if (cardType === 'unknown') {
+        Swal.fire({ title:'Invalid Card Number', text:'Please enter a valid Visa or Mastercard number.',
             icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
         return;
     }

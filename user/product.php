@@ -14,7 +14,7 @@ $catStmt->execute();
 $categories = $catStmt->fetchAll(PDO::FETCH_ASSOC);
 
 /* ── BRAND LIST ── */
-$brandStmt = $dbh->prepare("SELECT * FROM tblbrand ORDER BY brand_name ASC");
+$brandStmt = $dbh->prepare("SELECT * FROM tblbrand WHERE status = 'Active' ORDER BY brand_name ASC");
 $brandStmt->execute();
 $brands = $brandStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -40,7 +40,8 @@ $sql = "SELECT p.*, c.category_name, b.brand_name
            FROM products p
            LEFT JOIN categories c ON p.category_id = c.category_id
            LEFT JOIN tblbrand   b ON p.brand_id    = b.brand_id
-           WHERE 1=1";
+           WHERE LOWER(p.status) = 'active'
+             AND (b.brand_id IS NULL OR b.status = 'Active')";
 $params = [];
 
 if ($category !== 'all') {
