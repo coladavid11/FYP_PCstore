@@ -101,9 +101,8 @@ if ($isLoggedIn && isset($_POST['ajax_update_qty'])) {
     exit();
 }
 
-// =======================
+
 // REMOVE ITEM (PDO)
-// =======================
 if ($isLoggedIn && isset($_GET['remove'])) {
 
     $cart_id = $_GET['remove'];
@@ -119,9 +118,8 @@ if ($isLoggedIn && isset($_GET['remove'])) {
     exit();
 }
 
-// =======================
+
 // FETCH CART ITEMS
-// =======================
 $cartItems = [];
 $total = 0;
 
@@ -140,7 +138,7 @@ if ($isLoggedIn) {
     }
 }
 
-// ── Sync cart prices with current product prices (skip PC Build items) ──
+// Sync cart prices with current product prices (skip PC Build items) 
 if ($isLoggedIn && !empty($cartItems)) {
     foreach ($cartItems as $item) {
         $pSync = $dbh->prepare("SELECT price FROM products WHERE product_id = ?");
@@ -189,7 +187,7 @@ if ($isLoggedIn && !empty($cartItems)) {
     }
 }
 
-// ── Detect PC Build discounts and Assembly discount in cart ──
+// Detect PC Build discounts and Assembly discount in cart 
 // We compare product_price in cart vs actual product price in DB.
 // If product_price < DB price → it was added via PC Builder (discounted).
 // Assembly fee: tbl_pc_build.assembly_fee for the latest draft/ordered build by this user.
@@ -274,7 +272,7 @@ $hasUnavailable = in_array(false, $statusMap, true);
     <link rel="stylesheet" href="newstyle.css">
 
     <style>
-        /* ── Shopee-style qty controls ── */
+        /* Shopee-style qty controls */
         .qty-control {
             display: flex;
             align-items: center;
@@ -337,7 +335,7 @@ $hasUnavailable = in_array(false, $statusMap, true);
             display: none;
         }
 
-        /* ── Unavailable item styling ── */
+        /*  Unavailable item styling  */
         .item-unavailable {
             opacity: 0.55;
             pointer-events: none;
@@ -358,7 +356,7 @@ $hasUnavailable = in_array(false, $statusMap, true);
 
         .item-unavailable .qty-control { pointer-events: none; }
 
-        /* ══ ORDER SUMMARY PANEL ══════════════════════════════════ */
+        /*  ORDER SUMMARY PANEL  */
         .summary-panel {
             background: #111;
             border: 1px solid #222;
@@ -590,7 +588,6 @@ $hasUnavailable = in_array(false, $statusMap, true);
             font-family:'Playfair Display',serif;
         }
         .sp-grand-row-sub { font-size:0.68rem; color:#444; padding:0 20px 10px; text-align:right; }
-        /* ══ END SUMMARY PANEL ════════════════════════════════════ */
 
     </style>
 </head>
@@ -602,10 +599,8 @@ $hasUnavailable = in_array(false, $statusMap, true);
     <div class="container py-5">
 
         <div class="row g-4">
-
-            <!-- ===================== -->
+ 
             <!-- LEFT: CART ITEMS      -->
-            <!-- ===================== -->
             <div class="col-lg-8">
 
                 <?php if (!$isLoggedIn): ?>

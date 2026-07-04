@@ -10,12 +10,12 @@ if (!$isLoggedIn || !$user_id) {
     exit;
 }
 
-// ── Detect source: pcbuild or cart ───────────────────────────
+// Detect source: pcbuild or cart 
 $source    = $_GET['source']   ?? 'cart';
 $build_id  = intval($_GET['build_id'] ?? 0);
 $isPCBuild = ($source === 'pcbuild' && $build_id > 0);
 
-// ── Fetch user profile (for default address) ──────────────────
+// Fetch user profile (for default address) 
 $uStmt = $dbh->prepare("
     SELECT u.*, s.state_name, sr.fee AS shipping_fee
     FROM tbluser u
@@ -26,7 +26,7 @@ $uStmt = $dbh->prepare("
 $uStmt->execute([$user_id]);
 $userProfile = $uStmt->fetch(PDO::FETCH_ASSOC);
 
-// ── Fetch all states + shipping fees for JS ───────────────────
+// Fetch all states + shipping fees for JS 
 $stateStmt = $dbh->query("
     SELECT s.state_id, s.state_name, COALESCE(sr.fee, 15) AS fee
     FROM tblstate s
@@ -39,7 +39,7 @@ foreach ($states as $s) {
     $shippingRates[$s['state_id']] = floatval($s['fee']);
 }
 
-// ── PC Build flow: fetch build + items ────────────────────────
+// PC Build flow: fetch build + items 
 $buildData        = null;
 $buildItems       = [];
 $cartItems        = [];
@@ -83,7 +83,7 @@ if ($isPCBuild) {
     $assemblyIsService = (bool)$buildData['assembly_service'];
 
 } else {
-    // ── Cart flow: original logic unchanged ───────────────────
+    // Cart flow: original logic unchanged 
     $stmt = $dbh->prepare("SELECT * FROM tblcart WHERE user_id = ? AND status = 'active'");
     $stmt->execute([$user_id]);
     $cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -120,7 +120,7 @@ $success     = false;
 $error       = '';
 $grand_total = 0;
 
-// ── Process payment ───────────────────────────────────────────
+// Process payment 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $isEmpty = $isPCBuild ? empty($buildItems) : empty($cartItems);
@@ -154,6 +154,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($cardHolder)) {
             $error = "Please enter the card holder name.";
+        } elseif (!preg_match('/^[a-zA-Z\s]+$/', $cardHolder)) {
+            $error = "Card holder name must contain letters only.";
 
         } elseif (empty($receiverName) || empty($receiverPhone) || empty($addr1) ||
                   empty($postcode)     || empty($city)           || $state_id <= 0) {
@@ -175,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $dbh->beginTransaction();
 
                 if ($isPCBuild) {
-                    // ── PC Build checkout ─────────────────────
+                    // PC Build checkout 
                     // 1. Stock check
                     $stockCheck = $dbh->prepare("SELECT product_id, stock FROM products WHERE product_id = ? FOR UPDATE");
                     foreach ($buildItems as $item) {
@@ -239,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                 } else {
-                    // ── Cart checkout (original logic unchanged) ──
+                    // Cart checkout (original logic unchanged) 
                     // 1. Stock check
                     $stockCheck = $dbh->prepare("SELECT product_id, stock FROM products WHERE product_id = ? FOR UPDATE");
                     foreach ($cartItems as $item) {
@@ -573,7 +575,7 @@ $displayItems = $isPCBuild ? $buildItems : $cartItems;
 <div class="container py-5">
 
 <?php if ($success): ?>
-<!-- ══ SUCCESS ══════════════════════════════════════════════ -->
+<!-- SUCCESS  -->
 <div class="row justify-content-center">
 <div class="col-lg-6">
 <div class="stat-card p-5 text-center">
@@ -592,7 +594,7 @@ $displayItems = $isPCBuild ? $buildItems : $cartItems;
 </div>
 
 <?php else: ?>
-<!-- ══ CHECKOUT FORM ════════════════════════════════════════ -->
+<!-- CHECKOUT FORM -->
 
 <?php if ($error): ?>
     <div class="alert alert-danger mb-4"><?php echo htmlspecialchars($error); ?></div>
@@ -609,7 +611,7 @@ $displayItems = $isPCBuild ? $buildItems : $cartItems;
             <input type="hidden" name="build_id" value="<?php echo $build_id; ?>">
             <?php endif; ?>
 
-            <!-- ── Delivery Address ───────────────────────── -->
+            <!-- Delivery Address -->
             <div class="addr-card">
                 <div class="section-heading">
                     <i class="fa fa-location-dot"></i> Delivery Address
@@ -744,7 +746,7 @@ $displayItems = $isPCBuild ? $buildItems : $cartItems;
 
             </div><!-- /addr-card -->
 
-            <!-- ── Payment ───────────────────────────────── -->
+            <!-- Payment -->
             <div class="addr-card">
                 <div class="section-heading">
                     <i class="fa fa-credit-card"></i> Card Payment
@@ -943,7 +945,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSummary(PROFILE.fee, PROFILE.stateName);
 });
 
-// ── Toggle address form ───────────────────────────────────────
+// Toggle address form 
 function toggleAddressForm(useProfile) {
     document.getElementById('profileAddrPreview').style.display = useProfile ? 'block' : 'none';
     document.getElementById('customAddrForm').style.display     = useProfile ? 'none'  : 'block';
@@ -979,8 +981,8 @@ function toggleAddressForm(useProfile) {
     }
 }
 
-// ── Update shipping when state changes (custom form) ─────────
-function updateShipping(stateId) {
+// Update shipping when state changes (custom form)
+function updateShipping(stateId) { 
     stateId = parseInt(stateId);
     if (!stateId || !SHIPPING_RATES[stateId]) {
         document.getElementById('shippingBadgeCustom').style.display = 'none';
@@ -1008,7 +1010,7 @@ function updateShipping(stateId) {
     updateAddrSummary(name2, phone2, [a1, a2, pc + ' ' + city, name]);
 }
 
-// ── Update summary panel numbers ──────────────────────────────
+// Update summary panel numbers 
 function updateSummary(fee, stateName) {
     currentShipping = fee;
     const grandTotal = Math.max(0, SUBTOTAL + ASSEMBLY_FEE + fee);
@@ -1024,7 +1026,7 @@ function updateSummary(fee, stateName) {
     if (stateEl) stateEl.textContent = stateName || '';
 }
 
-// ── Update "Delivering To" summary ───────────────────────────
+// Update "Delivering To" summary 
 function updateAddrSummary(name, phone, addrParts) {
     const parts = addrParts.filter(p => p && p.trim());
     document.getElementById('addrSummaryText').innerHTML =
@@ -1039,25 +1041,25 @@ function escHtml(str) {
         .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Postcode: digits only ─────────────────────────────────────
+// Postcode: digits only 
 document.getElementById('postcodeCustom').addEventListener('input', function () {
     this.value = this.value.replace(/\D/g,'').slice(0,5);
 });
 
-// ── Phone auto-format ─────────────────────────────────────────
+// Phone auto-format 
 document.getElementById('receiverPhone').addEventListener('input', function () {
     let v = this.value.replace(/\D/g,'');
     if (v.length > 3) v = v.slice(0,3) + '-' + v.slice(3);
     this.value = v;
 });
 
-// ── Card number format ────────────────────────────────────────
+// Card number format 
 document.getElementById('cardNumber').addEventListener('input', function () {
     let v = this.value.replace(/\D/g,'').slice(0,16);
     this.value = v.replace(/(\d{4})/g,'$1 ').trim();
 });
 
-// ── Expiry format + real-time month validation ────────────────
+// Expiry format + real-time month validation 
 document.getElementById('expiry').addEventListener('input', function () {
     let v = this.value.replace(/\D/g,'').slice(0,4);
     if (v.length >= 3) v = v.slice(0,2) + '/' + v.slice(2);
@@ -1081,12 +1083,12 @@ document.getElementById('expiry').addEventListener('input', function () {
     }
 });
 
-// ── CVV ───────────────────────────────────────────────────────
+// CVV 
 document.getElementById('cvv').addEventListener('input', function () {
     this.value = this.value.replace(/\D/g,'').slice(0,3);
 });
 
-// ── Form submit validation ────────────────────────────────────
+// Form submit validation 
 document.getElementById('checkoutForm').addEventListener('submit', function (e) {
     e.preventDefault();
 
@@ -1095,7 +1097,12 @@ document.getElementById('checkoutForm').addEventListener('submit', function (e) 
 
     if (!holderName) {
         Swal.fire({ title:'Required', text:'Please enter the card holder name.',
-            icon:'warning', background:'#1a1a1a', color:'#fff', iconColor:'#d4af37', confirmButtonColor:'#d4af37' });
+             icon:'warning', background:'#1a1a1a', color:'#fff', iconColor:'#d4af37', confirmButtonColor:'#d4af37' });
+        return;
+    }
+    if (!/^[a-zA-Z\s]+$/.test(holderName)) {
+        Swal.fire({ title:'Invalid Name', text:'Card holder name can only contain letters.',
+             icon:'error', background:'#1a1a1a', color:'#fff', confirmButtonColor:'#d4af37' });
         return;
     }
 

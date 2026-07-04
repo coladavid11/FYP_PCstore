@@ -78,11 +78,7 @@ $buildDiscountAmt = 0.00;
 
 // Compute original subtotal from DB prices
 foreach ($items as $item) {
-    $pStmt = $dbh->prepare("SELECT price FROM products WHERE product_id = ?");
-    $pStmt->execute([$item['product_id']]);
-    $pRow  = $pStmt->fetch(PDO::FETCH_ASSOC);
-    $dbPrice = $pRow ? floatval($pRow['price']) : floatval($item['product_price']);
-    $originalSubtotal += $dbPrice * $item['quantity'];
+    $originalSubtotal += floatval($item['product_price']) * $item['quantity'];
 }
 
 // Build discount = original - total_amount (what was actually charged for items)
@@ -96,10 +92,11 @@ $bStmt = $dbh->prepare("
     FROM tbl_pc_build b
     WHERE b.user_id = ?
       AND b.status  = 'ordered'
+      AND ABS(TIMESTAMPDIFF(SECOND, b.created_at, ?)) <= 60
     ORDER BY ABS(TIMESTAMPDIFF(SECOND, b.created_at, ?)) ASC
     LIMIT 1
 ");
-$bStmt->execute([$user_id, $order['created_at']]);
+$bStmt->execute([$user_id, $order['created_at'], $order['created_at']]);
 $buildData = $bStmt->fetch(PDO::FETCH_ASSOC);
 
 // Assembly info
@@ -814,39 +811,11 @@ $invoiceData = json_encode([
                     </div>
                     <?php endif; ?>
 
-                    <!-- Original Subtotal -->
-                    <div class="summary-row">
-                        <span class="sr-label">Original Subtotal</span>
-                        <span class="sr-val <?php echo $buildDiscountAmt > 0 ? 'strike' : ''; ?>">
-                            RM <?php echo number_format($originalSubtotal > 0 ? $originalSubtotal : $order['total_amount'], 2); ?>
-                        </span>
-                    </div>
-
-                    <!-- PC Build Discount -->
-                    <?php if ($buildDiscountAmt > 0): ?>
-                    <div class="summary-row">
-                        <span class="sr-label">
-                            <i class="fa fa-tag me-1" style="color:#4caf50;font-size:0.72rem;"></i>
-                            PC Build Discount
-                            <?php if ($buildData && $buildData['discount_pct'] > 0): ?>
-                            <small><?php echo $buildData['discount_pct']; ?>% off</small>
-                            <?php endif; ?>
-                        </span>
-                        <span class="sr-val green">− RM <?php echo number_format($buildDiscountAmt, 2); ?></span>
-                    </div>
-
-                    <!-- Subtotal after discount -->
-                    <div class="summary-row" style="border-top:1px solid #161616;padding-top:9px;margin-top:2px;">
-                        <span class="sr-label">Subtotal after Discount</span>
-                        <span class="sr-val">RM <?php echo number_format($order['total_amount'], 2); ?></span>
-                    </div>
-                    <?php else: ?>
-                    <!-- No discount — show plain subtotal -->
+                    <!-- Subtotal -->
                     <div class="summary-row">
                         <span class="sr-label">Subtotal</span>
-                        <span class="sr-val">RM <?php echo number_format($order['total_amount'], 2); ?></span>
+                        <span class="sr-value">RM <?php echo number_format($order['total_amount'], 2); ?></span>
                     </div>
-                    <?php endif; ?>
 
                     <!-- Assembly Service Fee -->
                     <?php if ($buildData): ?>
@@ -877,7 +846,7 @@ $invoiceData = json_encode([
                     </div>
                 </div>
 
-                <!-- ═══ PAYMENT INFO ═══ -->
+                <!-- PAYMENT INFO -->
                 <div class="panel">
                     <div class="panel-title"><i class="fa fa-credit-card"></i> Payment</div>
 
@@ -910,7 +879,7 @@ $invoiceData = json_encode([
                     </div>
                 </div>
 
-                <!-- ═══ ORDER INFO ═══ -->
+                <!-- ORDER INFO -->
                 <div class="panel">
                     <div class="panel-title"><i class="fa fa-info-circle"></i> Order Info</div>
                     <div class="info-grid">
@@ -945,7 +914,7 @@ $invoiceData = json_encode([
                 </div>
 
 
-                <!-- ═══ DELIVERY ADDRESS ═══ -->
+                <!-- DELIVERY ADDRESS -->
                 <div class="panel">
                     <div class="panel-title"><i class="fa fa-location-dot"></i> Delivery Address</div>
                     <?php if ($deliveryAddr): ?>
@@ -979,7 +948,7 @@ $invoiceData = json_encode([
 
     </div><!-- container -->
 
-    <!-- ════════════════════════ INVOICE MODAL ════════════════════════ -->
+    <!-- INVOICE MODAL -->
     <div class="modal fade" id="invoiceModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content" style="background:#121212;border:1px solid #2a2a2a;border-radius:12px;">
@@ -1132,7 +1101,7 @@ $invoiceData = json_encode([
         </div>
     </div><!-- invoiceModal -->
 
-    <!-- ════════════════════════ REVIEW MODAL ════════════════════════ -->
+    <!-- REVIEW MODAL -->
     <div class="modal fade" id="reviewModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content" style="background:#121212;border:1px solid #2a2a2a;border-radius:12px;">
@@ -1186,7 +1155,7 @@ $invoiceData = json_encode([
     <script>
         const ORDER_ID = <?php echo $order_id; ?>;
 
-        /* ── INVOICE ── */
+        /* INVOICE */
         function downloadInvoice() {
             const modal = new bootstrap.Modal(document.getElementById('invoiceModal'));
             modal.show();
@@ -1209,7 +1178,7 @@ $invoiceData = json_encode([
             setTimeout(() => { win.print(); }, 400);
         }
 
-        /* ── CANCEL ORDER ── */
+        /* CANCEL ORDER */
         function cancelOrder(orderId, orderNumber) {
             Swal.fire({
                 icon: 'warning',
@@ -1245,7 +1214,7 @@ $invoiceData = json_encode([
             });
         }
 
-        /* ── REORDER ── */
+        /* REORDER */
         function reorder(orderId) {
             Swal.fire({
                 icon: 'question',
@@ -1282,7 +1251,7 @@ $invoiceData = json_encode([
             });
         }
 
-        /* ── REVIEW ── */
+        /* REVIEW */
         let selectedStar = 0;
 
         function reviewOrder() {

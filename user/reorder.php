@@ -1,15 +1,4 @@
 <?php
-/*
- * reorder.php
- * POST: order_id
- * Response: JSON
- *
- * Rules:
- *  - User must be logged in
- *  - Order must belong to the user
- *  - For each item: check stock, then insert/update tblcart
- *  - Skips out-of-stock items, reports how many were added
- */
 
 session_start();
 header('Content-Type: application/json');
@@ -88,7 +77,11 @@ foreach ($items as $item) {
     $pid = intval($item['product_id']);
     $reqQty = intval($item['quantity']);
     $stock = intval($item['stock'] ?? 0);
-    $price = floatval($item['product_price']);
+    // Use current DB price instead of order-time price
+    $priceStmt = $dbh->prepare("SELECT price FROM products WHERE product_id = ?");
+    $priceStmt->execute([$pid]);
+    $priceRow = $priceStmt->fetch(PDO::FETCH_ASSOC);
+    $price = $priceRow ? floatval($priceRow['price']) : floatval($item['product_price']);
 
     /* Skip if product no longer exists or out of stock */
     if ($pid <= 0 || $stock <= 0) {

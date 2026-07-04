@@ -5,7 +5,7 @@ include('includes/config.php');
 $isLoggedIn = isset($_SESSION['login']);
 $user_id    = $_SESSION['user_id'] ?? null;
 
-// ── Discount tiers ────────────────────────────────────────────
+// Discount tiers 
 function getDiscount(float $total): array
 {
     if ($total >= 6000) return ['pct' => 10, 'label' => '10% off'];
@@ -13,10 +13,10 @@ function getDiscount(float $total): array
     return ['pct' => 0, 'label' => 'No discount'];
 }
 
-// ── Required parts (9 mandatory) ─────────────────────────────
+// Required parts (9 mandatory) 
 $REQUIRED_KEYS = ['CPU','Motherboard','RAM','Storage','GPU','Power Supply','PC Case','Case Fan','Cooler'];
 
-// ── Part definitions ──────────────────────────────────────────
+//  Part definitions
 $parts = [
     'CPU'         => ['cat_id' => 6,  'icon' => 'fa-microchip',       'label' => 'Processor (CPU)',  'required' => true],
     'Motherboard' => ['cat_id' => 1,  'icon' => 'fa-server',          'label' => 'Motherboard',      'required' => true],
@@ -32,7 +32,7 @@ $parts = [
     'Mouse'       => ['cat_id' => 15, 'icon' => 'fa-computer-mouse',  'label' => 'Mouse',            'required' => false],
 ];
 
-// ── Fetch products per category ───────────────────────────────
+// Fetch products per category 
 function getPartsByCategory($dbh, $category_id)
 {
     $stmt = $dbh->prepare("
@@ -50,7 +50,7 @@ foreach ($parts as $key => $info) {
     $partProducts[$key] = getPartsByCategory($dbh, $info['cat_id']);
 }
 
-// ── Handle Proceed to Checkout (PC Build → direct payment) ───
+// Handle Proceed to Checkout (PC Build → direct payment) 
 $addResult = '';
 if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
 
@@ -147,7 +147,7 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* ── LAYOUT ──────────────────────────────────────── */
+        /* LAYOUT */
         .builder-wrap {
             display: flex;
             gap: 28px;
@@ -161,7 +161,7 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
             .builder-summary { width: 100%; position: static; }
         }
 
-        /* ── PART ROW ────────────────────────────────────── */
+        /* PART ROW */
         .part-row {
             background: #121212;
             border: 1px solid #2a2a2a;
@@ -254,7 +254,7 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
         }
         .part-row.open .part-chevron { transform: rotate(180deg); }
 
-        /* ── DROPDOWN PANEL ──────────────────────────────── */
+        /* DROPDOWN PANEL */
         .part-panel {
             display: none;
             border-top: 1px solid #1e1e1e;
@@ -313,7 +313,7 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
         }
         .part-option .opt-price.none { color: #444; font-weight: 400; }
 
-        /* ── SUMMARY PANEL ───────────────────────────────── */
+        /* SUMMARY PANEL */
         .summary-card {
             background: #111;
             border: 1px solid #222;
@@ -515,7 +515,7 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
             min-height: 16px;
         }
 
-        /* ── ASSEMBLY TOGGLE ─────────────────────────────── */
+        /* ASSEMBLY TOGGLE */
         .assembly-toggle {
             margin: 0 16px 14px;
             border: 1px solid #2a2a2a;
@@ -610,7 +610,7 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
         .assembly-fee-value.free  { color: #4caf50; }
         .assembly-fee-value.deduct { color: #ff6b6b; }
 
-        /* ── PAGE HERO ───────────────────────────────────── */
+        /* PAGE HERO */
         .page-hero {
             padding: 60px 0 40px;
             text-align: center;
@@ -662,7 +662,7 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
 <div class="container pb-5">
 <div class="builder-wrap">
 
-    <!-- ══ LEFT: PART SELECTOR ══════════════════════════════ -->
+    <!-- LEFT: PART SELECTOR -->
     <div class="builder-parts">
 
         <div class="parts-section-label">Required Components</div>
@@ -751,7 +751,7 @@ if ($isLoggedIn && isset($_POST['add_build_to_cart'])) {
 
     </div><!-- /builder-parts -->
 
-    <!-- ══ RIGHT: SUMMARY PANEL ═════════════════════════════ -->
+    <!-- RIGHT: SUMMARY PANEL -->
     <div class="builder-summary">
     <div class="summary-card">
 
@@ -919,7 +919,7 @@ function getDiscount(total) {
     return { pct: 0, label: '0%' };
 }
 
-// ── Select a part ──────────────────────────────────────────────
+// Select a part 
 function selectPart(key, id, name, price) {
     document.querySelectorAll(`.part-option[data-key="${key}"]`)
         .forEach(el => el.classList.remove('active'));
@@ -951,7 +951,7 @@ function selectPart(key, id, name, price) {
     updateSummary();
 }
 
-// ── Update all summary UI ──────────────────────────────────────
+// Update all summary UI 
 function updateSummary() {
     let subtotal = 0;
     let reqDone  = 0;
@@ -1045,7 +1045,7 @@ function updateSummary() {
     document.getElementById('selectedIdsInput').value = JSON.stringify(ids);
 }
 
-// ── Assembly service toggle ───────────────────────────────────
+// Assembly service toggle 
 let assemblySelected = true;
 
 function toggleAssembly(checked) {
@@ -1073,7 +1073,7 @@ function toggleAssembly(checked) {
     updateSummary();
 }
 
-// ── Submit build → proceed to checkout ────────────────────────
+// Submit build → proceed to checkout 
 function submitBuild() {
     const missing = REQUIRED_KEYS.filter(k => !build[k]);
     if (missing.length > 0) {
@@ -1138,7 +1138,7 @@ function fmt(val) {
     });
 }
 
-// ── Event delegation ───────────────────────────────────────────
+// Event delegation 
 document.addEventListener('click', function (e) {
     const opt = e.target.closest('.part-option');
     if (opt) {
