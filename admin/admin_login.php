@@ -21,7 +21,8 @@ if (isset($_POST['login'])) {
         $errMsg = "Please enter both email and password.";
     } else {
 
-        $sql = "SELECT admin_id, email, password, fullname, role, status 
+        // Added 'first_login' to the SELECT fields string
+        $sql = "SELECT admin_id, email, password, fullname, role, status, first_login 
                 FROM admin 
                 WHERE email = :email LIMIT 1";
 
@@ -39,14 +40,20 @@ if (isset($_POST['login'])) {
                     $errMsg = "Account is blocked.";
                 } else {
 
-                    $_SSESSION['admin_id'] = $admin->admin_id;
+                    // FIXED: Corrected the typo from $_SSESSION to $_SESSION
+                    $_SESSION['admin_id'] = $admin->admin_id;
                     $_SESSION['admin_login'] = $admin->email;
                     $_SESSION['admin_name'] = $admin->fullname;
                     $_SESSION['admin_role'] = $admin->role;
 
-                    // 🔥 redirect
-                    header("Location: dashboard.php");
-                    exit;
+                    // 🔥 Force Change Password Interception Rule
+                    if ((int) $admin->first_login === 1) {
+                        header("Location: force_change_password.php");
+                        exit;
+                    } else {
+                        header("Location: dashboard.php");
+                        exit;
+                    }
                 }
 
             } else {

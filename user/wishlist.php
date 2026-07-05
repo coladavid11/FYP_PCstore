@@ -103,6 +103,7 @@ $stmt = $dbh->prepare("
     JOIN products p ON p.product_id = w.product_id
     WHERE w.user_id = ?
     AND w.status = 'active'
+    AND p.status = 'active'
     ORDER BY w.created_at DESC
 ");
 
@@ -194,13 +195,9 @@ $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                             <div class="d-flex gap-2">
 
-                                <a href="product_details.php?id=<?php echo $row['product_id']; ?>" class="btn btn-dark2 w-100">
+                                <a href="product_details.php?id=<?php echo $row['product_id']; ?>" class="btn btn-gold w-100">
                                     View
                                 </a>
-
-                                <button class="btn btn-gold w-100" onclick="moveToCart(<?php echo $row['product_id']; ?>)">
-                                    Cart
-                                </button>
 
                             </div>
 

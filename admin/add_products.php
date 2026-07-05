@@ -61,8 +61,8 @@ if (isset($_POST['add_product'])) {
     } elseif ($product_exists > 0) {
         // Blocks insertion and retains form data matching your exact custom validation string
         $error = 'This product name is already exist';
-    } elseif ($price < 0) {
-        $error = 'Price cannot be negative.';
+    } elseif ($price < 1) {
+        $error = 'Minimum price is RM 1.00';
     } elseif ($stock < 0) {
         $error = 'Stock cannot be negative.';
     } elseif ($category_id <= 0) {
