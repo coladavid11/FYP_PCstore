@@ -241,16 +241,17 @@ if ($isLoggedIn && $user_id) {
 }
 
 // Fetch stock and product status for each cart item
-// (checks BOTH the product's own status AND its brand's status —
-//  a product should count as unavailable if its brand was set inactive too)
+// (checks the product's own status, its brand's status, AND its category's status —
+//  a product should count as unavailable if its brand or category was set inactive too)
 $stockMap  = [];
 $statusMap = []; // cart_id → true (active) / false (inactive)
 if ($isLoggedIn && !empty($cartItems)) {
     foreach ($cartItems as $item) {
         $s = $dbh->prepare("
-            SELECT p.stock, p.status, b.status AS brand_status
+            SELECT p.stock, p.status, b.status AS brand_status, c.status AS category_status
             FROM products p
-            LEFT JOIN tblbrand b ON b.brand_id = p.brand_id
+            LEFT JOIN tblbrand  b ON b.brand_id    = p.brand_id
+            LEFT JOIN categories c ON c.category_id = p.category_id
             WHERE p.product_id = ?
         ");
         $s->execute([$item['product_id']]);
@@ -258,10 +259,11 @@ if ($isLoggedIn && !empty($cartItems)) {
 
         $stockMap[$item['cart_id']] = $row ? intval($row['stock']) : 0;
 
-        $productActive = $row && strtolower($row['status']) === 'active';
-        $brandActive   = !$row || $row['brand_status'] === null || strtolower($row['brand_status']) === 'active';
+        $productActive  = $row && strtolower(trim($row['status'])) === 'active';
+        $brandActive    = !$row || $row['brand_status'] === null || strtolower(trim($row['brand_status'])) === 'active';
+        $categoryActive = !$row || $row['category_status'] === null || strtolower(trim($row['category_status'])) === 'active';
 
-        $statusMap[$item['cart_id']] = $productActive && $brandActive;
+        $statusMap[$item['cart_id']] = $productActive && $brandActive && $categoryActive;
     }
 }
 

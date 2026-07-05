@@ -32,13 +32,15 @@ $parts = [
     'Mouse'       => ['cat_id' => 15, 'icon' => 'fa-computer-mouse',  'label' => 'Mouse',            'required' => false],
 ];
 
-// Fetch products per category 
+// Fetch products per category (also skip products whose category has been deactivated) 
 function getPartsByCategory($dbh, $category_id)
 {
     $stmt = $dbh->prepare("
         SELECT p.product_id, p.name, p.price, p.image, p.stock
         FROM products p
+        LEFT JOIN categories c ON c.category_id = p.category_id
         WHERE p.category_id = ? AND p.stock > 0 AND p.status = 'Active'
+          AND (c.category_id IS NULL OR LOWER(c.status) = 'active')
         ORDER BY p.price ASC
     ");
     $stmt->execute([$category_id]);
