@@ -25,11 +25,12 @@ if (!$admin) {
 
 /* ── AJAX GOOGLE-STYLE IDENTITY CHECKPOINT ── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_current_password'])) {
-    if (ob_get_length()) ob_clean(); // Clear any accidental background spaces/buffers
-    
+    if (ob_get_length())
+        ob_clean(); // Clear any accidental background spaces/buffers
+
     header('Content-Type: application/json');
     $password_input = $_POST['verify_current_password'];
-    
+
     if (password_verify($password_input, $admin->password)) {
         echo json_encode(['success' => true]);
     } else {
@@ -109,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($upd->execute()) {
             $success = true;
             $_SESSION['admin_login'] = $new_email;
-            $_SESSION['admin_name'] = $fullname; 
+            $_SESSION['admin_name'] = $fullname;
 
             // Sync structural parameters locally
             $admin->fullname = $fullname;
@@ -130,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Edit Profile — Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
         * {
@@ -409,6 +411,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             line-height: 1.5;
         }
 
+        /* ── OTP SUB-INNER CONTAINER STYLE ── */
+        .otp-inner-container {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 20px;
+            background: #fafafa;
+            margin-top: 20px;
+        }
+
+        .btn-warning-custom {
+            background: #000;
+            color: #d4af37;
+            border: 1px solid #d4af37;
+            padding: 8px 16px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-warning-custom:hover:not(:disabled) {
+            background: #d4af37;
+            color: #000;
+        }
+        .btn-warning-custom:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-verify-custom {
+            background: #000;
+            color: #fff;
+            border: 1px solid #000;
+            padding: 10px 14px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+        }
+        .btn-verify-custom:hover:not(:disabled) {
+            background: #222;
+            border-color: #222;
+        }
+
         /* ── FOOTER CONTAINER ── */
         .form-footer {
             padding: 18px 28px;
@@ -562,14 +610,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <a href="users.php">👥 Users</a>
         <a href="shipping_rates.php">🚚 Shipping Rates</a>
         <a href="sales_report.php">📊 Sales Report</a>
-        <a href="admins.php" class="sidebar-active">⚙ Admin</a>
+        <a href="admins.php">⚙ Admin</a>
     </div>
 
     <div class="main">
 
         <div class="topbar">
             <div>
-                <h1><i class="fa fa-user-gear" style="color:#d4af37;margin-right:8px;font-size:1.2rem;"></i>My Profile</h1>
+                <h1><i class="fa fa-user-gear" style="color:#d4af37;margin-right:8px;font-size:1.2rem;"></i>My Profile
+                </h1>
                 <div class="topbar-sub">Update personal metrics and administrative credentials</div>
             </div>
             <div class="topbar-right">
@@ -613,24 +662,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="form-group">
                                 <label class="form-label" for="fullname">Full Name <span class="req">*</span></label>
                                 <input type="text" id="fullname" name="fullname" class="form-control"
-                                       value="<?php echo htmlspecialchars($admin->fullname); ?>" required>
+                                    value="<?php echo htmlspecialchars($admin->fullname); ?>" required>
                             </div>
 
                             <div class="form-group">
                                 <label class="form-label" for="email">Email Address <span class="req">*</span></label>
                                 <input type="email" id="email" name="email" class="form-control"
-                                       value="<?php echo htmlspecialchars($admin->email); ?>"
-                                       data-orig="<?php echo htmlspecialchars($admin->email); ?>" required>
+                                    value="<?php echo htmlspecialchars($admin->email); ?>"
+                                    data-orig="<?php echo htmlspecialchars($admin->email); ?>" required>
                                 <div class="email-warning" id="emailWarn">
                                     <i class="fa fa-triangle-exclamation"></i>
-                                    <strong>Note:</strong> Modifying your email updates your primary administrator system login identifier.
+                                    <strong>Note:</strong> Modifying your email updates your primary administrator
+                                    system login identifier.
                                 </div>
                             </div>
 
                             <div class="form-group" style="margin-bottom:0;">
                                 <label class="form-label" for="phone">Phone Number <span class="req">*</span></label>
                                 <input type="text" id="phone" name="phone" class="form-control"
-                                       value="<?php echo htmlspecialchars($admin->phone); ?>" required>
+                                    value="<?php echo htmlspecialchars($admin->phone); ?>" required>
                             </div>
                         </div>
                     </div>
@@ -641,34 +691,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <h2>Change Security Credentials</h2>
                         </div>
                         <div class="form-body">
-                            
+
                             <div id="identityVerificationStep">
-                                <div class="form-hint" style="margin-bottom: 15px;">To ensure your administrative security, you must first verify your identity using your current password.</div>
+                                <div class="form-hint" style="margin-bottom: 15px;">To ensure your administrative
+                                    security, you must first verify your identity using your current password.</div>
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <label class="form-label" for="current_password">Enter your current password</label>
                                     <div style="display: flex; gap: 10px;">
                                         <input type="password" id="current_password" name="current_password"
-                                               class="form-control" placeholder="••••••••">
-                                        <button type="button" id="btnVerifyPassword" class="btn-save" style="white-space: nowrap; padding: 10px 20px;">
+                                            class="form-control" placeholder="••••••••">
+                                        <button type="button" id="btnVerifyPassword" class="btn-save"
+                                            style="white-space: nowrap; padding: 10px 20px;">
                                             Next
                                         </button>
                                     </div>
-                                    <div id="verifyMessage" style="font-size: 0.8rem; margin-top: 8px; display: none; font-weight: 500;"></div>
+                                    <div id="verifyMessage"
+                                        style="font-size: 0.8rem; margin-top: 8px; display: none; font-weight: 500;">
+                                    </div>
                                 </div>
                             </div>
 
-                            <div id="newPasswordFields" style="display: none; border-top: 1px dashed #e0e0e0; margin-top: 20px; padding-top: 15px;">
+                            <div id="otpVerificationSection" class="otp-inner-container" style="display: none;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                    <div>
+                                        <h4 style="font-size: 0.9rem; font-weight: 600; color: #111; margin-bottom: 2px;">OTP Verification</h4>
+                                        <span class="form-hint" style="margin: 0;">Verify your registered email before password change</span>
+                                    </div>
+                                    <button type="button" class="btn-warning-custom" id="sendOtpBtn">Get OTP</button>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                                    <div style="flex: 1;">
+                                        <label class="form-label" for="otp_input">Enter OTP</label>
+                                        <input type="text" id="otp_input" class="form-control" maxlength="4" placeholder="4-digit OTP">
+                                    </div>
+                                    <div style="width: 140px;">
+                                        <button type="button" class="btn-verify-custom" id="verifyOtpBtn">Verify OTP</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="newPasswordFields"
+                                style="display: none; border-top: 1px dashed #e0e0e0; margin-top: 20px; padding-top: 15px;">
                                 <div class="form-group">
                                     <label class="form-label" for="new_password">New Password</label>
                                     <input type="password" id="new_password" name="new_password" class="form-control"
-                                           placeholder="Minimum 8 characters">
-                                    <div class="form-hint">Must be at least 8 characters long and differ from the old one.</div>
+                                        placeholder="Minimum 8 characters" disabled>
+                                    <div class="form-hint">Must be at least 8 characters long and differ from the old
+                                        one.</div>
                                 </div>
 
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label" for="confirm_password">Confirm New Password</label>
                                     <input type="password" id="confirm_password" name="confirm_password"
-                                           class="form-control" placeholder="Retype new password">
+                                        class="form-control" placeholder="Retype new password" disabled>
                                 </div>
                             </div>
 
@@ -695,7 +770,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="side-card-body">
                             <div class="meta-row">
                                 <i class="fa fa-user"></i>
-                                <span>Role: <strong><?php echo htmlspecialchars(strtoupper($admin->role ?? 'ADMIN')); ?></strong></span>
+                                <span>Role:
+                                    <strong><?php echo htmlspecialchars(strtoupper($admin->role ?? 'ADMIN')); ?></strong></span>
                             </div>
                             <div class="meta-row">
                                 <i class="fa fa-calendar-day"></i>
@@ -709,9 +785,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div>
                                     <div style="margin-bottom:4px;">Account Status</div>
                                     <?php if (isset($admin->status) && intval($admin->status) === 1): ?>
-                                        <span class="status-badge status-active"><i class="fa fa-circle" style="font-size:0.45rem;"></i> Enabled</span>
+                                        <span class="status-badge status-active"><i class="fa fa-circle"
+                                                style="font-size:0.45rem;"></i> Enabled</span>
                                     <?php else: ?>
-                                        <span class="status-badge status-inactive"><i class="fa fa-circle" style="font-size:0.45rem;"></i> Disabled</span>
+                                        <span class="status-badge status-inactive"><i class="fa fa-circle"
+                                                style="font-size:0.45rem;"></i> Disabled</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -742,12 +820,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const btnVerify = document.getElementById('btnVerifyPassword');
         const currentPassInput = document.getElementById('current_password');
         const verifyMessage = document.getElementById('verifyMessage');
+        const otpVerificationSection = document.getElementById('otpVerificationSection');
         const newPasswordFields = document.getElementById('newPasswordFields');
 
         if (btnVerify) {
             btnVerify.addEventListener('click', function () {
                 const passwordVal = currentPassInput.value.trim();
-                
+
                 if (!passwordVal) {
                     verifyMessage.style.color = '#721c24';
                     verifyMessage.textContent = 'Please type your current system password to proceed.';
@@ -762,32 +841,127 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 verifyMessage.textContent = 'Verifying security metrics...';
                 verifyMessage.style.display = 'block';
 
-                // FIXED: Changed destination route from admin_profile.php to edit_profile.php
                 fetch('edit_profile.php', {
                     method: 'POST',
                     body: formData
                 })
-                .then(response => response.json())
-                .catch(() => { return { success: false, message: 'Server communication error.' }; })
-                .then(data => {
-                    if (data.success) {
-                        verifyMessage.style.color = '#155724';
-                        verifyMessage.innerHTML = '<i class="fa fa-circle-check"></i> Identity Verified! Enter your new password configurations below.';
-                        
-                        // Lock validation parameters to prevent alteration exploits
-                        currentPassInput.readOnly = true;
-                        btnVerify.disabled = true;
-                        btnVerify.style.opacity = '0.5';
-                        
-                        // Display the hidden credential change fields
-                        newPasswordFields.style.display = 'block';
-                    } else {
-                        verifyMessage.style.color = '#721c24';
-                        verifyMessage.textContent = data.message || 'The current password you entered is incorrect.';
-                    }
-                });
+                    .then(response => response.json())
+                    .catch(() => { return { success: false, message: 'Server communication error.' }; })
+                    .then(data => {
+                        if (data.success) {
+                            verifyMessage.style.color = '#155724';
+                            verifyMessage.innerHTML = '<i class="fa fa-circle-check"></i> Identity Verified! Complete the OTP check to change parameters.';
+
+                            // Lock validation parameters to prevent alteration exploits
+                            currentPassInput.readOnly = true;
+                            btnVerify.disabled = true;
+                            btnVerify.style.opacity = '0.5';
+
+                            // Display OTP check layout container safely
+                            otpVerificationSection.style.display = 'block';
+                        } else {
+                            verifyMessage.style.color = '#721c24';
+                            verifyMessage.textContent = data.message || 'The current password you entered is incorrect.';
+                        }
+                    });
             });
         }
+
+        // ── SEND OTP ACTION ENGINE ──────────────────────────────────────
+        document.getElementById('sendOtpBtn').addEventListener('click', function () {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerText = 'Sending...';
+
+            fetch('send_otp.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'email=<?php echo urlencode($admin->email); ?>&context=profile'
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire({
+                            icon: 'success', title: 'OTP Sent', text: data.message,
+                            background: '#ffffff', color: '#212529', confirmButtonColor: '#000000'
+                        });
+                        // 30-second cooldown block
+                        let sec = 30;
+                        const iv = setInterval(() => {
+                            btn.innerText = `Resend OTP (${sec}s)`;
+                            sec--;
+                            if (sec < 0) {
+                                clearInterval(iv);
+                                btn.disabled = false;
+                                btn.innerText = 'Get OTP';
+                            }
+                        }, 1000);
+                    } else {
+                        Swal.fire({
+                            icon: 'error', title: 'Failed', text: data.message,
+                            background: '#ffffff', color: '#212529', confirmButtonColor: '#000000'
+                        });
+                        btn.disabled = false;
+                        btn.innerText = 'Get OTP';
+                    }
+                })
+                .catch(() => {
+                    Swal.fire({
+                        icon: 'error', title: 'Error', text: 'Network connection dropped.',
+                        background: '#ffffff', color: '#212529', confirmButtonColor: '#000000'
+                    });
+                    btn.disabled = false;
+                    btn.innerText = 'Get OTP';
+                });
+        });
+
+        // ── VERIFY OTP ACTION ENGINE ──────────────────────────────────
+        document.getElementById('verifyOtpBtn').addEventListener('click', function () {
+            const otp = document.getElementById('otp_input').value.trim();
+
+            if (!/^\d{4}$/.test(otp)) {
+                Swal.fire({
+                    icon: 'warning', title: 'Invalid OTP', text: 'OTP must be exactly 4 digits.',
+                    background: '#ffffff', color: '#212529', confirmButtonColor: '#000000'
+                });
+                return;
+            }
+
+            fetch('verify_otp.php', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body:    'otp=' + encodeURIComponent(otp)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success', title: 'Verified!', text: data.message,
+                        background: '#ffffff', color: '#212529', confirmButtonColor: '#000000'
+                    });
+                    
+                    // Collapse or fade validation step, display target update inputs safely
+                    document.getElementById('otp_input').disabled = true;
+                    this.disabled = true;
+                    document.getElementById('sendOtpBtn').disabled = true;
+                    
+                    newPasswordFields.style.display = 'block';
+                    document.getElementById('new_password').disabled     = false;
+                    document.getElementById('confirm_password').disabled = false;
+                } else {
+                    Swal.fire({
+                        icon: 'error', title: 'Failed', text: data.message,
+                        background: '#ffffff', color: '#212529', confirmButtonColor: '#000000'
+                    });
+                }
+            })
+            .catch(() => {
+                Swal.fire({
+                    icon: 'error', title: 'Error', text: 'Network connection dropped.',
+                    background: '#ffffff', color: '#212529', confirmButtonColor: '#000000'
+                });
+            });
+        });
 
         /* ── COMPONENT CLOSURE LEAVE MANAGEMENT ── */
         let formChanged = false;
@@ -806,4 +980,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </script>
 
 </body>
+
 </html>

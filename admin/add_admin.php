@@ -2,6 +2,14 @@
 session_start();
 include('includes/config.php');
 
+// Include PHPMailer classes manually via the nested master src directory
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'includes/PHPMailer/PHPMailer-master/src/Exception.php';
+require 'includes/PHPMailer/PHPMailer-master/src/PHPMailer.php';
+require 'includes/PHPMailer/PHPMailer-master/src/SMTP.php';
+
 if (!isset($_SESSION['admin_login'])) {
     header("Location: admin_login.php");
     exit;
@@ -18,45 +26,94 @@ if (isset($_POST['submit'])) {
     $fullname = trim($_POST['fullname']);
     $email = trim($_POST['email']);
     $phone = trim($_POST['phone']);
-    $password = $_POST['password'];
-    $confirm_password = $_POST['confirm_password'];
     $role = $_POST['role'];
 
-    // 1. Check if passwords match
-    if ($password !== $confirm_password) {
-        $error = "Passwords do not match. Please try again.";
-    }
-    // 2. Password Length Check (>= 8 characters)
-    elseif (strlen($password) < 8) {
-        $error = "Password must be at least 8 characters long.";
+    // 1. Email Duplicate Check
+    $check = $dbh->prepare("SELECT admin_id FROM admin WHERE email = :email");
+    $check->bindParam(':email', $email, PDO::PARAM_STR);
+    $check->execute();
+
+    if ($check->rowCount() > 0) {
+        $error = "This email is already registered.";
     } else {
-        // 3. Email Duplicate Check
-        $check = $dbh->prepare("SELECT admin_id FROM admin WHERE email = :email");
-        $check->bindParam(':email', $email, PDO::PARAM_STR);
-        $check->execute();
+        // 2. Generate a secure random password (12 characters long with mixed cases/numbers)
+        $bytes = random_bytes(6);
+        $random_password = bin2hex($bytes);
 
-        if ($check->rowCount() > 0) {
-            $error = "This email is already registered.";
-        } else {
-            // Password Hashing
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+        // Hash the generated random password for safe database storage
+        $hashed_password = password_hash($random_password, PASSWORD_DEFAULT);
 
-            // FIXED: Changed :hashed_password to :password to match bindParam precisely
-            $sql = "INSERT INTO admin (fullname, email, phone, password, role, status) 
-                    VALUES (:fullname, :email, :phone, :password, :role, 1)";
+        $sql = "INSERT INTO admin (fullname, email, phone, password, role, status) 
+                VALUES (:fullname, :email, :phone, :password, :role, 1)";
 
-            $query = $dbh->prepare($sql);
-            $query->bindParam(':fullname', $fullname, PDO::PARAM_STR);
-            $query->bindParam(':email', $email, PDO::PARAM_STR);
-            $query->bindParam(':phone', $phone, PDO::PARAM_STR);
-            $query->bindParam(':password', $hashed_password, PDO::PARAM_STR);
-            $query->bindParam(':role', $role, PDO::PARAM_STR);
+        $query = $dbh->prepare($sql);
+        $query->bindParam(':fullname', $fullname, PDO::PARAM_STR);
+        $query->bindParam(':email', $email, PDO::PARAM_STR);
+        $query->bindParam(':phone', $phone, PDO::PARAM_STR);
+        $query->bindParam(':password', $hashed_password, PDO::PARAM_STR);
+        $query->bindParam(':role', $role, PDO::PARAM_STR);
 
-            if ($query->execute()) {
-                $msg = "Admin account created successfully!";
-            } else {
-                $error = "Something went wrong. Please try again.";
+        if ($query->execute()) {
+
+            // 3. Dispatch Notification Email containing credentials to the newly registered admin
+            $mail = new PHPMailer(true);
+
+            try {
+                // --- SMTP CONFIGURATION ---
+                // Replace these values with your actual SMTP credentials (e.g., Gmail, Mailtrap, Hostinger)
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';             // Set your SMTP server provider
+                $mail->SMTPAuth = true;
+                $mail->Username = 'coladavid0203@gmail.com';       // Your enterprise email address
+                $mail->Password = 'supx ydta rxkt inuh';          // Your App Password configuration token
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+
+                // --- EMAIL METADATA ---
+                $mail->setFrom('coladavid0203@gmail.com', 'My PC Store');
+                $mail->addAddress($email, $fullname);
+
+                // --- EMAIL CONTENT STRUCTURE ---
+                $mail->isHTML(true);
+                $mail->Subject = 'Your New Admin Account Credentials — My PC Store';
+
+                // HTML Email Design Layout matching professional structures
+                $mail->Body = "
+                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;'>
+                        <h2 style='color: #ccac3d; border-bottom: 2px solid #f5f5f5; padding-bottom: 10px;'>Welcome to the Management Team!</h2>
+                        <p>Hello <strong>" . htmlspecialchars($fullname) . "</strong>,</p>
+                        <p>An administrative workspace profile has been provisioned for you at <strong>My PC Store</strong>.</p>
+                        <p>Below are your secure login credentials:</p>
+                        <table style='background-color: #f8fafc; padding: 15px; border-radius: 6px; width: 100%; margin: 15px 0;'>
+                            <tr>
+                                <td style='font-weight: bold; color: #444; width: 120px;'>Portal Link:</td>
+                                <td><a href='http://" . $_SERVER['HTTP_HOST'] . "/admin_login.php' style='color: #ccac3d; text-decoration: none;'>Admin Login Panel</a></td>
+                            </tr>
+                            <tr>
+                                <td style='font-weight: bold; color: #444;'>Username/Email:</td>
+                                <td>" . htmlspecialchars($email) . "</td>
+                            </tr>
+                            <tr>
+                                <td style='font-weight: bold; color: #444;'>Temporary Password:</td>
+                                <td style='font-family: monospace; font-size: 1.1rem; background: #eef3ff; padding: 2px 6px; border-radius: 4px; color: #333; letter-spacing: 0.5px;'><strong>" . $random_password . "</strong></td>
+                            </tr>
+                        </table>
+                        <p style='color: #dc3545; font-size: 0.85rem;'>⚠️ <strong>Security Action Required:</strong> For access optimization and data preservation safety, please navigate directly to your account dashboard to change this temporary credential on your very first initialization login.</p>
+                        <hr style='border: none; border-top: 1px solid #f5f5f5; margin: 20px 0;'>
+                        <p style='font-size: 0.8rem; color: #777;'>This system notification is automated. Please do not reply directly to this mail string.</p>
+                    </div>
+                ";
+
+                $mail->send();
+                $msg = "Admin account created successfully! The random password has been dispatched directly to " . htmlspecialchars($email);
+
+            } catch (Exception $e) {
+                // Account was saved to database safely, but SMTP processing raised problems
+                $msg = "Admin account created successfully in the system database. However, the system encountered issues delivering the registration credentials email notification. Error details: {$mail->ErrorInfo}";
             }
+
+        } else {
+            $error = "Something went wrong creating the account. Please try again.";
         }
     }
 }
@@ -73,9 +130,6 @@ if (isset($_POST['submit'])) {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
     <style>
-        /* =========================
-            GENERAL RESET & BASIS
-         ========================= */
         * {
             margin: 0;
             padding: 0;
@@ -88,9 +142,6 @@ if (isset($_POST['submit'])) {
             background: #f5f5f5;
         }
 
-        /* =========================
-           SIDEBAR LAYOUT
-        ========================= */
         .sidebar {
             width: 220px;
             height: 100vh;
@@ -128,18 +179,12 @@ if (isset($_POST['submit'])) {
             color: #000;
         }
 
-        /* =========================
-            MAIN LAYOUT CONTAINER
-         ========================= */
         .main {
             margin-left: 220px;
             width: calc(100% - 220px);
             padding: 30px;
         }
 
-        /* =========================
-            TOPBAR 
-         ========================= */
         .topbar {
             display: flex;
             justify-content: space-between;
@@ -172,9 +217,6 @@ if (isset($_POST['submit'])) {
             opacity: 0.8;
         }
 
-        /* =========================
-            FORM BOX STRUCTURING
-         ========================= */
         .form-box {
             background: #fff;
             padding: 35px;
@@ -224,9 +266,6 @@ if (isset($_POST['submit'])) {
             box-shadow: 0 0 0 3px rgba(204, 172, 61, 0.1);
         }
 
-        /* =========================
-           ACTION SUBMIT BUTTON
-        ========================= */
         .btn-save {
             background: #000;
             color: #d4af37;
@@ -247,9 +286,6 @@ if (isset($_POST['submit'])) {
             color: #000;
         }
 
-        /* =========================
-           NOTIFICATION ALERT BANNERS
-        ========================= */
         .success {
             background-color: #e2f5ea;
             color: #0b5931;
@@ -262,6 +298,7 @@ if (isset($_POST['submit'])) {
             display: flex;
             align-items: center;
             gap: 10px;
+            line-height: 1.4;
         }
 
         .error {
@@ -276,6 +313,17 @@ if (isset($_POST['submit'])) {
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        .info-note {
+            background-color: #eef3ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+            padding: 12px 15px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-bottom: 22px;
+            line-height: 1.4;
         }
     </style>
 </head>
@@ -307,7 +355,8 @@ if (isset($_POST['submit'])) {
 
             <?php if ($msg) { ?>
                 <div class="success">
-                    <i class="fa-solid fa-circle-check"></i> <?= htmlspecialchars($msg) ?>
+                    <i class="fa-solid fa-circle-check" style="font-size: 1.2rem; flex-shrink: 0;"></i>
+                    <div><?= htmlspecialchars($msg) ?></div>
                 </div>
             <?php } ?>
 
@@ -316,6 +365,12 @@ if (isset($_POST['submit'])) {
                     <i class="fa-solid fa-circle-xmark"></i> <?= htmlspecialchars($error) ?>
                 </div>
             <?php } ?>
+
+            <div class="info-note">
+                <i class="fa-solid fa-circle-info"></i> <strong>Note:</strong> Password assignment fields have been
+                securely automated. The system architecture generates a random password string upon creation and
+                automatically delivers it to the target user account email address.
+            </div>
 
             <form method="POST">
 
@@ -335,16 +390,6 @@ if (isset($_POST['submit'])) {
                 </div>
 
                 <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" name="password" placeholder="At least 8 characters" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Confirm Password</label>
-                    <input type="password" name="confirm_password" placeholder="Repeat your password" required>
-                </div>
-
-                <div class="form-group">
                     <label>Account Role Setting</label>
                     <select name="role">
                         <option value="admin">Admin</option>
@@ -353,7 +398,7 @@ if (isset($_POST['submit'])) {
                 </div>
 
                 <button type="submit" name="submit" class="btn-save">
-                    <i class="fa-solid fa-floppy-disk"></i> Add Admin Account
+                    <i class="fa-solid fa-user-plus"></i> Register & Send Password
                 </button>
 
             </form>
