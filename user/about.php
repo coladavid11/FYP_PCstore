@@ -243,7 +243,7 @@ $userCount     = $dbh->query("SELECT COUNT(*) FROM tbluser")->fetchColumn();
 
             <h2 class="section-title">Quick Stats</h2>
 
-            <div class="row g-4 mt-3">
+            <div class="row g-4 mt-3" id="quickStats">
 
                 <div class="col-md-3">
                     <div class="stat-card">
@@ -290,22 +290,54 @@ $userCount     = $dbh->query("SELECT COUNT(*) FROM tbluser")->fetchColumn();
     </section>
 
     <script>
-        // ── Animated counter using real DB values ─────────────────
-        function count(id, target) {
-            let el = document.getElementById(id);
-            let i = 0;
-            let step = Math.ceil(target / 60); // finish in ~60 frames
-            let interval = setInterval(() => {
-                i += step;
-                if (i >= target) { i = target; clearInterval(interval); }
-                el.innerText = i;
-            }, 30);
-        }
+    let statsStarted = false;
 
-        count("s1", <?php echo intval($productCount);  ?>);
-        count("s2", <?php echo intval($categoryCount); ?>);
-        count("s3", <?php echo intval($userCount);     ?>);
-    </script>
+    // Animated counter using real DB values
+    function count(id, target, duration = 2800) {
+        let el = document.getElementById(id);
+        let current = 0;
+
+        // How much to increment each time
+        let step = Math.ceil(target / (duration / 30));
+
+        let interval = setInterval(() => {
+            current += step;
+
+            if (current >= target) {
+                current = target;
+                clearInterval(interval);
+            }
+
+            el.innerText = current;
+        }, 30);
+    }
+
+    function startStatsCounter() {
+        if (statsStarted) return; // avoid starting the counter multiple times
+        statsStarted = true;
+
+        count("s1", <?php echo intval($productCount); ?>, 2800);
+        count("s2", <?php echo intval($categoryCount); ?>, 3000);
+        count("s3", <?php echo intval($userCount); ?>, 3200);
+    }
+
+    // start the counter when the section is in view
+    const quickStats = document.getElementById("quickStats");
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                startStatsCounter();
+                observer.unobserve(quickStats); // only trigger once
+            }
+        });
+    }, {
+        threshold: 0.35 // 35 % of the section is visible
+    });
+
+    observer.observe(quickStats);
+</script>
+
 
     <?php include('includes/footer.php'); ?>
 
