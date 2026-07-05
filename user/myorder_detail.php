@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $order_id = intval($_GET['id'] ?? 0);
 
-/* ── FETCH ORDER (must belong to this user) ── */
+/* FETCH ORDER (must belong to this user) */
 $stmt = $dbh->prepare("
     SELECT * FROM tblorders
     WHERE order_id = ? AND user_id = ?
@@ -23,7 +23,7 @@ if (!$order) {
     die('<div style="text-align:center;padding:80px;color:#555;font-family:sans-serif;">Order not found or access denied.</div>');
 }
 
-/* ── FETCH ORDER ITEMS ── */
+/* FETCH ORDER ITEMS */
 $iStmt = $dbh->prepare("
     SELECT oi.*, p.image
     FROM tblorder_item oi
@@ -33,8 +33,7 @@ $iStmt = $dbh->prepare("
 $iStmt->execute([$order_id]);
 $items = $iStmt->fetchAll(PDO::FETCH_ASSOC);
 
-/* ── STATUS HELPERS ── */
-// 注意：数据库 enum 用 'delivered'，不是 'completed'
+/* Order Status */
 $STATUS_FLOW = ['processing', 'packed', 'shipped', 'delivered'];
 
 function statusConfig(string $status): array
@@ -48,7 +47,7 @@ function statusConfig(string $status): array
         default => ['label' => ucfirst($status), 'color' => '#aaa', 'bg' => 'rgba(170,170,170,0.1)', 'icon' => 'fa-circle'],
     };
 }
-
+/* Payment Status */
 function paymentStatusConfig(string $status): array
 {
     return match (strtolower($status)) {
@@ -60,7 +59,7 @@ function paymentStatusConfig(string $status): array
 }
 
 
-/* ── FETCH DELIVERY ADDRESS ── */
+/* FETCH DELIVERY ADDRESS */
 $addrStmt = $dbh->prepare("
     SELECT oa.*, s.state_name
     FROM tbl_order_address oa
@@ -70,7 +69,7 @@ $addrStmt = $dbh->prepare("
 $addrStmt->execute([$order_id]);
 $deliveryAddr = $addrStmt->fetch(PDO::FETCH_ASSOC);
 
-/* ── FETCH PC BUILD linked to this order ── */
+/* FETCH PC BUILD linked to this order */
 // Find a build that has items matching this order's products
 $buildData     = null;
 $originalSubtotal = 0.00;
@@ -85,7 +84,6 @@ foreach ($items as $item) {
 $buildDiscountAmt = max(0, round($originalSubtotal - floatval($order['total_amount']), 2));
 
 // Fetch the PC build record for this user that is closest to this order date
-// (match by user_id and created_at proximity — best we can do without a direct FK)
 $bStmt = $dbh->prepare("
     SELECT b.build_id, b.assembly_service, b.assembly_fee,
            b.discount_pct, b.discount_amt, b.subtotal AS build_subtotal
@@ -110,9 +108,9 @@ if ($buildData) {
 $statusCfg = statusConfig($order['order_status']);
 $paymentCfg = paymentStatusConfig($order['payment_status'] ?? 'pending');
 $isCancelled = strtolower($order['order_status']) === 'cancelled';
-$isDelivered = strtolower($order['order_status']) === 'delivered';  // ← 修正：用 'delivered'
+$isDelivered = strtolower($order['order_status']) === 'delivered';  
 
-/* ── FETCH EXISTING REVIEWS FOR THIS ORDER (for edit prefill) ── */
+/* FETCH EXISTING REVIEWS FOR THIS ORDER (for edit prefill) */
 $existingReviews = [];
 if ($isDelivered) {
     $erStmt = $dbh->prepare("
@@ -126,12 +124,12 @@ if ($isDelivered) {
     }
 }
 
-/* ── TRACKING: find current step ── */
+/* TRACKING: find current step */
 $currentStep = $isCancelled ? -1 : array_search(strtolower($order['order_status']), $STATUS_FLOW);
 if ($currentStep === false)
     $currentStep = 0;
 
-/* ── BUILD DATA FOR INVOICE ── */
+/* BUILD DATA FOR INVOICE */
 $invoiceData = json_encode([
     'order_number' => $order['order_number'],
     'created_at' => $order['created_at'],
