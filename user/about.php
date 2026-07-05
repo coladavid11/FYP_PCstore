@@ -237,46 +237,45 @@ $userCount     = $dbh->query("SELECT COUNT(*) FROM tbluser")->fetchColumn();
     </section>
 
     <!-- STATS -->
-    <section class="py-5 bg-dark text-white">
+<section class="py-5 bg-dark text-white" id="quickStats">
+    <div class="container text-center">
+        <h2 class="section-title">Quick Stats</h2>
 
-        <div class="container text-center">
+        <div class="row g-4 mt-3 justify-content-center">
 
-            <h2 class="section-title">Quick Stats</h2>
-
-            <div class="row g-4 mt-3" id="quickStats">
-
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-number" id="s1">0</div>
-                        <div class="text-soft">Products</div>
-                    </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card h-100">
+                    <div class="stat-number" id="s1">0</div>
+                    <div class="text-soft">Products</div>
                 </div>
+            </div>
 
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-number" id="s2">0</div>
-                        <div class="text-soft">Categories</div>
-                    </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card h-100">
+                    <div class="stat-number" id="s2">0</div>
+                    <div class="text-soft">Categories</div>
                 </div>
+            </div>
 
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-number" id="s3">0</div>
-                        <div class="text-soft">Users</div>
-                    </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card h-100">
+                    <div class="stat-number" id="s3">0</div>
+                    <div class="text-soft">Users</div>
                 </div>
+            </div>
 
-                <div class="col-md-3">
-                    <div class="stat-card">
+            <div class="col-6 col-md-3">
+                <a href="https://maps.app.goo.gl/fe1hQFQ97RBZqACR8" target="_blank" class="text-decoration-none text-reset d-block h-100">
+                    <div class="stat-card h-100">
                         <div class="stat-number">MY</div>
                         <div class="text-soft">Location</div>
                     </div>
-                </div>
-
+                </a>
             </div>
 
         </div>
-    </section>
+    </div>
+</section>
 
     <!-- CTA -->
     <section class="py-5 text-center">

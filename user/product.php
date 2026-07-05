@@ -41,7 +41,8 @@ $sql = "SELECT p.*, c.category_name, b.brand_name
            LEFT JOIN categories c ON p.category_id = c.category_id
            LEFT JOIN tblbrand   b ON p.brand_id    = b.brand_id
            WHERE LOWER(p.status) = 'active'
-             AND (b.brand_id IS NULL OR b.status = 'Active')";
+             AND (b.brand_id IS NULL OR b.status = 'Active')
+             AND (c.category_id IS NULL OR LOWER(c.status) = 'active')";
 $params = [];
 
 if ($category !== 'all') {

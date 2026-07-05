@@ -178,11 +178,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($isPCBuild) {
                     // PC Build checkout 
-                    // 1. Stock + availability check (product status AND brand status)
+                    // 1. Stock + availability check (product status, brand status, AND category status)
                     $stockCheck = $dbh->prepare("
-                        SELECT p.product_id, p.stock, p.status, b.status AS brand_status
+                        SELECT p.product_id, p.stock, p.status,
+                               b.status AS brand_status,
+                               c.status AS category_status
                         FROM products p
-                        LEFT JOIN tblbrand b ON b.brand_id = p.brand_id
+                        LEFT JOIN tblbrand  b ON b.brand_id    = p.brand_id
+                        LEFT JOIN categories c ON c.category_id = p.category_id
                         WHERE p.product_id = ?
                         FOR UPDATE
                     ");
@@ -190,10 +193,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stockCheck->execute([$item['product_id']]);
                         $stockRow = $stockCheck->fetch(PDO::FETCH_ASSOC);
 
-                        $productActive = $stockRow && strtolower($stockRow['status']) === 'active';
-                        $brandActive   = !$stockRow || $stockRow['brand_status'] === null || strtolower($stockRow['brand_status']) === 'active';
+                        $productActive  = $stockRow && strtolower($stockRow['status']) === 'active';
+                        $brandActive    = !$stockRow || $stockRow['brand_status'] === null || strtolower($stockRow['brand_status']) === 'active';
+                        $categoryActive = !$stockRow || $stockRow['category_status'] === null || strtolower(trim($stockRow['category_status'])) === 'active';
 
-                        if (!$stockRow || !$productActive || !$brandActive) {
+                        if (!$stockRow || !$productActive || !$brandActive || !$categoryActive) {
                             throw new Exception("'{$item['product_name']}' is no longer available for purchase.");
                         }
 
@@ -208,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         INSERT INTO tblorders
                             (user_id, order_number, total_amount, shipping_fee, service_fee,
                              grand_total, payment_method, card_holder_name, payment_status, order_status)
-                        VALUES (?, ?, ?, ?, ?, ?, 'Demo Card', ?, 'paid', 'processing')
+                        VALUES (?, ?, ?, ?, ?, ?, 'Card', ?, 'paid', 'processing')
                     ");
                     $orderStmt->execute([
                         $user_id, $order_number, $subtotal, $shipping,
@@ -256,11 +260,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 } else {
                     // Cart checkout (original logic unchanged) 
-                    // 1. Stock + availability check (product status AND brand status)
+                    // 1. Stock + availability check (product status, brand status, AND category status)
                     $stockCheck = $dbh->prepare("
-                        SELECT p.product_id, p.stock, p.status, b.status AS brand_status
+                        SELECT p.product_id, p.stock, p.status,
+                               b.status AS brand_status,
+                               c.status AS category_status
                         FROM products p
-                        LEFT JOIN tblbrand b ON b.brand_id = p.brand_id
+                        LEFT JOIN tblbrand  b ON b.brand_id    = p.brand_id
+                        LEFT JOIN categories c ON c.category_id = p.category_id
                         WHERE p.product_id = ?
                         FOR UPDATE
                     ");
@@ -268,10 +275,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stockCheck->execute([$item['product_id']]);
                         $stockRow = $stockCheck->fetch(PDO::FETCH_ASSOC);
 
-                        $productActive = $stockRow && strtolower($stockRow['status']) === 'active';
-                        $brandActive   = !$stockRow || $stockRow['brand_status'] === null || strtolower($stockRow['brand_status']) === 'active';
+                        $productActive  = $stockRow && strtolower($stockRow['status']) === 'active';
+                        $brandActive    = !$stockRow || $stockRow['brand_status'] === null || strtolower($stockRow['brand_status']) === 'active';
+                        $categoryActive = !$stockRow || $stockRow['category_status'] === null || strtolower(trim($stockRow['category_status'])) === 'active';
 
-                        if (!$stockRow || !$productActive || !$brandActive) {
+                        if (!$stockRow || !$productActive || !$brandActive || !$categoryActive) {
                             throw new Exception("'{$item['product_name']}' is no longer available for purchase.");
                         }
 
@@ -290,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         INSERT INTO tblorders
                             (user_id, order_number, total_amount, shipping_fee, service_fee,
                              grand_total, payment_method, card_holder_name, payment_status, order_status)
-                        VALUES (?, ?, ?, ?, ?, ?, 'Demo Card', ?, 'paid', 'processing')
+                        VALUES (?, ?, ?, ?, ?, ?, 'Card', ?, 'paid', 'processing')
                     ");
                     $orderStmt->execute([
                         $user_id, $order_number, $subtotal, $shipping,
