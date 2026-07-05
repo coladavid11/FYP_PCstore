@@ -31,48 +31,174 @@ if ($selectedMonth > 0) {
 $whereSql = "WHERE " . implode(" AND ", $whereClauses);
 
 /* ==========================================
-   2. CLEAN & NATIVE EXCEL EXPORT ENGINE (CSV)
+   2. EXPORT TO EXCEL (.xlsx) — REAL EXCEL TABLE + AUTOFILTER
+   Exports EVERY order regardless of status, year or month.
+   The header row has a built-in filter dropdown so the admin
+   can filter/display any year, month or status directly inside
+   Excel without needing to re-select filters on this page.
    ========================================== */
 if (isset($_GET['export']) && $_GET['export'] == 'excel') {
-    $monthName = ($selectedMonth > 0) ? date('M', mktime(0, 0, 0, $selectedMonth, 1)) : "All";
-    $filename = "Sales_Report_" .$monthName ."_{$selectedYear}_" .date('Ymd_His') .".csv";
 
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '";');
-    header("Pragma: no-cache");
-    header("Expires: 0");
-
-    $output = fopen('php://output', 'w');
-    fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM
-
-    fputcsv($output, ['Sales Summary Report (' . $monthName . ' ' . $selectedYear . ')']);
-    fputcsv($output, []);
-    fputcsv($output, ['Order ID', 'Invoice Number', 'Payment Method', 'Created Date', 'Grand Total (RM)']);
+    // Requires PhpSpreadsheet. If not installed yet, run this once in your project root:
+    //   composer require phpoffice/phpspreadsheet
+    // Adjust the path below if vendor/ is not one level above this file.
+    require_once __DIR__ . '/../vendor/autoload.php';
 
     $exportStmt = $dbh->prepare("
-        SELECT order_id, order_number, payment_method, created_at, grand_total 
-        FROM tblorders 
-        $whereSql 
-        ORDER BY created_at DESC
+        SELECT 
+            o.order_id,
+            o.order_number,
+            u.fullname AS customer_name,
+            u.gmail AS customer_email,
+            o.created_at,
+            o.payment_method,
+            o.payment_status,
+            o.order_status,
+            o.total_amount,
+            o.shipping_fee,
+            o.service_fee,
+            o.grand_total
+        FROM tblorders o
+        LEFT JOIN tbluser u ON o.user_id = u.user_id
+        ORDER BY o.created_at DESC
     ");
-    $exportStmt->execute($params);
+    $exportStmt->execute();
+    $orders = $exportStmt->fetchAll(PDO::FETCH_OBJ);
 
-    $totalRevenueSum = 0;
-    while ($row = $exportStmt->fetch(PDO::FETCH_ASSOC)) {
-        fputcsv($output, [
-            $row['order_id'],
-            $row['order_number'],
-            $row['payment_method'],
-            date('d-M-Y', strtotime($row['created_at'])),
-            number_format($row['grand_total'], 2, '.', '')
-        ]);
-        $totalRevenueSum += $row['grand_total'];
+    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Sales Report');
+
+    $headers = [
+        'Order ID', 'Order Number', 'Customer Name', 'Customer Email',
+        'Year', 'Month', 'Order Date',
+        'Payment Method', 'Payment Status', 'Order Status',
+        'Total Amount (RM)', 'Shipping Fee (RM)', 'Grand Total (RM)'
+    ];
+    $sheet->fromArray($headers, NULL, 'A1');
+
+    $rowNum = 2;
+    $statusTotals = [];   // order_status => ['count' => x, 'revenue' => y]
+    $yearTotals   = [];   // year => revenue
+    $grandTotalSum = 0;
+
+    foreach ($orders as $o) {
+        $ts = strtotime($o->created_at);
+        $year = (int) date('Y', $ts);
+        $monthName = date('F', $ts);
+        $excelDate = \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($ts);
+
+        $sheet->setCellValue("A{$rowNum}", $o->order_id);
+        $sheet->setCellValue("B{$rowNum}", $o->order_number);
+        $sheet->setCellValue("C{$rowNum}", $o->customer_name ?? 'N/A');
+        $sheet->setCellValue("D{$rowNum}", $o->customer_email ?? 'N/A');
+        $sheet->setCellValue("E{$rowNum}", $year);
+        $sheet->setCellValue("F{$rowNum}", $monthName);
+        $sheet->setCellValue("G{$rowNum}", $excelDate);
+        $sheet->setCellValue("H{$rowNum}", $o->payment_method);
+        $sheet->setCellValue("I{$rowNum}", ucfirst($o->payment_status));
+        $sheet->setCellValue("J{$rowNum}", ucfirst($o->order_status));
+        $sheet->setCellValue("K{$rowNum}", (float) $o->total_amount);
+        $sheet->setCellValue("L{$rowNum}", (float) $o->shipping_fee);
+        $sheet->setCellValue("M{$rowNum}", (float) $o->grand_total);
+
+        // accumulate summary data
+        $statusTotals[$o->order_status]['count']   = ($statusTotals[$o->order_status]['count'] ?? 0) + 1;
+        $statusTotals[$o->order_status]['revenue'] = ($statusTotals[$o->order_status]['revenue'] ?? 0) + $o->grand_total;
+        $yearTotals[$year] = ($yearTotals[$year] ?? 0) + $o->grand_total;
+        $grandTotalSum += $o->grand_total;
+
+        $rowNum++;
+    }
+    $lastDataRow = max($rowNum - 1, 1);
+    $fullRange = "A1:M{$lastDataRow}";
+
+    // ---- Header styling: black background, gold bold text (matches admin theme) ----
+    $sheet->getStyle('A1:M1')->getFont()->setBold(true)->getColor()->setRGB('D4AF37');
+    $sheet->getStyle('A1:M1')->getFill()
+        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+        ->getStartColor()->setRGB('000000');
+    $sheet->getStyle('A1:M1')->getAlignment()->setHorizontal('center')->setVertical('center');
+    $sheet->getRowDimension(1)->setRowHeight(22);
+
+    // ---- Number/date formats ----
+    if ($lastDataRow >= 2) {
+        $sheet->getStyle("G2:G{$lastDataRow}")->getNumberFormat()->setFormatCode('dd-mmm-yyyy');
+        $sheet->getStyle("K2:M{$lastDataRow}")->getNumberFormat()->setFormatCode('#,##0.00');
     }
 
-    fputcsv($output, []);
-    fputcsv($output, ['', '', '', 'Total Revenue:', 'RM ' . number_format($totalRevenueSum, 2, '.', '')]);
+    // ---- Light borders across the table ----
+    $sheet->getStyle($fullRange)->getBorders()->getAllBorders()
+        ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
+        ->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFCCCCCC'));
 
-    fclose($output);
+    // ---- Auto-size every column ----
+    foreach (range('A', 'M') as $col) {
+        $sheet->getColumnDimension($col)->setAutoSize(true);
+    }
+
+    // ---- Freeze header row + turn on the filter dropdowns for ALL columns ----
+    // This is what lets the admin click the arrow on "Year" or "Month" and
+    // tick/untick which years or months to display, without touching this page.
+    $sheet->freezePane('A2');
+    $sheet->setAutoFilter($fullRange);
+
+    // ==========================================
+    // SUMMARY SHEET — quick totals by status & by year
+    // ==========================================
+    $summarySheet = $spreadsheet->createSheet();
+    $summarySheet->setTitle('Summary');
+
+    $summarySheet->setCellValue('A1', 'Sales Summary — All Orders (Every Status, Every Year & Month)');
+    $summarySheet->mergeCells('A1:C1');
+    $summarySheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
+
+    $summarySheet->setCellValue('A3', 'Order Status');
+    $summarySheet->setCellValue('B3', 'Number of Orders');
+    $summarySheet->setCellValue('C3', 'Total Revenue (RM)');
+    $summarySheet->getStyle('A3:C3')->getFont()->setBold(true)->getColor()->setRGB('D4AF37');
+    $summarySheet->getStyle('A3:C3')->getFill()
+        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('000000');
+
+    $r = 4;
+    foreach ($statusTotals as $status => $data) {
+        $summarySheet->setCellValue("A{$r}", ucfirst($status));
+        $summarySheet->setCellValue("B{$r}", $data['count']);
+        $summarySheet->setCellValue("C{$r}", round($data['revenue'], 2));
+        $r++;
+    }
+    $summarySheet->setCellValue("A{$r}", 'TOTAL');
+    $summarySheet->setCellValue("B{$r}", count($orders));
+    $summarySheet->setCellValue("C{$r}", round($grandTotalSum, 2));
+    $summarySheet->getStyle("A{$r}:C{$r}")->getFont()->setBold(true);
+    $r += 2;
+
+    $summarySheet->setCellValue("A{$r}", 'Year');
+    $summarySheet->setCellValue("B{$r}", 'Total Revenue (RM)');
+    $summarySheet->getStyle("A{$r}:B{$r}")->getFont()->setBold(true)->getColor()->setRGB('D4AF37');
+    $summarySheet->getStyle("A{$r}:B{$r}")->getFill()
+        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('000000');
+    $r++;
+    ksort($yearTotals);
+    foreach ($yearTotals as $yr => $rev) {
+        $summarySheet->setCellValue("A{$r}", $yr);
+        $summarySheet->setCellValue("B{$r}", round($rev, 2));
+        $r++;
+    }
+    foreach (range('A', 'C') as $col) {
+        $summarySheet->getColumnDimension($col)->setAutoSize(true);
+    }
+
+    // land on the main data sheet when the file is opened
+    $spreadsheet->setActiveSheetIndex(0);
+
+    $filename = "Sales_Report_ALL_" . date('Ymd_His') . ".xlsx";
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
     exit;
 }
 
@@ -504,9 +630,9 @@ while ($row = $chartStmt->fetch(PDO::FETCH_ASSOC)) {
 
                 <button type="submit" class="btn-filter"><i class="fa fa-filter"></i> Filter</button>
 
-                <a href="sales_report.php?month=<?php echo $selectedMonth; ?>&year=<?php echo $selectedYear; ?>&export=excel"
-                    class="btn-export">
-                    <i class="fa fa-file-excel"></i> Export to Excel
+                <a href="sales_report.php?export=excel"
+                    class="btn-export" title="Exports every order (all years, all months, all statuses) — use Excel's filter to narrow it down">
+                    <i class="fa fa-file-excel"></i> Export All Orders (Excel)
                 </a>
             </form>
         </div>
