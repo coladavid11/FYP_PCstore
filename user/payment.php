@@ -208,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         INSERT INTO tblorders
                             (user_id, order_number, total_amount, shipping_fee, service_fee,
                              grand_total, payment_method, card_holder_name, payment_status, order_status)
-                        VALUES (?, ?, ?, ?, ?, ?, 'Demo Card', ?, 'paid', 'processing')
+                        VALUES (?, ?, ?, ?, ?, ?, 'Card', ?, 'paid', 'processing')
                     ");
                     $orderStmt->execute([
                         $user_id, $order_number, $subtotal, $shipping,
@@ -290,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         INSERT INTO tblorders
                             (user_id, order_number, total_amount, shipping_fee, service_fee,
                              grand_total, payment_method, card_holder_name, payment_status, order_status)
-                        VALUES (?, ?, ?, ?, ?, ?, 'Demo Card', ?, 'paid', 'processing')
+                        VALUES (?, ?, ?, ?, ?, ?, 'Card', ?, 'paid', 'processing')
                     ");
                     $orderStmt->execute([
                         $user_id, $order_number, $subtotal, $shipping,
