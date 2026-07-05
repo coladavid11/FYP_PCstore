@@ -514,9 +514,9 @@ if (isset($_POST['update_product'])) {
         }
 
         .status-option input[type="radio"]#status_inactive:checked + .label-inactive {
-            background-color: #f8c1ccf9;
-            border-color: #be4040;
-            color: #343a40;
+            background-color: #f5f5f5; 
+            border-color: #cccccc;   
+            color: #555555;          
         }
 
         .form-hint {

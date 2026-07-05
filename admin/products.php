@@ -550,6 +550,7 @@ function filterUrl(array $overrides): string
             padding: 5px 14px;
             border-radius: 20px;
             border: 1px solid transparent;
+            text-transform: capitalize;
         }
 
         /* Active Pill Layout */
@@ -570,9 +571,9 @@ function filterUrl(array $overrides): string
 
         /* Inactive Pill Layout */
         .status-inactive {
-            background-color: #f5f5f5;
-            color: #424242;
-            border-color: #e0e0e0;
+            background-color: #f5f5f5; 
+            color: #757575;            
+            border-color: #e0e0e0;    
         }
 
         .status-inactive::before {
@@ -580,7 +581,7 @@ function filterUrl(array $overrides): string
             display: inline-block;
             width: 8px;
             height: 8px;
-            background-color: #757575;
+            background-color: #757575; 
             border-radius: 50%;
         }
 
@@ -902,10 +903,12 @@ function filterUrl(array $overrides): string
                             <td>
                                 <?php
                                 $prodStatus = $product->status ?? 'Active';
-                                $statusCls = ($prodStatus === 'Inactive') ? 'status-inactive' : 'status-active';
+                                // Use strtolower to make sure it catches 'inactive' or 'Inactive' cleanly
+                                $statusCls = (strtolower($prodStatus) === 'inactive') ? 'status-inactive' : 'status-active';
                                 ?>
-                                <span
-                                    class="status-badge <?php echo $statusCls; ?>"><?php echo htmlspecialchars($prodStatus); ?></span>
+                                <span class="status-badge <?php echo $statusCls; ?>">
+                                    <?php echo htmlspecialchars($prodStatus); ?>
+                                </span>
                             </td>
 
                             <td>
