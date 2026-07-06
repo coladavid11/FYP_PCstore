@@ -12,8 +12,10 @@ $order_id = intval($_GET['id'] ?? 0);
 
 /* FETCH ORDER (must belong to this user) */
 $stmt = $dbh->prepare("
-    SELECT * FROM tblorders
-    WHERE order_id = ? AND user_id = ?
+    SELECT o.*, u.fullname AS buyer_name, u.gmail AS buyer_email, u.phone_num AS buyer_phone
+    FROM tblorders o
+    LEFT JOIN tbluser u ON u.user_id = o.user_id
+    WHERE o.order_id = ? AND o.user_id = ?
     LIMIT 1
 ");
 $stmt->execute([$order_id, $user_id]);
@@ -968,7 +970,7 @@ $invoiceData = json_encode([
 
                     <!-- INVOICE HEADER -->
                     <div
-                        style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #000;">
+                        style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #d4af37;">
                         <div>
                             <div style="font-size:1.6rem;font-weight:800;letter-spacing:1px;color:#000;">MY PC STORE
                             </div>
@@ -976,33 +978,72 @@ $invoiceData = json_encode([
                                 Premium Gaming Hardware</div>
                         </div>
                         <div style="text-align:right;">
-                            <div style="font-size:1.1rem;font-weight:700;color:#b8860b;">INVOICE</div>
-                            <div style="font-size:0.85rem;color:#333;margin-top:4px;">
-                                <?php echo htmlspecialchars($order['order_number']); ?></div>
-                            <div style="font-size:0.8rem;color:#666;">Date:
-                                <?php echo date('d M Y', strtotime($order['created_at'])); ?></div>
+                            <div style="font-size:1.2rem;font-weight:700;color:#b8860b;">INVOICE</div>
                         </div>
                     </div>
 
-                    <!-- INVOICE META -->
+                    <!-- INVOICE META: Invoice No / Date / Payment / Order Status -->
+                    <div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #eee;">
+                        <div>
+                            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:3px;">Invoice No</div>
+                            <div style="font-weight:600;color:#333;font-size:0.85rem;"><?php echo htmlspecialchars($order['order_number']); ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:3px;">Date</div>
+                            <div style="font-weight:600;color:#333;font-size:0.85rem;"><?php echo date('d M Y', strtotime($order['created_at'])); ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:3px;">Payment Method</div>
+                            <div style="font-weight:600;color:#333;font-size:0.85rem;"><?php echo htmlspecialchars(str_replace('Demo Card', 'Card', $order['payment_method'])); ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:3px;">Payment Status</div>
+                            <div style="font-weight:700;font-size:0.85rem;color:<?php echo $paymentCfg['color']; ?>;"><?php echo strtoupper($paymentCfg['label']); ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:3px;">Order Status</div>
+                            <div style="font-weight:700;font-size:0.85rem;color:<?php echo $statusCfg['color']; ?>;"><?php echo strtoupper($statusCfg['label']); ?></div>
+                        </div>
+                    </div>
+
+                    <!-- BILL TO / SHIP TO -->
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
                         <div>
                             <div
                                 style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:4px;">
                                 Bill To</div>
                             <div style="font-weight:600;color:#333;">
-                                <?php echo htmlspecialchars($_SESSION['name'] ?? 'Customer'); ?></div>
+                                <?php echo htmlspecialchars($order['buyer_name'] ?? $_SESSION['name'] ?? 'Customer'); ?></div>
                             <div style="font-size:0.8rem;color:#666;">
-                                <?php echo htmlspecialchars($_SESSION['email'] ?? ''); ?></div>
+                                <?php echo htmlspecialchars($order['buyer_email'] ?? $_SESSION['email'] ?? ''); ?></div>
+                            <?php if (!empty($order['buyer_phone'])): ?>
+                            <div style="font-size:0.8rem;color:#666;">
+                                <?php echo htmlspecialchars($order['buyer_phone']); ?></div>
+                            <?php endif; ?>
                         </div>
                         <div>
                             <div
                                 style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:4px;">
-                                Payment</div>
-                            <div style="font-weight:600;color:#333;">
-                                <?php echo htmlspecialchars(str_replace('Demo Card', 'Card', $order['payment_method'])); ?></div>
-                            <div style="font-size:0.8rem;color:#666;">Status:
-                                <?php echo htmlspecialchars($order['payment_status'] ?? 'N/A'); ?></div>
+                                Ship To</div>
+                            <?php if ($deliveryAddr): ?>
+                                <div style="font-weight:600;color:#333;">
+                                    <?php echo htmlspecialchars($deliveryAddr['receiver_name']); ?></div>
+                                <div style="font-size:0.8rem;color:#666;">
+                                    <?php echo htmlspecialchars($deliveryAddr['phone']); ?></div>
+                                <div style="font-size:0.8rem;color:#666;">
+                                    <?php
+                                    $invAddrParts = array_filter([
+                                        $deliveryAddr['addr_line1'],
+                                        $deliveryAddr['addr_line2'],
+                                        $deliveryAddr['postcode'] . ' ' . $deliveryAddr['city'],
+                                        $deliveryAddr['state_name'] ?? ''
+                                    ]);
+                                    echo htmlspecialchars(implode(', ', $invAddrParts));
+                                    ?>
+                                </div>
+                            <?php else: ?>
+                                <div style="font-size:0.8rem;color:#999;">No delivery address recorded.</div>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -1012,7 +1053,7 @@ $invoiceData = json_encode([
                             <tr style="background:#f5f5f5;border-bottom:2px solid #ddd;">
                                 <th
                                     style="padding:10px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:#666;">
-                                    Product</th>
+                                    Product Description</th>
                                 <th
                                     style="padding:10px 12px;text-align:center;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:#666;">
                                     Qty</th>
@@ -1080,6 +1121,13 @@ $invoiceData = json_encode([
                                 <span>Shipping Fee</span>
                                 <span>RM <?php echo number_format($order['shipping_fee'], 2); ?></span>
                             </div>
+                            <!-- Service Fee -->
+                            <?php if (!empty($order['service_fee']) && $order['service_fee'] > 0): ?>
+                            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:0.82rem;color:#666;">
+                                <span>Service Fee</span>
+                                <span>RM <?php echo number_format($order['service_fee'], 2); ?></span>
+                            </div>
+                            <?php endif; ?>
                             <!-- Grand Total -->
                             <div style="display:flex;justify-content:space-between;padding:10px 0 0;font-size:1rem;font-weight:800;color:#b8860b;">
                                 <span>GRAND TOTAL</span>
