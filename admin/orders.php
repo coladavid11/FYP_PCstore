@@ -653,7 +653,6 @@ $total = count($orders);
 
 <body>
 
-    <!-- SIDEBAR -->
     <div class="sidebar">
         <h2>Admin</h2>
         <a href="dashboard.php">🏠 Dashboard</a>
@@ -669,7 +668,6 @@ $total = count($orders);
 
     <div class="main">
 
-        <!-- TOPBAR -->
         <div class="topbar">
             <div>
                 <h1><i class="fa fa-cart-shopping" style="color:#d4af37;margin-right:8px;font-size:1.3rem;"></i>Orders
@@ -682,7 +680,6 @@ $total = count($orders);
             </div>
         </div>
 
-        <!-- STAT CARDS -->
         <div class="stat-grid">
 
             <a href="orders.php"
@@ -729,7 +726,6 @@ $total = count($orders);
 
         </div>
 
-        <!-- FILTER BAR -->
         <form method="GET" action="orders.php" id="filterForm">
             <div class="filter-bar">
 
@@ -739,7 +735,6 @@ $total = count($orders);
                         value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
                 </div>
 
-                <!-- Status filter pills (hidden input updated by JS) -->
                 <input type="hidden" name="status" id="statusInput" value="<?php echo htmlspecialchars($filterSt); ?>">
 
                 <div class="filter-pills">
@@ -781,7 +776,6 @@ $total = count($orders);
             </div>
         </form>
 
-        <!-- TABLE BOX -->
         <div class="table-box">
 
             <div class="table-meta">
@@ -880,13 +874,34 @@ $total = count($orders);
                                 <td>
                                     <span class="date-text"><?php echo date('d M Y', strtotime($o->created_at)); ?></span>
                                     <div style="font-size:0.72rem;color:#ccc;">
-                                        <?php echo date('h:i A', strtotime($o->created_at)); ?></div>
+                                        <?php echo date('h:i A', strtotime($o->created_at)); ?>
+                                    </div>
                                 </td>
 
                                 <td>
-                                    <a href="edit_orders.php?id=<?php echo $o->order_id; ?>" class="action-btn edit">
-                                        <i class="fa fa-pen-to-square"></i> Manage
-                                    </a>
+                                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                                        <a href="edit_orders.php?id=<?php echo $o->order_id; ?>" class="action-btn edit">
+                                            <i class="fa fa-pen-to-square"></i> Manage
+                                        </a>
+
+                                        <?php if (strtolower($o->payment_status) === 'refunded'): ?>
+                                            <a href="refund_record.php?id=<?php echo $o->order_id; ?>" class="action-btn refund"
+                                                style="color: #e67e22;">
+                                                <i class="fa fa-receipt"></i> View Refund
+                                            </a>
+                                        <?php elseif (strtolower($o->payment_status) === 'paid'): ?>
+                                            <a href="generate_invoice.php?id=<?php echo $o->order_id; ?>" target="_blank"
+                                                class="action-btn invoice" style="color: #27ae60;">
+                                                <i class="fa fa-file-pdf"></i> Invoice
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="action-btn"
+                                                style="color: #bbb; cursor: not-allowed; text-decoration: none;"
+                                                title="Awaiting Payment">
+                                                <i class="fa fa-file-pdf"></i> Unpaid
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -908,10 +923,8 @@ $total = count($orders);
                 </tbody>
             </table>
 
-        </div><!-- table-box -->
-
-    </div><!-- main -->
-
+        </div>
+    </div>
     <script>
         function setStatus(val) {
             document.getElementById('statusInput').value = val;
