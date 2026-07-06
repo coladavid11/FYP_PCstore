@@ -431,8 +431,10 @@ function statusConfig(string $status): array
                     <button class="filter-tab active" data-filter="all">All (<?php echo $total; ?>)</button>
                     <button class="filter-tab" data-filter="processing">Processing
                         (<?php echo count(array_filter($orders, fn($o) => strtolower($o['order_status']) === 'processing')); ?>)</button>
-                    <button class="filter-tab" data-filter="packed">Packed</button>
-                    <button class="filter-tab" data-filter="shipped">Shipped</button>
+                    <button class="filter-tab" data-filter="packed">Packed
+                        (<?php echo count(array_filter($orders, fn($o) => strtolower($o['order_status']) === 'packed')); ?>)</button>
+                    <button class="filter-tab" data-filter="shipped">Shipped
+                        (<?php echo count(array_filter($orders, fn($o) => strtolower($o['order_status']) === 'shipped')); ?>)</button>
                     <button class="filter-tab" data-filter="delivered">Delivered (<?php echo $completed; ?>)</button>
                     <button class="filter-tab" data-filter="cancelled">Cancelled (<?php echo $cancelled; ?>)</button>
                 </div>
