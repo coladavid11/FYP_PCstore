@@ -7,7 +7,7 @@ if (!isset($_SESSION['admin_login'])) {
     exit;
 }
 
-$sql = "SELECT * FROM tbluser ORDER BY user_id DESC";
+$sql = "SELECT u.*, s.state_name FROM tbluser u LEFT JOIN tblstate s ON u.state_id = s.state_id ORDER BY user_id DESC";
 $query = $dbh->prepare($sql);
 $query->execute();
 
@@ -170,6 +170,16 @@ $users = $query->fetchAll(PDO::FETCH_OBJ);
             background-color: #fcfcfc;
         }
 
+        /* Table Scroll Wrapper */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            min-width: 1100px;
+        }
+
         /* Inline Action Link Adjustments */
         .action-btn {
             text-decoration: none;
@@ -238,54 +248,66 @@ $users = $query->fetchAll(PDO::FETCH_OBJ);
         <div class="table-box">
             <h3>Users List</h3>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 5%;">ID</th>
-                        <th style="width: 15%;">Full Name</th>
-                        <th style="width: 15%;">Email</th>
-                        <th style="width: 12%;">Phone</th>
-                        <th style="width: 18%;">Address</th>
-                        <th style="width: 8%;">Gender</th>
-                        <th style="width: 10%;">Status</th>
-                        <th style="width: 10%;">Registered</th>
-                        <th style="width: 7%;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (count($users) > 0) { ?>
-                        <?php foreach ($users as $user) { ?>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">ID</th>
+                            <th style="width: 14%;">Full Name</th>
+                            <th style="width: 15%;">Email</th>
+                            <th style="width: 10%;">Phone</th>
+                            <th style="width: 24%;">Address</th>
+                            <th style="width: 7%;">Gender</th>
+                            <th style="width: 9%;">Status</th>
+                            <th style="width: 9%;">Registered</th>
+                            <th style="width: 7%;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (count($users) > 0) { ?>
+                            <?php foreach ($users as $user) { ?>
+                                <tr>
+                                    <td><?= $user->user_id ?></td>
+                                    <td><?= htmlspecialchars($user->fullname) ?></td>
+                                    <td><?= htmlspecialchars($user->gmail) ?></td>
+                                    <td><?= htmlspecialchars($user->phone_num) ?></td>
+                                    <td>
+                                        <?= htmlspecialchars($user->addr_line1) ?>
+                                        <?php if (!empty($user->addr_line2)): ?>
+                                            <br><?= htmlspecialchars($user->addr_line2) ?>
+                                        <?php endif; ?>
+                                        <br>
+                                        <span style="color:#888; font-size:0.85rem;">
+                                            <?= htmlspecialchars($user->postcode) ?> <?= htmlspecialchars($user->city) ?>,
+                                            <?= htmlspecialchars($user->state_name ?? '-') ?>
+                                        </span>
+                                    </td>
+                                    <td><?= htmlspecialchars($user->gender) ?></td>
+                                    <td>
+                                        <?php if (isset($user->status) && strtolower($user->status) === 'active'): ?>
+                                            <span class="status-badge status-active"><i class="fa fa-circle"
+                                                    style="font-size:0.45rem;"></i> Active</span>
+                                        <?php else: ?>
+                                            <span class="status-badge status-inactive"><i class="fa fa-circle"
+                                                    style="font-size:0.45rem;"></i> Inactive</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= date('d/m/Y', strtotime($user->reg_date)) ?></td>
+                                    <td>
+                                        <a href="edit_user.php?id=<?= $user->user_id ?>" class="action-btn edit">
+                                            <i class="fa fa-pen-to-square"></i> Edit
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php } ?>
+                        <?php } else { ?>
                             <tr>
-                                <td><?= $user->user_id ?></td>
-                                <td><?= htmlspecialchars($user->fullname) ?></td>
-                                <td><?= htmlspecialchars($user->gmail) ?></td>
-                                <td><?= htmlspecialchars($user->phone_num) ?></td>
-                                <td><?= htmlspecialchars($user->address) ?></td>
-                                <td><?= htmlspecialchars($user->gender) ?></td>
-                                <td>
-                                    <?php if (isset($user->status) && strtolower($user->status) === 'active'): ?>
-                                        <span class="status-badge status-active"><i class="fa fa-circle"
-                                                style="font-size:0.45rem;"></i> Active</span>
-                                    <?php else: ?>
-                                        <span class="status-badge status-inactive"><i class="fa fa-circle"
-                                                style="font-size:0.45rem;"></i> Inactive</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= date('d/m/Y', strtotime($user->reg_date)) ?></td>
-                                <td>
-                                    <a href="edit_user.php?id=<?= $user->user_id ?>" class="action-btn edit">
-                                        <i class="fa fa-pen-to-square"></i> Edit
-                                    </a>
-                                </td>
+                                <td colspan="9" style="text-align: center; color: #888; padding: 25px;">No users available.</td>
                             </tr>
                         <?php } ?>
-                    <?php } else { ?>
-                        <tr>
-                            <td colspan="9" style="text-align: center; color: #888; padding: 25px;">No users available.</td>
-                        </tr>
-                    <?php } ?>
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </body>
