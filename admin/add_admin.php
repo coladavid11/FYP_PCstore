@@ -75,6 +75,7 @@ if (isset($_POST['submit'])) {
 
                 // --- EMAIL CONTENT STRUCTURE ---
                 $mail->isHTML(true);
+                $mail->CharSet = 'UTF-8';
                 $mail->Subject = 'Your New Admin Account Credentials — My PC Store';
 
                 // HTML Email Design Layout matching professional structures
