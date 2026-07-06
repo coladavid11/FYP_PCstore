@@ -49,6 +49,7 @@ $rates = $query->fetchAll(PDO::FETCH_OBJ);
             color: #d4af37;
             margin-bottom: 30px;
             text-align: center;
+            font-size: 2rem;
         }
 
         .sidebar a {
