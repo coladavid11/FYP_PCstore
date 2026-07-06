@@ -596,7 +596,7 @@ while ($row = $chartStmt->fetch(PDO::FETCH_ASSOC)) {
         <a href="users.php">👥 Users</a>
         <a href="shipping_rates.php">🚚 Shipping Rates</a>
         <a href="sales_report.php" class="sidebar-active">📊 Sales Report</a>
-        <a href="admin.php">⚙ Admins</a>
+        <a href="admins.php">⚙ Admins</a>
     </div>
 
     <div class="main">
