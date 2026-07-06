@@ -102,14 +102,6 @@ if ($isPCBuild) {
             $originalSubtotal += $dbPrice * $item['quantity'];
         }
         $buildDiscountAmt = max(0, $originalSubtotal - $subtotal);
-
-        $aStmt = $dbh->prepare("SELECT assembly_service, assembly_fee FROM tbl_pc_build WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
-        $aStmt->execute([$user_id]);
-        $aRow = $aStmt->fetch(PDO::FETCH_ASSOC);
-        if ($aRow) {
-            $assemblyFeeAmt    = floatval($aRow['assembly_fee']);
-            $assemblyIsService = (bool)$aRow['assembly_service'];
-        }
     }
 }
 
