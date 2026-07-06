@@ -126,6 +126,25 @@ body { display:flex; background:#f5f5f5; }
 }
 .btn-back:hover { background:#d4af37; color:#000; }
 
+/* ── PRODUCT-STYLE GREEN ALERT BANNER ── */
+.alert-banner-success {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    padding: 12px 20px;
+    border-radius: 4px;
+    margin-bottom: 24px;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+.alert-banner-success i {
+    color: #28a745;
+    font-size: 1.05rem;
+}
+
 /* ── LAYOUT COLUMNS ── */
 .edit-layout { display:flex; gap:20px; align-items:flex-start; }
 .col-main  { flex:1; min-width:0; }
@@ -269,7 +288,6 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
 </head>
 <body>
 
-<!-- SIDEBAR -->
 <div class="sidebar">
     <h2>Admin</h2>
     <a href="dashboard.php">🏠 Dashboard</a>
@@ -285,7 +303,6 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
 
 <div class="main">
 
-    <!-- TOPBAR -->
     <div class="topbar">
         <div>
             <h1><i class="fa fa-pen-to-square" style="color:#d4af37;margin-right:8px;font-size:1.2rem;"></i>Edit Category</h1>
@@ -296,9 +313,15 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
         </div>
     </div>
 
+    <?php if ($success): ?>
+    <div class="alert-banner-success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>Category updated successfully.</span>
+    </div>
+    <?php endif; ?>
+
     <div class="edit-layout">
 
-        <!-- MAIN FORM -->
         <div class="col-main">
         <div class="form-card">
             <div class="form-card-header">
@@ -310,7 +333,6 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
             <form method="POST" action="edit_categories.php?id=<?php echo $id; ?>" id="editForm" novalidate>
             <div class="form-body">
 
-                <!-- Category Name -->
                 <div class="form-group">
                     <label class="form-label" for="category_name">
                         Category Name <span class="req">*</span>
@@ -333,7 +355,6 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
                     <?php endif; ?>
                 </div>
 
-                <!-- Description -->
                 <div class="form-group">
                     <label class="form-label" for="category_description">Description</label>
                     <div class="input-wrap">
@@ -349,7 +370,6 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
                     <div class="form-hint">Optional. Shown on the category page.</div>
                 </div>
 
-                <!-- Status -->
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Status <span class="req">*</span></label>
                     <div class="status-options">
@@ -377,9 +397,7 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
                     </div>
                 </div>
 
-            </div><!-- form-body -->
-
-            <div class="form-footer">
+            </div><div class="form-footer">
                 <button type="submit" class="btn-save">
                     <i class="fa fa-floppy-disk"></i> Save Changes
                 </button>
@@ -388,13 +406,8 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
                 </a>
             </div>
             </form>
-        </div><!-- form-card -->
-        </div><!-- col-main -->
+        </div></div><div class="col-aside">
 
-        <!-- ASIDE -->
-        <div class="col-aside">
-
-            <!-- Record Info -->
             <div class="side-card">
                 <div class="side-card-header">
                     <i class="fa fa-circle-info"></i>
@@ -426,7 +439,6 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
                 </div>
             </div>
 
-            <!-- Linked Products -->
             <div class="side-card">
                 <div class="side-card-header">
                     <i class="fa fa-box"></i>
@@ -460,12 +472,7 @@ textarea.form-control { resize:vertical; min-height:100px; line-height:1.6; }
                 </div>
             </div>
 
-        </div><!-- col-aside -->
-    </div><!-- edit-layout -->
-
-</div><!-- main -->
-
-<script>
+        </div></div></div><script>
 /* ── CHARACTER COUNTER ── */
 const desc      = document.getElementById('category_description');
 const descCount = document.getElementById('descCount');
@@ -486,18 +493,6 @@ function toggleWarn() {
 }
 document.querySelectorAll('input[name="status"]').forEach(r => r.addEventListener('change', toggleWarn));
 toggleWarn();
-<?php endif; ?>
-
-/* ── SUCCESS ── */
-<?php if ($success): ?>
-Swal.fire({
-    icon: 'success',
-    title: 'Category Updated!',
-    html: `<b style="color:#d4af37;"><?php echo htmlspecialchars(addslashes($cat->category_name)); ?></b> has been saved successfully.`,
-    confirmButtonText: '<i class="fa fa-check"></i> OK',
-    confirmButtonColor: '#d4af37',
-    background: '#fff',
-});
 <?php endif; ?>
 
 /* ── DUPLICATE NAME ── */

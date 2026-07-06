@@ -376,17 +376,17 @@ if (isset($_POST['submit'])) {
 
                 <div class="form-group">
                     <label>Full Name</label>
-                    <input type="text" name="fullname" placeholder="e.g., John Doe" required>
+                    <input type="text" name="fullname" placeholder="Name" required>
                 </div>
 
                 <div class="form-group">
                     <label>Email Address</label>
-                    <input type="email" name="email" placeholder="e.g., admin@domain.com" required>
+                    <input type="email" name="email" placeholder="Email" required>
                 </div>
 
                 <div class="form-group">
                     <label>Phone Number</label>
-                    <input type="tel" name="phone" placeholder="e.g., +60123456789" required>
+                    <input type="tel" name="phone" placeholder="Phone" required>
                 </div>
 
                 <div class="form-group">

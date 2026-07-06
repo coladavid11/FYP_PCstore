@@ -121,6 +121,25 @@ body { display:flex; background:#f5f5f5; }
 }
 .btn-back:hover { background:#d4af37; color:#000; }
 
+/* ── INLINE GREEN ALERT BANNER (As seen in image_a7fc7a.jpg) ── */
+.alert-banner-success {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #e2f4e6;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    padding: 12px 20px;
+    border-radius: 4px;
+    margin-bottom: 24px;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+.alert-banner-success i {
+    color: #28a745;
+    font-size: 1.05rem;
+}
+
 /* ── LAYOUT COLUMNS ── */
 .edit-layout { display:flex; gap:20px; align-items:flex-start; }
 .col-main  { flex:1; min-width:0; }
@@ -283,6 +302,14 @@ body { display:flex; background:#f5f5f5; }
         </div>
     </div>
 
+    <!-- INLINE GREEN ALERT BANNER (Matching image_a7fc7a.jpg) -->
+    <?php if ($success): ?>
+    <div class="alert-banner-success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>Brand updated successfully.</span>
+    </div>
+    <?php endif; ?>
+
     <div class="edit-layout">
 
         <!-- MAIN FORM -->
@@ -294,7 +321,7 @@ body { display:flex; background:#f5f5f5; }
                 <span class="badge-id">ID #<?php echo $brand->brand_id; ?></span>
             </div>
 
-            <form method="POST" action="edit_brands.php?id=<?php echo $id; ?>" id="editForm" novalidate>
+            <form method="POST" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF'] . '?' . http_build_query($_GET)); ?>" id="editForm" novalidate>
             <div class="form-body">
 
                 <!-- Brand Name -->
@@ -376,6 +403,7 @@ body { display:flex; background:#f5f5f5; }
                         <i class="fa fa-hashtag"></i>
                         <span>ID: <strong>#<?php echo $brand->brand_id; ?></strong></span>
                     </div>
+                    <?php if (isset($brand->created_at)): ?>
                     <div class="meta-row">
                         <i class="fa fa-calendar"></i>
                         <div>
@@ -383,6 +411,7 @@ body { display:flex; background:#f5f5f5; }
                             <strong><?php echo date('d M Y', strtotime($brand->created_at)); ?></strong>
                         </div>
                     </div>
+                    <?php endif; ?>
                     <div class="meta-row">
                         <i class="fa fa-signal"></i>
                         <div>
@@ -448,24 +477,12 @@ document.querySelectorAll('input[name="status"]').forEach(r => r.addEventListene
 toggleWarn();
 <?php endif; ?>
 
-/* ── SUCCESS ── */
-<?php if ($success): ?>
-Swal.fire({
-    icon: 'success',
-    title: 'Brand Updated!',
-    html: `<b style="color:#d4af37;"><?php echo htmlspecialchars(addslashes($brand->brand_name)); ?></b> has been saved successfully.`,
-    confirmButtonText: '<i class="fa fa-check"></i> OK',
-    confirmButtonColor: '#d4af37',
-    background: '#fff',
-});
-<?php endif; ?>
-
 /* ── DUPLICATE NAME ── */
 <?php if ($dupName): ?>
 Swal.fire({
     icon: 'error',
     title: 'Duplicate Brand Name',
-    html: `A brand named <b style="color:#d4af37;"><?php echo htmlspecialchars(addslashes($_POST['brand_name'])); ?></b> already exists.<br>
+    html: `A brand named <b style="color:#d4af37;"><?php echo htmlspecialchars(addslashes($_POST['brand_name'] ?? '')); ?></b> already exists.<br>
            <span style="font-size:0.88rem;color:#888;">Please choose a different name.</span>`,
     confirmButtonText: 'Try Again',
     confirmButtonColor: '#d4af37',
