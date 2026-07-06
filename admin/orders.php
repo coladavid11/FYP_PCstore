@@ -898,7 +898,7 @@ $total = count($orders);
                                             <span class="action-btn"
                                                 style="color: #bbb; cursor: not-allowed; text-decoration: none;"
                                                 title="Awaiting Payment">
-                                                <i class="fa fa-file-pdf"></i> Unpaid
+                                                <i class="fa fa-file-pdf"></i> No Invoice
                                             </span>
                                         <?php endif; ?>
                                     </div>
